@@ -4,7 +4,7 @@
 // (node:sqlite), on a free port, and opens its one window as the writer. Data stays in ~/Dojo/dojo.db, which install
 // never touches. Options: --dest <dir> (default ~/Applications), --home <dir> (default $DOJO_HOME or ~/Dojo: a
 // non-default home is baked into the app), --no-build (reuse a prebuilt dist from --dist <dir>), --no-icon.
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -14,6 +14,34 @@ import { deflateSync } from 'node:zlib'
 const here = dirname(fileURLToPath(import.meta.url))
 export const APP_ROOT = resolve(here, '..')
 export const APP_ID = 'local.dojo.app'
+
+/** The Electron runtime binary (what `electron/install.js` downloads), or null while it has not been downloaded. */
+export function electronBinary(root = APP_ROOT) {
+  const dir = join(root, 'node_modules', 'electron')
+  try {
+    const exe = join(dir, 'dist', readFileSync(join(dir, 'path.txt'), 'utf8').trim())
+    return existsSync(exe) ? exe : null
+  } catch { return null }
+}
+
+/**
+ * Makes sure the Electron runtime is on disk. Recent Electron releases have no postinstall step, and npm 11.x does not
+ * run dependency install scripts unless they are allowed, so `npm ci` can leave node_modules/electron/dist missing.
+ * Runs electron's own install.js (a download of the runtime from GitHub, or ELECTRON_MIRROR) when it is absent, and
+ * throws a message that says how to fix it when that fails. Returns the binary path.
+ */
+export function ensureElectronDist({ root = APP_ROOT, log = console.log } = {}) {
+  const have = electronBinary(root)
+  if (have) return have
+  const installJs = join(root, 'node_modules', 'electron', 'install.js')
+  if (!existsSync(installJs)) throw new Error('Electron is not installed: run `npm ci` in the repository root first.')
+  log('Electron runtime not downloaded yet; running node_modules/electron/install.js (several hundred MB)...')
+  const r = spawnSync(process.execPath, [installJs], { cwd: join(root, 'node_modules', 'electron'), stdio: 'inherit' })
+  const exe = r.status === 0 ? electronBinary(root) : null
+  if (!exe) throw new Error('Could not download the Electron runtime. Check your network or proxy (set ELECTRON_MIRROR if GitHub is blocked), then run `node node_modules/electron/install.js` and retry.')
+  return exe
+}
+
 const electronVersion = () => JSON.parse(readFileSync(join(APP_ROOT, 'node_modules', 'electron', 'package.json'), 'utf8')).version
 
 // --- icon: a 1024px pixel cube, written as a PNG with zlib only, then sips + iconutil make the .icns ---
@@ -135,6 +163,7 @@ export function stageApp(stage, { build = true, dist = null, builder = viteBuild
 
 /** Builds Dojo.app into a temp dir; returns its path (the caller removes `work`). */
 export async function buildDesktopApp({ build = true, dist = null, icon = true, log = console.log } = {}) {
+  ensureElectronDist({ log })
   const work = mkdtempSync(join(tmpdir(), 'dojo-desktop-'))
   const stage = join(work, 'stage'), out = join(work, 'out')
   mkdirSync(stage)

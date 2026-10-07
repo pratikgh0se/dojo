@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { APP_ID, desktopConfig, FULL_SCREEN_DEFAULT_ARGS, iconPng, parseArgs, setFullScreenDefault, stageApp, swapApp } from '../../scripts/install-app.mjs'
+import { APP_ID, desktopConfig, ensureElectronDist, FULL_SCREEN_DEFAULT_ARGS, iconPng, parseArgs, setFullScreenDefault, stageApp, swapApp } from '../../scripts/install-app.mjs'
 import { uninstall } from '../../scripts/uninstall-app.mjs'
 // @ts-expect-error plain .mjs without types
 import { resolveHome, toolPath } from '../../electron/env.mjs'
@@ -43,11 +43,14 @@ describe('the app bundle', () => {
     expect(c.mac.identity).toBeNull()
     expect(c.mac.target[0].target).toBe('dir')
   })
-  it('ships Electron\'s and Chromium\'s licences in Contents/Resources (L7: electron-builder drops them on macOS)', () => {
+  it('ships Electron\'s and Chromium\'s licences in Contents/Resources (L7: electron-builder drops them on macOS)', ctx => {
+    // A fresh `npm ci` does not download the Electron runtime (no postinstall in Electron 44; npm 11 blocks install scripts),
+    // so fetch it here exactly as `npm run install:app` does; skip with a reason only when that is impossible (offline).
+    try { ensureElectronDist({ log: () => {} }) } catch (e) { console.warn(`SKIPPED: Electron runtime unavailable: ${(e as Error).message}`); ctx.skip() }
     const c = desktopConfig({ out: join(tmp, 'out'), icon: null }) as { extraResources: { from: string; to: string }[] }
     expect(c.extraResources.map(r => r.to)).toEqual(['LICENSE.electron.txt', 'LICENSES.chromium.html'])
     for (const r of c.extraResources) expect(existsSync(r.from), r.from).toBe(true)
-  })
+  }, 300_000)
   // UAT cu-4 P3-12 / ruling 23 K4: View carries our one Toggle Full Screen, so macOS must not add its own (AppKit reads this at launch)
   it('tells macOS not to add a full-screen item of its own: in the Info.plist, and by a defaults write for Dojo\'s own domain', () => {
     const c = desktopConfig({ out: join(tmp, 'out'), icon: null }) as { mac: { extendInfo: Record<string, unknown> } }

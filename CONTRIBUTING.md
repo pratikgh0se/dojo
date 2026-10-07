@@ -9,9 +9,8 @@ You need everything in the README's [prerequisites](README.md#prerequisites) (ma
 you work on the Go runner). All commands run from the repository root.
 
 ```bash
-cd app
 npm ci
-npx playwright install chromium     # once, for the end-to-end suites
+npx playwright install chromium     # once, for the end-to-end suites (`npm run e2e` uses Chromium only)
 ```
 
 Development never touches your real data: the dev scripts refuse `~/Dojo` and port 8787.
@@ -35,7 +34,7 @@ Development never touches your real data: the dev scripts refuse `~/Dojo` and po
 | `npm run typecheck` | TypeScript, no emit | |
 | `npm run e2e` | End-to-end (Playwright, Chromium), `tests/e2e/` | Three projects: `chromium` (Vite dev on Dexie alone), `storage` (builds the app once and runs its own `dojo-server` with a temp `DOJO_HOME` per test) and `real` (a subset with disk sync on). Starts `npm run dev` itself; one worker, no retries. |
 | `npm run e2e:desktop` | The packaged Mac app (Playwright's Electron driver), `tests/desktop/` | Builds `Dojo.app` once into a temp folder (a few minutes) and launches it with temp data folders and the fake AI. Never uses `~/Dojo` or `~/Applications`. |
-| `npm run parity:today`, `parity:ai`, `parity:labs`, `parity:designs` | Screenshot parity against the design prototypes, `tests/parity/` | Needs the design prototypes, which are not in this repository (see "Known gaps"). `:update` variants rewrite the baselines. |
+| `npm run parity:today`, `parity:ai`, `parity:labs`, `parity:designs` | Screenshot parity against the maintainer's design prototypes, `tests/parity/` | Maintainer-only: the prototypes are not in the public repository, so these specs skip with a one-line reason there. `:update` variants rewrite the baselines. |
 | `npm run css:check` | Bare CSS class names defined in more than one file | |
 | `npm run bundle:check` | Entry-chunk size budget | Run after `npm run build`. |
 | `DOJO_REAL_SMOKE=1 npm run smoke:real` | One real Claude call through the helper | Spends one Sonnet call on your Claude Code login. Refuses without `DOJO_REAL_SMOKE=1`. No other test calls the real `claude`. |
@@ -43,12 +42,11 @@ Development never touches your real data: the dev scripts refuse `~/Dojo` and po
 Before a pull request, run at least `npm run typecheck`, `npm test` and `npm run e2e`. Run `npm run e2e:desktop` when
 you touch `electron/`, `scripts/install-app.mjs` or the server's startup.
 
-### Known gaps in the public repository
+### Tests that are not in the public repository
 
-A few unit tests (`ai-guardrails`, `ai-validate`, `ai-types`, `engines`, `diagram-kit`, and those using
-`tests/helpers/plan.ts` `legacyPlan()`) and the parity suite read fixtures and design prototypes from outside this repository root
-that are not part of this repository, so they fail here. Moving those fixtures into `tests/fixtures/` is a
-welcome contribution.
+A few unit tests (`ai-guardrails`, `ai-types`, `ai-validate`, `diagram-kit`, `engines`) read the maintainer's design
+prototypes, which are not part of the public repository, so the public tree omits them. The parity suite is present but
+skips itself when the prototypes are absent. Everything else listed above runs from a fresh clone.
 
 ## Private build and the public release
 
@@ -64,7 +62,7 @@ writes the public tree without the private paths. A public clone has no
 | Command | What it does |
 |---|---|
 | `npm run helper:gen` | Regenerates `server/gen/ai-shared.mjs` (the helper's copy of the prompts, validators and guardrails) from `src/ai/`. Run it after changing anything under `src/ai/`; a unit test fails when the two drift. |
-| `npm run engines` | Re-copies the vendored drawing engines into `public/engines/` from the design prototypes (not in this repository; the copies in `public/engines/` are the source of truth here). |
+| `npm run engines` | Re-copies the vendored drawing engines into `public/engines/` from the maintainer's design prototypes. Without the prototypes it says so and changes nothing; the copies in `public/engines/` are the source of truth here. |
 | `npm run db:export-pg` | Dumps `DOJO_HOME/dojo.db` as Postgres SQL into `DOJO_HOME/export/`. |
 | `npm run install:app` / `npm run uninstall:app` | Builds and installs, or removes, `~/Applications/Dojo.app` (see the README). |
 

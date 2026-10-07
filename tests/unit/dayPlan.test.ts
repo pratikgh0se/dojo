@@ -100,7 +100,7 @@ describe('daySentence', () => {
       'Build + break: Stage 00: Setup + math by picture. The 30 min news slot comes first, timer on.',
     )
     expect(daySentence('teachback', [stage('teachback'), ivTask], FOCUS)).toBe(
-      'Teach back Stage 00: Setup + math by picture: sketch it on paper or explain it in writing, then grade it against the rubric. Then: Set the routine. Tick tasks, five lines in the vault.',
+      'Teach back Stage 00: Setup + math by picture: sketch it on paper or explain it in writing, then grade it against the rubric. Then: Set the routine. Tick tasks, five lines in your notes.',
     )
   })
   it('code: two, one, or no problems', () => {
@@ -113,7 +113,7 @@ describe('daySentence', () => {
   it('design, read, interview, rest, and a day with nothing left', () => {
     expect(daySentence('design', [design], FOCUS)).toBe('One design in 45 min, recorded: URL shortener')
     expect(daySentence('read', [ivTask], FOCUS)).toBe('Reading for the interview track: Set the routine')
-    expect(daySentence('interview', [ivTask, prob(1, 'Two Sum')], FOCUS)).toBe('Set the routine · 1 Two Sum. Tick tasks, five lines in the vault.')
+    expect(daySentence('interview', [ivTask, prob(1, 'Two Sum')], FOCUS)).toBe('Set the routine · 1 Two Sum. Tick tasks, five lines in your notes.')
     expect(daySentence('rest', [], FOCUS)).toBe('Rest, exercise, nothing else.')
     expect(daySentence('rest', [], FOCUS, scheduleOf({ schedule: { restDay: 'A slow walk.' } }))).toBe('A slow walk.')
     expect(daySentence('code', [], FOCUS)).toBe('Nothing left for today in this sprint. Pick anything from the Board.')

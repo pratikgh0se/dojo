@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { test, type Page } from '@playwright/test'
 import { parityBaseUrl } from '../../dojoPort'
 import { IST, idbPatch, onboard } from '../e2e/helpers'
+import { NO_PROTOTYPES, PROTOTYPES_PRESENT } from './prototypes'
 
 // parity:ai writes here only; parity:ai:update (UPDATE_PARITY=1) also copies the PNGs into docs.
 const OUT = fileURLToPath(new URL('../../test-results/parity/ai/', import.meta.url))
@@ -19,6 +20,7 @@ const out = (name: string) => `${OUT}${name}`
 // bottom of the M5c "Working with AI" section can be cut off on a very tall render.
 const MAX_CAPTURE_HEIGHT = 8000
 
+test.skip(!PROTOTYPES_PRESENT, NO_PROTOTYPES)
 test.describe.configure({ mode: 'serial' })
 test.beforeAll(() => mkdirSync(OUT, { recursive: true }))
 test.afterAll(() => {

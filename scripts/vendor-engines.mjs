@@ -4,7 +4,7 @@
 // ENGINE_PATCHES below (SEC-D-01). Each is a self-contained IIFE with no imports, so there is nothing else to vendor.
 // atlas-pieces.js (labs chain): wraps the Atlas prototype's logic block (verbatim) so its 17
 // walkthroughs and pattern map run outside the prototype runtime (support.js is not ported).
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -154,6 +154,10 @@ export function atlasBlock(html) {
 }
 
 function main() {
+  if (!existsSync(HANDOFF)) {
+    console.log('engines: the design prototypes (design_handoff_quest_dashboard/) are not in this repository; nothing to vendor. public/engines/ is the source of truth here.')
+    return
+  }
   mkdirSync(OUT, { recursive: true })
   copyFileSync(resolve(SRC, 'charts.js'), resolve(OUT, 'charts.js'))
   for (const f of ['diagram.js', 'algo.js', 'algo2.js']) writeFileSync(resolve(OUT, f), patchEngine(f, readFileSync(resolve(LAB, f), 'utf8')))

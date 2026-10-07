@@ -8,7 +8,7 @@ export const MENTOR_RULE: ProseItem = {
 export const MENTOR_PROTOCOL: { title: string; body: string; template?: string }[] = [
   {
     title: 'Pick two rooms, not ten',
-    body: 'Join everything below, but be active in two: one where you are a learner (GPU MODE, EleutherAI) and one where your existing skills already make you useful (Kubernetes WG Serving, vLLM, llm-d). In the second room you are a contributor from day one, which is the fastest way to be noticed.',
+    body: 'Join everything below, but be active in two: one where you are a learner (GPU MODE, EleutherAI) and one where what you already know makes you useful (Kubernetes WG Serving, vLLM, llm-d). In the second room you are a contributor from day one, which is the fastest way to be noticed.',
   },
   {
     title: 'Read for two weeks before posting',
@@ -26,7 +26,7 @@ export const MENTOR_PROTOCOL: { title: string; body: string; template?: string }
   },
   {
     title: 'Answer one question a week',
-    body: 'From month 2 you know more than someone in month 1. Answer their question. From month 6, answer infra questions in the ML rooms: how to run this on Kubernetes, why NCCL hangs, how to read the GPU metrics. That is where you are already an expert and where researchers are weakest.',
+    body: 'From month 2 you know more than someone in month 1. Answer their question. From month 6, answer infra questions in the ML rooms: how to run this on Kubernetes, why NCCL hangs, how to read the GPU metrics. Infra questions are where researchers are weakest, so a good answer there is a real contribution.',
   },
   {
     title: 'Contribute, then ask the reviewer',
@@ -48,7 +48,7 @@ export const MENTOR_PROTOCOL: { title: string; body: string; template?: string }
   },
   {
     title: 'Keep a mentor log',
-    body: 'A simple table in your vault: person, room, what they helped with, date, what you sent back. Reach back out every six to eight weeks with progress, not requests. Two people in that table who reply reliably is a mentor network.',
+    body: 'A simple table in your notes: person, room, what they helped with, date, what you sent back. Reach back out every six to eight weeks with progress, not requests. Two people in that table who reply reliably is a mentor network.',
   },
 ]
 
@@ -63,7 +63,7 @@ export const COMMUNITY_BUDGET: ProseSection = {
   items: [
     { lead: 'Mon, 20 min:', text: "read the two active rooms, save anything relevant to this week's tasks." },
     { lead: 'Wed, 30 min:', text: "post one question in the 4-part format, or close the loop on last week's." },
-    { lead: 'Sun, 40 min:', text: "writeup of the week's work in your vault; on month end, the public post." },
+    { lead: 'Sun, 40 min:', text: "writeup of the week's work in your notes; on month end, the public post." },
   ],
 }
 
@@ -75,6 +75,6 @@ export const PEOPLE: ProseSection = {
     { text: 'Neel Nanda (interpretability, the most beginner-friendly research entry)' },
     { text: 'Horace He and the PyTorch performance people (GPU MODE regulars)' },
     { text: 'The vLLM, SGLang, and torchtitan maintainers whose names appear on your PRs' },
-    { text: "Dwarkesh Patel's interviews for how the labs think, already in your vault" },
+    { text: "Dwarkesh Patel's interviews for how the labs think, worth keeping in your notes" },
   ],
 }

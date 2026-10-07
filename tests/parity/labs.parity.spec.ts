@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { test, type Locator, type Page } from '@playwright/test'
 import { onboard } from '../e2e/helpers'
 import { parityBaseUrl } from '../../dojoPort'
+import { NO_PROTOTYPES, PROTOTYPES_PRESENT } from './prototypes'
 
 // DSA labs parity: Dojo's Atlas matrix, player, Two-up, DSA warm-up and Do strip next to the Algorithm Atlas
 // and Algorithm Lab prototypes, region by region, at 1280 and 560, dark theme (the lab prototypes are dark-only).
@@ -15,6 +16,7 @@ const LAB = `${PROTO_BASE}/lab/Algorithm%20Lab.dc.html`
 const WIDTHS = [1280, 560] as const
 const out = (name: string) => `${OUT}${name}`
 
+test.skip(!PROTOTYPES_PRESENT, NO_PROTOTYPES)
 test.describe.configure({ mode: 'serial' })
 test.beforeAll(() => mkdirSync(OUT, { recursive: true }))
 test.afterAll(() => {

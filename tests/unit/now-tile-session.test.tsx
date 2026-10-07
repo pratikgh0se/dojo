@@ -29,7 +29,7 @@ async function todayWith(session: string | null) {
     expect(await beginStudy({ d, ticket: t, plan: { goal: 'g', focusMin: 25, breakMin: 5, cardIds: [session], chime: false }, nowMs: clock, ...fx() })).toBe(true)
   }
   render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/']}>
       <AppProviders db={d} plan={smallPlan}><Shell /></AppProviders>
     </MemoryRouter>,
   )

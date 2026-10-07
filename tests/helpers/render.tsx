@@ -16,7 +16,7 @@ export function renderWithApp(
 ) {
   const { db, plan, route = '/', path = '*' } = opts
   return render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
       <AppProviders db={db} plan={plan}>
         <Routes>
           <Route path={path} element={ui} />

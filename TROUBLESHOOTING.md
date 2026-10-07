@@ -11,8 +11,8 @@ with backups in `~/Dojo/backups/`. Nothing below deletes data unless it says so.
   `node:sqlite`. Install a current Node from https://nodejs.org, with `brew install node`, or with nvm
   (`nvm install` in the repo root reads `.nvmrc`).
 - **Run it from the repo root.** The `package.json` with the scripts is there.
-- **Electron download blocked.** `npm ci` downloads the Electron runtime from GitHub. Behind a proxy or firewall, set
-  the usual npm proxy settings, or Electron's `ELECTRON_MIRROR`, and retry.
+- **Electron download blocked.** `npm run install:app` downloads the Electron runtime from GitHub on its first run (`npm ci` does not: recent Electron has no postinstall step, and npm 11 skips dependency install scripts). Behind a proxy or firewall, set
+  the usual npm proxy settings, or Electron's `ELECTRON_MIRROR`, and retry; `node node_modules/electron/install.js` fetches it by hand.
 - **"icon skipped (...)".** The Dock icon is built with macOS's `sips` and `iconutil`. If that fails the app is still
   installed, with Electron's default icon. `--no-icon` skips it on purpose.
 

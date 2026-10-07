@@ -5,7 +5,7 @@ import { NOT_WRITER_MESSAGE, setRejectedCount, setSaveState } from '../../src/da
 import { SaveStatus } from '../../src/ui/SaveStatus'
 
 afterEach(() => { setSaveState('off'); setRejectedCount(0) })
-const show = () => render(<MemoryRouter><SaveStatus /></MemoryRouter>)
+const show = () => render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><SaveStatus /></MemoryRouter>)
 
 describe('SaveStatus', () => {
   it('renders nothing while disk sync is off', () => {

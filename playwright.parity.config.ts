@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { defineConfig, devices } from '@playwright/test'
 import { dojoBaseUrl, parityBaseUrl, parityPort } from './dojoPort'
 
@@ -7,6 +8,8 @@ process.env.DOJO_PLAN ??= 'public'
 
 const BASE_URL = dojoBaseUrl(process.env)
 const PROTO_URL = parityBaseUrl(process.env)
+// The prototypes are the maintainer's; without them (the public repo) the specs skip and no prototype server is started.
+const HAVE_PROTOTYPES = existsSync(new URL('./design_handoff_quest_dashboard/README.md', import.meta.url))
 
 export default defineConfig({
   testDir: './tests/parity',
@@ -24,11 +27,11 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     { command: 'npm run dev', env: { DOJO_DEV_DISK: 'off' }, url: BASE_URL, reuseExistingServer: true, timeout: 60_000 },
-    {
+    ...(HAVE_PROTOTYPES ? [{
       command: `python3 -m http.server ${parityPort(process.env)} --bind 127.0.0.1 --directory design_handoff_quest_dashboard`,
       url: `${PROTO_URL}/README.md`,
       reuseExistingServer: true,
       timeout: 30_000,
-    },
+    }] : []),
   ],
 })

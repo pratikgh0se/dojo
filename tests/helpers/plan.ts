@@ -17,6 +17,6 @@ export function realPlan(): PlanJson {
  */
 export function legacyPlan(): PlanJson {
   return JSON.parse(
-    readFileSync(resolve(process.cwd(), 'scripts/fixtures/plan.extracted-2026-09-05.json'), 'utf8'),
+    readFileSync(resolve(process.cwd(), 'tests/fixtures/plan.legacy-2026-09-05.json'), 'utf8'),
   ) as PlanJson
 }

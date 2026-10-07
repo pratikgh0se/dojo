@@ -4,6 +4,7 @@ import { test, type Page } from '@playwright/test'
 import { parityBaseUrl } from '../../dojoPort'
 import { completeS1, resumeAndGo } from '../e2e/design-helpers'
 import { IST, idbPatch, onboard } from '../e2e/helpers'
+import { NO_PROTOTYPES, PROTOTYPES_PRESENT } from './prototypes'
 
 // Writes only under test-results; `parity:designs:update` also copies the PNGs into docs (Task 17 commits them).
 const OUT = fileURLToPath(new URL('../../test-results/parity/designs/', import.meta.url))
@@ -66,6 +67,7 @@ const PAIRS: [string, string, string][] = [
   ['proto-designs-560.png', 'dojo-designs-evidence-560.png', 'Designs tab with evidence · 560'],
 ]
 
+test.skip(!PROTOTYPES_PRESENT, NO_PROTOTYPES)
 test.describe.configure({ mode: 'serial' })
 test.beforeAll(() => mkdirSync(OUT, { recursive: true }))
 test.afterAll(() => {

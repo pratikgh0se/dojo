@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 
 export const IST = (s: string): Date => new Date(`${s}+05:30`)
 
-const LEGACY_PLAN_PATH = new URL('../../scripts/fixtures/plan.extracted-2026-09-05.json', import.meta.url)
+const LEGACY_PLAN_PATH = new URL('../fixtures/plan.legacy-2026-09-05.json', import.meta.url)
 
 /**
  * Frozen pre-forge plan (planVersion '2026-09-05', 533 tickets), the one these

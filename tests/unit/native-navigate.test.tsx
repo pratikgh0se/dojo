@@ -13,7 +13,7 @@ function Where() { return <div data-testid="where">{useLocation().pathname}</div
 async function renderShell(route: string) {
   setNow(() => new Date('2026-09-08T10:00:00+05:30').getTime())
   render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
       <AppProviders db={await seededDb()} plan={smallPlan}>
         <Shell />
         <Where />

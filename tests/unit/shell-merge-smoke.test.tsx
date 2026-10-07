@@ -39,7 +39,7 @@ describe('the merged Shell mounts StudyHost, roll-over, auto-review and CheckGat
     // a focus block that ended a minute ago: the runner (StudyHost) moves it to Break and credits it
     saveStudy(startStudy({ id: 'st1', ticketId: 'w1', goal: '', cardIds: ['w1'], focusMin: 25, breakMin: 5, chime: false, now: NOW - 26 * 60_000 }))
     render(
-      <MemoryRouter initialEntries={['/board']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/board']}>
         <AppProviders db={d} plan={smallPlan}>
           <Shell />
         </AppProviders>

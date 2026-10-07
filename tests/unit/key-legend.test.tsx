@@ -20,7 +20,7 @@ async function renderShell(route: string, when = '2026-09-07T21:10:00'): Promise
   setNow(() => ist(when)) // Monday of sprint 1: Today's NOW item is m1w1t1
   const d = await seededDb()
   render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
       <AppProviders db={d} plan={smallPlan}>
         <Shell />
         <Where />

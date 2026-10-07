@@ -34,7 +34,7 @@ async function boot() {
   const localCopy = disk ? await hasLocalCopy() : false
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <App disk={disk} localCopy={localCopy} />
       </BrowserRouter>
     </StrictMode>,

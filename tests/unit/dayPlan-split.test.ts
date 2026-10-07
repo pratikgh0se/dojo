@@ -112,7 +112,7 @@ describe('ruling 22 D1: the other slots', () => {
     const m = now('Sun', ts)
     expect(m).toMatchObject({ primaryId: 'tb~1', verb: 'Teach-back · 2 h' })
     expect(m.sentence).toBe(
-      `Teach back ${FOCUS} · Stage 00 teach-back — part 1 of 2 · 60 min, part 2 of 2 · 60 min: sketch it on paper or explain it in writing, then grade it against the rubric. Then: 200 Number of Islands · 695 Max Area of Island. Tick tasks, five lines in the vault.`,
+      `Teach back ${FOCUS} · Stage 00 teach-back — part 1 of 2 · 60 min, part 2 of 2 · 60 min: sketch it on paper or explain it in writing, then grade it against the rubric. Then: 200 Number of Islands · 695 Max Area of Island. Tick tasks, five lines in your notes.`,
     )
     expect(week(done(ts, 'tb~1')).Sun).toEqual(['tb~2', 'p200', 'p695'])
   })
@@ -120,7 +120,7 @@ describe('ruling 22 D1: the other slots', () => {
     const ts = done(split(sprint1(), 'p200', 3), 'p200~2')
     expect(week(ts).Sun).toEqual(['tb', 'p200~1', 'p200~3', 'p695'])
     expect(now('Sun', ts).sentence).toBe(
-      `Teach back ${FOCUS}: sketch it on paper or explain it in writing, then grade it against the rubric. Then: 200 · Number of Islands — part 1 of 3 · 12 min, part 3 of 3 · 11 min · 695 Max Area of Island. Tick tasks, five lines in the vault.`,
+      `Teach back ${FOCUS}: sketch it on paper or explain it in writing, then grade it against the rubric. Then: 200 · Number of Islands — part 1 of 3 · 12 min, part 3 of 3 · 11 min · 695 Max Area of Island. Tick tasks, five lines in your notes.`,
     )
   })
   it('design (Thu)', () => {

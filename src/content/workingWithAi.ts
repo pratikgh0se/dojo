@@ -12,7 +12,7 @@ export const AGENT_BUCKETS: ProseTable = {
     [
       'Scaffolding (about 50%)',
       'Dojo itself, dotfiles, notes tooling, one-off scripts outside forge/ — plotting, configs, CLIs, dashboards, READMEs for that tooling',
-      'The agent drafts, you review every line and can explain it. Speed matters here; understanding is cheap because you already know this world. Never inside forge/: every forge line is typed by hand.',
+      'The agent drafts, you review every line and can explain it. Speed matters here; understanding is cheap because this is familiar ground. Never inside forge/: every forge line is typed by hand.',
     ],
     [
       'Frameworks and APIs (about 20%)',

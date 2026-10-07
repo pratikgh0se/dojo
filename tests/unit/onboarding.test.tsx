@@ -74,7 +74,7 @@ describe('first-launch onboarding', () => {
   it('asks for a start date on an empty DB, defaulting to a Monday, then opens the app', async () => {
     setNow(() => ist('2026-09-27T10:00:00')) // a Sunday: next Monday
     const d = freshDb()
-    render(<MemoryRouter><App database={d} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={d} fetcher={serve} /></MemoryRouter>)
     expect(await screen.findByRole('heading', { name: 'Pick your start date' })).toBeInTheDocument()
     const input = screen.getByLabelText('Start date') as HTMLInputElement
     expect(input.value).toBe('2026-09-28')
@@ -90,7 +90,7 @@ describe('first-launch onboarding', () => {
   it('ruling 21: a non-Monday shows the warn note live, Monday clears it, and it never blocks Start the plan', async () => {
     setNow(() => ist('2026-10-06T10:00:00')) // a Tuesday: the Monday just gone
     const d = freshDb()
-    render(<MemoryRouter><App database={d} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={d} fetcher={serve} /></MemoryRouter>)
     const input = (await screen.findByLabelText('Start date')) as HTMLInputElement
     expect(input.value).toBe('2026-10-05')
     expect(screen.queryByTestId('start-date-warn')).toBeNull()
@@ -116,7 +116,7 @@ describe('first-launch onboarding', () => {
 
   it('ruling 22 D3: on a Tuesday the default Monday carries the one-line note; another date drops it', async () => {
     setNow(() => ist('2026-10-06T10:00:00'))
-    render(<MemoryRouter><App database={freshDb()} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={freshDb()} fetcher={serve} /></MemoryRouter>)
     const input = (await screen.findByLabelText('Start date')) as HTMLInputElement
     expect(input.value).toBe('2026-10-05')
     const note = screen.getByTestId('start-date-note')
@@ -133,7 +133,7 @@ describe('first-launch onboarding', () => {
 
   it('ruling 22 D3: no note when the default is today (a Monday) or next Monday', async () => {
     setNow(() => ist('2026-10-08T10:00:00')) // Thursday
-    render(<MemoryRouter><App database={freshDb()} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={freshDb()} fetcher={serve} /></MemoryRouter>)
     expect(((await screen.findByLabelText('Start date')) as HTMLInputElement).value).toBe('2026-10-12')
     expect(screen.queryByTestId('start-date-note')).toBeNull()
   })
@@ -141,7 +141,7 @@ describe('first-launch onboarding', () => {
   it('rejects an invalid date and writes nothing', async () => {
     setNow(() => ist('2026-09-27T10:00:00'))
     const d = freshDb()
-    render(<MemoryRouter><App database={d} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={d} fetcher={serve} /></MemoryRouter>)
     const input = await screen.findByLabelText('Start date')
     fireEvent.change(input, { target: { value: '' } })
     fireEvent.submit(input.closest('form')!)
@@ -154,7 +154,7 @@ describe('first-launch onboarding', () => {
 
   it('P3-2: the error goes the moment a valid date is picked, with its red border; an empty date keeps it', async () => {
     setNow(() => ist('2026-09-27T10:00:00'))
-    render(<MemoryRouter><App database={freshDb()} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={freshDb()} fetcher={serve} /></MemoryRouter>)
     const input = await screen.findByLabelText('Start date')
     fireEvent.change(input, { target: { value: '' } })
     fireEvent.submit(input.closest('form')!)
@@ -172,7 +172,7 @@ describe('first-launch onboarding', () => {
     setNow(() => ist('2026-09-27T10:00:00'))
     const d = freshDb()
     await patchSettings(d, { startDate: '2026-09-07' })
-    render(<MemoryRouter><App database={d} fetcher={serve} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={d} fetcher={serve} /></MemoryRouter>)
     expect(await screen.findByRole('link', { name: 'Board' })).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Pick your start date' })).toBeNull())
   })
@@ -186,7 +186,7 @@ describe('Addendum 7: read-only everywhere, onboarding included', () => {
     const d = createDb(`ro-onboard-${Math.random()}`, { bypass: false, readOnly: true })
     syncGate.readOnly = true
     try {
-      render(<MemoryRouter><ToastProvider><App database={d} fetcher={serve} /></ToastProvider></MemoryRouter>)
+      render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><ToastProvider><App database={d} fetcher={serve} /></ToastProvider></MemoryRouter>)
       expect(await screen.findByRole('heading', { name: 'Pick your start date' })).toBeInTheDocument()
       expect(screen.getByTestId('readonly-banner')).toHaveTextContent(/^Read-only/)
       fireEvent.click(screen.getByRole('button', { name: 'Start the plan ▸' }))

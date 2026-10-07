@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { test, type Page } from '@playwright/test'
 import { IST, idbPatch, onboard } from '../e2e/helpers'
 import { parityBaseUrl } from '../../dojoPort'
+import { NO_PROTOTYPES, PROTOTYPES_PRESENT } from './prototypes'
 
 // `parity:today` writes here only — it never touches the committed docs copy, so it's safe to
 // run any time without risking an accidental PNG diff (M6). `parity:today:update` (UPDATE_PARITY=1)
@@ -13,6 +14,7 @@ const PROTO = `${parityBaseUrl(process.env)}/Infra%20to%20Research%20(quest).dc.
 const WIDTHS = [1280, 560] as const
 const out = (name: string) => `${OUT}${name}`
 
+test.skip(!PROTOTYPES_PRESENT, NO_PROTOTYPES)
 test.describe.configure({ mode: 'serial' })
 test.beforeAll(() => mkdirSync(OUT, { recursive: true }))
 test.afterAll(() => {

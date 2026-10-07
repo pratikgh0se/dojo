@@ -141,7 +141,7 @@ export function daySentence(kind: DayKind, picks: Ticket[], focusAi: string, sch
     case 'build':
       return `Build + break: ${subject}${sessions}. The 30 min news slot comes first, timer on.`
     case 'teachback':
-      return `Teach back ${subject}${sessions}: sketch it on paper or explain it in writing, then grade it against the rubric.${rest.length ? ` Then: ${slotItems(rest, parts)}.` : ''} Tick tasks, five lines in the vault.`
+      return `Teach back ${subject}${sessions}: sketch it on paper or explain it in writing, then grade it against the rubric.${rest.length ? ` Then: ${slotItems(rest, parts)}.` : ''} Tick tasks, five lines in your notes.`
     case 'code': {
       const probs = picks.filter(t => t.kind === 'problem')
       if (probs.length === 0) return `Timed practice, no agent: ${split ? slotItems(picks, parts) : lead.title}`
@@ -161,7 +161,7 @@ export function daySentence(kind: DayKind, picks: Ticket[], focusAi: string, sch
     case 'read':
       return `Reading for the interview track: ${split ? slotItems(picks, parts) : lead.title}`
     case 'interview':
-      return `${slotItems(picks, parts)}. Tick tasks, five lines in the vault.`
+      return `${slotItems(picks, parts)}. Tick tasks, five lines in your notes.`
     default:
       return split ? slotItems(picks, parts) : subject
   }

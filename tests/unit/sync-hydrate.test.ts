@@ -58,7 +58,7 @@ beforeEach(async () => {
   gate.onQueued = rows => loop.queued(rows)
 })
 
-afterEach(() => { loop.stop() })
+afterEach(() => { loop.stop(); vi.restoreAllMocks() })
 
 describe('hydrate', () => {
   it('unreachable server: Dexie alone, status offline, data untouched', async () => {
@@ -179,6 +179,8 @@ describe('I10: hydrate never hangs', () => {
     return new Promise((_, reject) => { init?.signal?.addEventListener('abort', () => reject(init.signal!.reason), { once: true }) })
   }
   it.each(['/db/ops', '/db/state'])('a hanging %s ends in "Not saved to disk", not a hang', async path => {
+    // hydrate logs the timeout via console.warn on this expected path; keep it quiet here only
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     store.applyOps({ clientId: 'other', ops: [{ tbl: 'tickets', op: 'put', id: 'srv', doc: mkTicket({ id: 'srv' }), at: 'x' }] })
     await adopted()
     loop.stop()

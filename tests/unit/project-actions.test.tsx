@@ -47,7 +47,7 @@ describe('ensureSeedArtifacts', () => {
   it('App boot seeds the artifacts after the plan loads', async () => {
     setNow(() => T0)
     const d = freshDb()
-    render(<MemoryRouter><App database={d} fetcher={serve(smallPlan)} /></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={d} fetcher={serve(smallPlan)} /></MemoryRouter>)
     await waitFor(async () => expect(await d.artifacts.count()).toBe(12))
   })
 })

@@ -11,7 +11,7 @@ export const RUBRIC: { item: string; points: number }[] = [
 export const RUBRIC_TOTAL = 20
 
 export const DONE_MEANS =
-  'A design is done when you have done it in 45 minutes on a whiteboard or a recording, self-graded against the rubric, compared with a reference, and written one page in the vault.'
+  'A design is done when you have done it in 45 minutes on a whiteboard or a recording, self-graded against the rubric, compared with a reference, and written one page in your notes.'
 
 export const DESIGN_PRACTICE: ProseSection = {
   title: 'Hard design problems, and how to practice them',
@@ -19,8 +19,8 @@ export const DESIGN_PRACTICE: ProseSection = {
     'Forty-eight designs in six tiers, from a Dynamo-style store to an agent orchestration platform. Each has four deep dives you must be able to answer without notes.',
   items: [
     {
-      lead: 'Where your experience is the answer',
-      text: ', the deep dive says so. Bring the real numbers from the metrics, scheduler, logging, and authorization work.',
+      lead: 'Where hands-on experience is the answer',
+      text: ', the deep dive says so. Bring real numbers from systems you have built or operated (metrics, scheduling, logging, authorization), or work them out from first principles.',
     },
     { lead: 'Sunday is design day.', text: 'One design per Sunday, recorded. The Thursday block is for the reading behind it.' },
   ],

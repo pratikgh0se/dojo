@@ -9,11 +9,11 @@ export const COVERAGE: ProseTable = {
     ['Models: autograd to your own GPT to training at scale', 'AI track, Stages 1 to 5 (S2–S22): micrograd, makemore, GPT, tokenizer, training at scale', 'Rebuild every mechanism from memory, no reference open'],
     ['Inference server, then AI infra on Kubernetes', 'AI track, Stages 6 to 7 (S23–S38): your own inference server, router and autoscaler', 'Build-then-compare against vLLM, llm-d and KEDA autoscaling on vLLM metrics, multi-LoRA hot-load; two capped rented-GPU sessions in Stage 7'],
     ['Evals harness, fine-tuning, agents', 'AI track, Stages 8 to 10 (S39–S58)', 'Build the eval suite yourself; fine-tune on your own Dojo history; ship the weekly-review agent'],
-    ['Research: one continuing project with a writeup', 'AI track, Stage 11 (S59–S72)', 'Hypothesis, real experiments, a writeup for the vault'],
+    ['Research: one continuing project with a writeup', 'AI track, Stage 11 (S59–S72)', 'Hypothesis, real experiments, a writeup for your notes'],
     ['Hard coding: graphs, DP, trees, heaps, backtracking', 'DSA bank, sprints 1 to 12, sweeps to 24, weekly after', '169 problems, 49 hard, timed'],
     ['Design principles, patterns, concurrency, practical coding rounds', 'Interview track, blocks 4 to 5 and 13', 'Implemented, not memorized'],
     ['Hard system design: distributed, data-heavy, ML, LLM and agentic', 'Design bank, sprints 21 to 56; one design every Sunday', '48 designs, four deep dives each, rubric-graded'],
-    ['Behavioral stories, portfolio, resume, applications, negotiation', 'Interview track, blocks 12 to 18', 'Story bank from your real work'],
+    ['Behavioral stories, portfolio, resume, applications, negotiation', 'Interview track, blocks 12 to 18', 'Story bank from your real experience'],
     ['Community, mentors, public writing, open source', 'Every sprint; the mentors tab', 'Two rooms, monthly posts, five merged PRs'],
   ],
 }

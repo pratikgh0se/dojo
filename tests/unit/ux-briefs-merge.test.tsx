@@ -52,7 +52,7 @@ describe("Today's suggestions use real focus minutes for the time left (briefs s
   const focus = (minutes: number): DojoEvent => ({ t: 'focus', id: 'c1', at: NOW - 60_000, minutes })
   const shown = (events: DojoEvent[]) => {
     const r = render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <WorkloadPanel tickets={cards} sprint={1} budget={1440} planned={150} nowMs={NOW} events={events} />
       </MemoryRouter>,
     )
@@ -81,7 +81,7 @@ describe('Workload "time used today": finished cards without focus today, plus f
   const focus = (id: string, minutes: number): DojoEvent => ({ t: 'focus', id, at: NOW - 60_000, minutes })
   const shown = (tickets: Ticket[], events: DojoEvent[]) => {
     const r = render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <WorkloadPanel tickets={tickets} sprint={1} budget={1440} planned={120} nowMs={NOW} events={events} />
       </MemoryRouter>,
     )

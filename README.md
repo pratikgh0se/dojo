@@ -223,13 +223,14 @@ git clone https://github.com/pratikgh0se/dojo.git
 cd dojo
 ```
 
-Install the packages. This also downloads the Electron runtime, several hundred MB on disk:
+Install the packages:
 
 ```bash
 npm ci
 ```
 
-Build the app and install it to `~/Applications/Dojo.app`:
+Build the app and install it to `~/Applications/Dojo.app`. The first run also downloads the Electron runtime (several
+hundred MB on disk; `npm ci` does not fetch it):
 
 ```bash
 npm run install:app
@@ -250,7 +251,7 @@ If macOS refuses to open the app the first time, see
 ### What you will see on first launch
 
 1. Dojo creates `~/Dojo` and opens a single window.
-2. **Pick your start date.** It defaults to the next Monday. Sprint 1 of 72 begins that day at local midnight, and you
+2. **Pick your start date.** It defaults to a Monday: today if it is a Monday, the Monday just gone on a Tuesday or Wednesday (you start mid-week 1), otherwise the next Monday. Sprint 1 of 72 begins that day at local midnight, and you
    can change the date later in Settings.
 3. Dojo loads the sample plan and opens on **Today**. Press **Start** on the Now tile, or open **Board** (key `2`) to
    see the sprint.

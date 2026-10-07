@@ -1,5 +1,7 @@
 export const APP_ROOT: string
 export const APP_ID: string
+export function electronBinary(root?: string): string | null
+export function ensureElectronDist(o?: { root?: string; log?: (m: string) => void }): string
 export function iconPng(size?: number): Buffer
 export function makeIcns(outFile: string): void
 export function viteBuild(outDir: string, o?: { desktop?: boolean }): void

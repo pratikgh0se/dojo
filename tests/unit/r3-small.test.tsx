@@ -31,7 +31,7 @@ describe('J2: no "Loading…" flash (ruling 9)', () => {
     let go: (to: string) => void = () => {}
     function Nav() { go = useNavigate(); return null }
     render(
-      <MemoryRouter initialEntries={['/a']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/a']}>
         <Nav />
         <Routes>
           <Route path="/a" element={<Screen name="today"><p>ready</p></Screen>} />

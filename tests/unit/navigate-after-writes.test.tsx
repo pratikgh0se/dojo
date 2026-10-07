@@ -15,7 +15,7 @@ function Go() {
 describe('useNavigateAfterWrites', () => {
   it('navigates only after the pending safeWrite settles', async () => {
     let release!: () => void
-    render(<MemoryRouter initialEntries={['/dsa']}><Routes><Route path="*" element={<><Go /><Probe /></>} /></Routes></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/dsa']}><Routes><Route path="*" element={<><Go /><Probe /></>} /></Routes></MemoryRouter>)
     void safeWrite(() => new Promise<void>(r => { release = r }), () => {})
     await act(async () => { screen.getByText('go').click() })
     expect(screen.getByTestId('where')).toHaveTextContent('/dsa')
@@ -25,7 +25,7 @@ describe('useNavigateAfterWrites', () => {
   it('I1: navigates anyway once the timeout cap elapses when a write never settles', async () => {
     vi.useFakeTimers()
     try {
-      render(<MemoryRouter initialEntries={['/dsa']}><Routes><Route path="*" element={<><Go /><Probe /></>} /></Routes></MemoryRouter>)
+      render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/dsa']}><Routes><Route path="*" element={<><Go /><Probe /></>} /></Routes></MemoryRouter>)
       void safeWrite(() => new Promise<void>(() => {}), () => {}) // never resolves
       await act(async () => { screen.getByText('go').click() })
       expect(screen.getByTestId('where')).toHaveTextContent('/dsa')

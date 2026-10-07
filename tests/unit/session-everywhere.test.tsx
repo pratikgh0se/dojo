@@ -35,7 +35,7 @@ async function shellAt(route: string, opts: { session?: string } = {}) {
   const d = await seededDb()
   if (opts.session) await startOn(d, opts.session)
   const view = render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
       <AppProviders db={d} plan={smallPlan}>
         <Shell />
         <Where />
@@ -149,7 +149,7 @@ describe('the session pill (header strip)', () => {
     clock += 8 * MIN
     view.unmount() // a reload: the stored session is all that is left
     render(
-      <MemoryRouter initialEntries={['/progress']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/progress']}>
         <AppProviders db={d} plan={smallPlan}><Shell /><Where /></AppProviders>
       </MemoryRouter>,
     )

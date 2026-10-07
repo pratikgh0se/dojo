@@ -18,7 +18,7 @@ async function renderAt(route: string) {
   setNow(() => ist('2026-09-08T10:00:00'))
   const d = await seededDb()
   render(
-    <MemoryRouter initialEntries={[route]}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
       <AppProviders db={d} plan={smallPlan}>
         <AppRoutes />
         <Where />

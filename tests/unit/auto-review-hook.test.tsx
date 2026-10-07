@@ -22,7 +22,7 @@ describe('useAutoReview: a session budget of 3', () => {
     setNow(() => new Date(2027, 0, 20, 10).getTime()) // sprint 8 of a plan that started 2026-10-05: sprints 1-7 ended
     const d = freshDb()
     await patchSettings(d, { startDate: '2026-10-05', trackedFrom: 1 })
-    render(<MemoryRouter><DbProvider db={d}><Probe /></DbProvider></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DbProvider db={d}><Probe /></DbProvider></MemoryRouter>)
     await waitFor(async () => expect(await d.reviews.count()).toBe(3), { timeout: 8000 })
     for (const p of ['/a', '/b', '/c', '/d', '/e', '/f']) {
       await act(async () => { fireEvent.click(screen.getByText(p)) })
@@ -38,10 +38,10 @@ describe('useAutoReview: a session budget of 3', () => {
     setNow(() => new Date(2027, 0, 20, 10).getTime())
     const [a, b] = [freshDb(), freshDb()]
     for (const d of [a, b]) await patchSettings(d, { startDate: '2026-10-05', trackedFrom: 1 })
-    const first = render(<MemoryRouter><DbProvider db={a}><Probe /></DbProvider></MemoryRouter>)
+    const first = render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DbProvider db={a}><Probe /></DbProvider></MemoryRouter>)
     await waitFor(async () => expect(await a.reviews.count()).toBe(3), { timeout: 8000 })
     first.unmount()
-    render(<MemoryRouter><DbProvider db={b}><Probe /></DbProvider></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><DbProvider db={b}><Probe /></DbProvider></MemoryRouter>)
     await waitFor(async () => expect(await b.reviews.count()).toBe(3), { timeout: 8000 })
     expect(await a.reviews.count()).toBe(3)
   })

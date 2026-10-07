@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { IST, idbPatch, onboard, serveLegacyPlan } from './helpers'
 
-const LEGACY_PLAN_PATH = new URL('../../scripts/fixtures/plan.extracted-2026-09-05.json', import.meta.url)
+const LEGACY_PLAN_PATH = new URL('../fixtures/plan.legacy-2026-09-05.json', import.meta.url)
 
 const bodyBg = (page: import('@playwright/test').Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor)

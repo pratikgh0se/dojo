@@ -130,7 +130,7 @@
    "tier": 0,
    "needs": [],
    "what": "Comfortable, fast Python with NumPy arrays, broadcasting, and vectorized code. Jupyter as a lab notebook.",
-   "why": "You write Python for automation already. The gap is thinking in tensors instead of loops, which every later week assumes."
+   "why": "Plain Python is not enough here. The gap is thinking in tensors instead of loops, which every later week assumes."
   },
   {
    "id": "lin",
@@ -176,7 +176,7 @@
     "py"
    ],
    "what": "Tensors, autograd, nn.Module, DataLoader, training loop, saving and loading, GPU device handling.",
-   "why": "The lingua franca of every lab. Your CUDA and cluster work later is PyTorch underneath."
+   "why": "The lingua franca of every lab. The CUDA and cluster work later is PyTorch underneath."
   },
   {
    "id": "aieng",
@@ -240,7 +240,7 @@
     "tok"
    ],
    "what": "Reproduce GPT-2 (124M) training on rented GPUs: mixed precision, torch.compile, data loading, logging, checkpoints, HellaSwag eval.",
-   "why": "Your first end-to-end run is the credential that says you have trained a model, not just called one. It also connects directly to your fleet experience."
+   "why": "Your first end-to-end run is the credential that says you have trained a model, not just called one. It also connects directly to the fleet-scale material later in the plan."
   },
   {
    "id": "papers",
@@ -271,7 +271,7 @@
     "run"
    ],
    "what": "How a GPU executes work, memory hierarchy, why bandwidth dominates, profiling, Triton kernels, FlashAttention's idea.",
-   "why": "Performance engineering is a top hiring lane at Anthropic and OpenAI, and your systems instincts transfer directly."
+   "why": "Performance engineering is a top hiring lane at Anthropic and OpenAI, and strong systems instincts transfer directly."
   },
   {
    "id": "dist",
@@ -282,7 +282,7 @@
     "run"
    ],
    "what": "Data, tensor, pipeline parallelism; FSDP; NCCL; checkpointing; straggler and failure handling at scale.",
-   "why": "This is your home turf at a deeper level. Fleet reliability for a 10,000-GPU run is a live research problem in every lab."
+   "why": "This is where systems and operations skills go deepest. Fleet reliability for a 10,000-GPU run is a live research problem in every lab."
   },
   {
    "id": "infer",
@@ -293,7 +293,7 @@
     "papers"
    ],
    "what": "KV cache, paged attention, continuous batching, speculative decoding, quantization, serving on Kubernetes with vLLM and llm-d.",
-   "why": "Inference infrastructure is where infra engineers most often enter labs. You already run the platform layer beneath it."
+   "why": "Inference infrastructure is a common way into labs. It sits directly on top of the platform layer: scheduling, networking, and observability."
   },
   {
    "id": "evals",
@@ -304,7 +304,7 @@
     "aieng"
    ],
    "what": "Benchmarks and their failure modes, lm-eval-harness, Inspect, agentic evals, RLHF and Constitutional AI, first steps in interpretability.",
-   "why": "Evaluation infrastructure is a research engineering specialty and a natural extension of your observability background."
+   "why": "Evaluation infrastructure is a research engineering specialty and a natural extension of observability and monitoring skills."
   },
   {
    "id": "research",
@@ -356,7 +356,7 @@
     "ood"
    ],
    "what": "Designing Data-Intensive Applications, Raft and the MIT distributed systems lectures, and the classic design interviews: feeds, queues, key-value stores, chat, schedulers, monitoring, storage.",
-   "why": "The biggest part of your loops, and where your platform experience turns into stories. Monitoring and scheduler designs are ones you have actually built."
+   "why": "The biggest part of your loops, and where real platform experience turns into stories. Monitoring and scheduler designs are classic examples to prepare."
   },
   {
    "id": "datasys",
@@ -366,7 +366,7 @@
     "sysd"
    ],
    "what": "Streaming and batch, Kafka and Flink concepts, lakehouse formats, exactly-once, real-time analytics, recommendation and fraud pipelines.",
-   "why": "Data-heavy design rounds and the data side of ML platforms. An OTA is full of these systems, so you have real examples."
+   "why": "Data-heavy design rounds and the data side of ML platforms. An OTA is full of these systems, so there are plenty of real examples to draw on."
   },
   {
    "id": "mlsys",
@@ -389,7 +389,7 @@
     "aieng"
    ],
    "what": "RAG at scale, LLM gateways with routing and cost control, eval pipelines, agent orchestration with sandboxing, memory, approvals, and observability.",
-   "why": "The newest interview topic and the one closest to what you already build. Anthropic's own engineering posts are the source material."
+   "why": "The newest interview topic, and one that builds on ordinary service and platform engineering. Anthropic's own engineering posts are the source material."
   },
   {
    "id": "loops",
@@ -1937,7 +1937,7 @@
     {
      "id": "m5w3i2",
      "skill": "sysd",
-     "text": "DDIA chapter 4: encoding and schema evolution; relate to a wire or storage format you use at work",
+     "text": "DDIA chapter 4: encoding and schema evolution; relate to a wire or storage format you have used",
      "links": [
       {
        "label": "DDIA (the one book worth buying)",
@@ -2890,7 +2890,7 @@
     {
      "id": "m8w3i1",
      "skill": "sysd",
-     "text": "Design: a metrics system at very large scale and a logging pipeline; apply this to a system you run at work",
+     "text": "Design: a metrics system at very large scale and a logging pipeline; apply this to a system you know well",
      "links": [
       {
        "label": "Google SRE books",
@@ -3061,7 +3061,7 @@
     {
      "id": "m9w1i2",
      "skill": "sysd",
-     "text": "Design: a leader-elected control plane with a reconciliation loop (apply this to a control loop you run at work)",
+     "text": "Design: a leader-elected control plane with a reconciliation loop (apply this to a control loop you know well)",
      "links": [
       {
        "label": "design bank tab",
@@ -4762,7 +4762,7 @@
     {
      "id": "m14w3i1",
      "skill": "agentic",
-     "text": "Design: tracing, evals in production, drift detection, and cost dashboards for an agent fleet, building on observability tools you already know",
+     "text": "Design: tracing, evals in production, drift detection, and cost dashboards for an agent fleet, building on existing observability tools",
      "links": [
       {
        "label": "design bank tab",
@@ -6426,7 +6426,7 @@
   },
   {
    "skill": "aieng",
-   "text": "Rung 7, MCP. Watch DLAI MCP with Anthropic, then build an MCP server exposing read-only operations of a system you run; wire it into your coding agent and document the permission boundary",
+   "text": "Rung 7, MCP. Watch DLAI MCP with Anthropic, then build an MCP server exposing read-only operations of a system you can safely query; wire it into your coding agent and document the permission boundary",
    "links": [
     {
      "label": "MCP server quickstart",
@@ -6834,7 +6834,7 @@
   },
   {
    "skill": "ft",
-   "text": "Watch DLAI Finetuning LLMs, then fine-tune a 1B to 3B open model with LoRA using Unsloth on a free Colab or Kaggle T4, on a dataset from your own domain (ops runbooks, incident notes)",
+   "text": "Watch DLAI Finetuning LLMs, then fine-tune a 1B to 3B open model with LoRA using Unsloth on a free Colab or Kaggle T4, on a dataset from a domain you know (for example runbooks, support tickets, or incident notes)",
    "links": [
     {
      "label": "Google Colab (free T4)",
@@ -8852,7 +8852,7 @@
    "sprint": 15,
    "topic": "Pattern sweep I: sliding window and two pointers",
    "pattern": "Sliding Window; Two Pointers",
-   "note": "The easier Design Gurus patterns, done fast for maintenance. Your grokking repo already has two of these folders.",
+   "note": "The easier Design Gurus patterns, done fast for maintenance. If you already keep notes or a repo for these patterns, reuse them.",
    "problems": [
     {
      "num": 3,
@@ -8980,7 +8980,7 @@
    "sprint": 20,
    "topic": "Pattern sweep III: merge intervals, subsets, XOR, modified binary search",
    "pattern": "Merge Intervals; Subsets; Bitwise XOR; Modified Binary Search",
-   "note": "Your merge-intervals folder plus three small patterns.",
+   "note": "Merge intervals plus three small patterns.",
    "problems": [
     {
      "num": 56,
@@ -9353,7 +9353,7 @@
       "At-least-once execution with idempotency keys",
       "Priority, fairness, starvation, and preemption",
       "Cron at scale: clock skew, missed fires, catch-up policy",
-      "A job-orchestration platform you run at work as the worked example, with numbers"
+      "A job-orchestration platform you know well as the worked example, with numbers"
      ],
      "refs": [
       {
@@ -9592,7 +9592,7 @@
       "Relation tuples and check evaluation",
       "Consistency: the new-enemy problem and snapshot reads",
       "Caching checks at scale",
-      "The access-control boundaries of a system you run at work as the worked example"
+      "The access-control boundaries of a system you know well as the worked example"
      ],
      "refs": [
       {
@@ -10088,7 +10088,7 @@
    "n": "Kubernetes WG Serving and WG Batch",
    "k": "Kubernetes Slack",
    "u": "https://slack.k8s.io",
-   "fit": "Where inference and training on Kubernetes are being designed. You already speak the language.",
+   "fit": "Where inference and training on Kubernetes are being designed. Familiarity with Kubernetes helps.",
    "how": "Contributor room from day one. Join month 1, answer questions immediately, target Kueue or the inference extension for PRs.",
    "lane": "contributor"
   },
@@ -10096,7 +10096,7 @@
    "n": "vLLM",
    "k": "Slack",
    "u": "https://slack.vllm.ai",
-   "fit": "The most used open inference engine. Maintainers include people at the companies you named.",
+   "fit": "The most used open inference engine. Maintainers include people at many of the target companies.",
    "how": "Contributor room. Join month 8 with a benchmark in hand; first PR the same month.",
    "lane": "contributor"
   },
@@ -10104,7 +10104,7 @@
    "n": "SGLang and llm-d",
    "k": "Slack / GitHub",
    "u": "https://github.com/llm-d/llm-d",
-   "fit": "Serving engine and the Kubernetes-native distributed inference project. llm-d wants exactly your platform skills.",
+   "fit": "Serving engine and the Kubernetes-native distributed inference project. llm-d welcomes platform and Kubernetes skills.",
    "how": "Contributor room. Alternative to vLLM if its issues suit you better.",
    "lane": "contributor"
   },
@@ -10128,7 +10128,7 @@
    "n": "Cohere Labs community",
    "k": "Discord + programs",
    "u": "https://cohere.com/research",
-   "fit": "Open-science community with reading groups, mentorship-style programs, and Scholars. Cohere is on your target list.",
+   "fit": "Open-science community with reading groups, mentorship-style programs, and Scholars. Cohere is a typical target.",
    "how": "Join month 2, attend one reading group a month, apply to Scholars when the window opens.",
    "lane": "program"
   },
@@ -10152,7 +10152,7 @@
    "n": "Anthropic Fellows Program",
    "k": "Fellowship",
    "u": "https://www.anthropic.com/research",
-   "fit": "Paid, mentored research with Anthropic staff, aimed at strong engineers moving into safety research. The most direct door on your list.",
+   "fit": "Paid, mentored research with Anthropic staff, aimed at strong engineers moving into safety research. One of the most direct doors for this move.",
    "how": "Apply once the research project has a draft, month 10 or 11. Search the current application page; it moves.",
    "lane": "program"
   },
@@ -10160,7 +10160,7 @@
    "n": "Latent Space and the MLOps community",
    "k": "Discord / Slack",
    "u": "https://latent.space",
-   "fit": "Applied AI engineering and infra. Good for the Lovable-type lane and for your existing skills.",
+   "fit": "Applied AI engineering and infra. Good for the applied-product lane and for building on existing skills.",
    "how": "Light presence; share the serving and reliability posts here.",
    "lane": "contributor"
   }
