@@ -1,0 +1,41 @@
+/* Ruling 24 S1: the session pill. Type comes from the scale tokens only; colours and sizes from the token set. */
+.session-strip, .session-dock { max-width: 1200px; margin: 0 auto; padding: 12px 24px 0; box-sizing: border-box; }
+.session-dock { padding-bottom: 0; }
+.session-pill {
+  display: flex; align-items: center; gap: 12px; min-width: 0; min-height: var(--sr-size-hit-touch); padding: 4px 8px 4px 12px;
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); border-left: 6px solid var(--sr-energy-accent);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.session-pill[data-phase='break'], .session-pill[data-phase='long'] { border-left-color: var(--sr-signal-ok); }
+.session-pill[data-phase='away'] { border-left-color: var(--sr-label-warn); }
+.session-pill-link {
+  flex: 1 1 auto; min-width: 0; min-height: var(--sr-size-hit-touch); display: flex; align-items: center; gap: 12px;
+  color: var(--sr-text-primary); text-decoration: none;
+}
+.session-pill-link:hover .session-pill-title { text-decoration: underline; text-decoration-thickness: 2px; }
+.session-pill-link:focus-visible, .session-pill-toggle:focus-visible { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: var(--sr-size-focus-offset); }
+.session-pill-phase {
+  flex: none; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  line-height: 1.4; color: var(--sr-label-accent); white-space: nowrap;
+}
+.session-pill[data-phase='break'] .session-pill-phase, .session-pill[data-phase='long'] .session-pill-phase { color: var(--sr-label-ok); }
+.session-pill[data-phase='away'] .session-pill-phase { color: var(--sr-label-warn); }
+.session-pill-time {
+  flex: none; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); line-height: 1.25; font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed;
+}
+.session-pill-title {
+  flex: 1 1 auto; min-width: 0; font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.session-pill-toggle { flex: none; }
+@media (max-width: 767px) {
+  .session-strip, .session-dock { padding: 12px 16px 0; }
+  /* Do lays its rail, dock and work out in a grid whose track grew to the pill's nowrap title (UAT cu-2p P3-6, a long stage name at 375): the dock takes the track's width, it never sets it */
+  .session-dock { width: 0; min-width: 100%; }
+  .session-pill { gap: 8px; padding-left: 8px; }
+  .session-pill-link { gap: 8px; }
+  /* phone: the title takes its own line under phase and time, so the pill never grows wider than the screen */
+  .session-pill-link { flex-wrap: wrap; row-gap: 0; align-content: center; }
+  .session-pill-title { flex: 1 1 100%; order: 3; color: var(--sr-text-secondary); }
+}

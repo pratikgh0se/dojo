@@ -1,0 +1,113 @@
+/* The picture player and Two-up (labs contract §4). The engine draws the frame; the wrapper draws the chrome
+   in the engine's own vocabulary: Silkscreen labels, Space Mono code, crisp 2px edges, a dark well. */
+/* Prototype parity ("THE PLAYER"): the whole player — visual, code/vars side panel, caption and bars — sits
+   on one dark well (algo.js's own T.well/T.mid), not the lighter --sr-surface-panel tone. */
+.lab-player { container-type: inline-size; display: grid; gap: 8px; min-width: 0; padding: 8px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+.lab-player:focus { outline: none; }
+.lab-player:focus-visible { outline: var(--sr-size-focus-w) solid var(--sr-focus); }
+.lab-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lab-title { font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; font-weight: 700; text-transform: uppercase; flex: 1 1 auto; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.lab-badge { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); border: 2px solid var(--sr-edge-mid); padding: 2px 6px; }
+.lab-body { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 640px) { .lab-body { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.lab-visual { min-width: 0; overflow-x: auto; background: var(--sr-chart-well); }
+.lab-visual sr-algo, .lab-visual sr-algo2 { display: block; min-width: 0; }
+.lab-side { display: grid; gap: 8px; align-content: start; min-width: 0; }
+/* list-style: none — an <ol> is used for its semantics (an ordered sequence of lines an aria-current
+   step points into), but the prototype's own code panel (algo.js's `.code div`) has no line numbers. */
+.lab-code { margin: 0; padding: 8px; list-style: none; font-family: var(--sr-font-mono); font-size:var(--type-meta); background: var(--sr-chart-well); color: var(--sr-text-secondary); overflow-x: auto; }
+.lab-code li { white-space: pre; }
+.lab-code li[aria-current='step'] { color: var(--sr-text-onaccent); background: var(--sr-energy-accent); }
+.lab-vars { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.lab-vars div { display: flex; gap: 4px; border: 2px solid var(--sr-edge-mid); padding: 2px 6px; }
+.lab-vars dt { font-weight: 700; }
+.lab-vars dd { margin: 0; }
+.lab-caption { margin: 0; min-height: 20px; padding: 8px 4px; border-top: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-body); font-size:var(--type-small); line-height: 1.5; }
+/* Prototype parity (Algorithm Lab §01 "THE PLAYER"): one compact bar — icon step buttons, the STEP counter,
+   a block scrubber, then speed. Predict / Own input / Snapshot / Close player sit in a secondary row below. */
+.lab-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lab-bar-secondary { border-top: 2px solid var(--sr-edge-mid); padding-top: 6px; }
+/* Compact, like the prototype's own `.bar button` (9px Silkscreen, 7px/9px padding, no min-height) —
+   not the app-wide 36px-tall tab/button size these otherwise inherit. */
+.lab-bar-secondary .sr-btn { height: auto; padding: 7px 9px; font-size:var(--type-meta); }
+.lab-btn-icon { font-family: var(--sr-font-mono); font-size:var(--type-meta); padding: 6px 9px; min-width: 30px; }
+.lab-counter { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); white-space: nowrap; }
+/* Spans the bar's own free width, like the prototype's `.scrub` (algo.js: flex:1, no max-width) — not
+   capped to a 220px hairline. */
+.lab-scrub { flex: 1 1 80px; min-width: 60px; height: 14px; display: flex; gap: 2px; touch-action: none; }
+.lab-scrub[data-enabled='true'] { cursor: pointer; }
+/* cu-r2 A2#45: at phone width the scrubber takes its own full row instead of a stub between the buttons */
+@media (max-width: 767px) { .lab-scrub { flex: 1 1 100%; min-width: 100%; height: 24px; order: 9; } }
+.lab-scrub i { flex: 1; display: block; background: var(--sr-edge-mid); }
+.lab-scrub i.on { background: var(--sr-energy-accent); }
+.lab-scrub i.cur { background: var(--sr-energy-accent-glow); }
+.lab-speed { font-family:var(--sr-font-body); font-size:var(--type-meta); font-weight:700;}
+.lab-error { display: flex; gap: 12px; align-items: center; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-danger); }
+.lab-predict { display: grid; gap: 8px; padding: 12px; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); }
+.lab-predict-title { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; text-transform: uppercase; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.lab-predict-detail { margin: 0; font-family: var(--sr-font-body); font-size:var(--type-small); }
+.lab-predict-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.lab-predict-feedback, .lab-predict-score, .lab-predict-result { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.lab-predict-result[data-passed='true'] { color: var(--sr-label-ok); }
+.lab-own-input { display: grid; gap: 8px; }
+.lab-field { display: grid; gap: 4px; }
+.lab-field label { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.lab-own-input input, .lab-own-input textarea { font-family: var(--sr-font-mono); font-size:var(--type-meta); min-width: 0; }
+.lab-own-input [aria-invalid='true'] { border-color: var(--sr-label-danger); }
+.lab-own-input-error { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-danger); }
+.lab-own-input-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.lab-two-up { container-type: inline-size; display: grid; gap: 8px; min-width: 0; }
+.lab-two-up:focus { outline: none; }
+.lab-two-up-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lab-compare { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: var(--sr-font-mono); font-size:var(--type-meta); min-width: 0; }
+.lab-compare select { max-width: 100%; }
+/* do-dp final rerun F002 (V12, ruling 10 Q23): on phone "Compare with" takes the row and its select shrinks to fit */
+@media (max-width: 767px) {
+  .lab-two-up-head .lab-compare { flex: 1 1 100%; max-width: 100%; }
+  .lab-two-up-head .lab-compare select { flex: 1 1 auto; min-width: 0; width: 100%; }
+}
+.lab-two-up-note { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); }
+.lab-two-up-players { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@container (min-width: 900px) { .lab-two-up-players { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.approaches { display: grid; gap: 8px; min-width: 0; }
+.approach-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.approach-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 8px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-mid); cursor: pointer; }
+.approach-chip .ac-cx { color: var(--sr-text-secondary); }
+.approach-chip.best { border-color: var(--sr-energy-accent); }
+.approach-chip .ac-star { color: var(--sr-label-accent); }
+.approach-chip[aria-pressed='true'] { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); }
+.approach-chip[aria-pressed='true'] .ac-cx, .approach-chip[aria-pressed='true'] .ac-star { color: var(--sr-text-onaccent); }
+.approach-chip:disabled { cursor: default; opacity: .6; }
+.approach-used { display: grid; gap: 6px; }
+/* UAT J4: the complexity keeps its case (O(n), not O(N)) in mono; exponents are superscripts */
+.approach-answer .aa-cx { font-family: var(--sr-font-mono); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.approach-chip sup, .approach-answer sup { line-height: 0; }
+.approach-used .hint { margin: 0; }
+
+/* V12 / M7: Compare with, Own input and Close two-up on one row (wrapping only on phone); M19 the select is square on WebKit */
+@media (min-width: 768px) {
+  .lab-two-up-head { flex-wrap: nowrap; }
+  .lab-two-up-head .lab-compare { flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; }
+  .lab-two-up-head .lab-compare select { flex: 1 1 auto; min-width: 0; width: 100%; }
+}
+.lab-compare select {
+  -webkit-appearance: none; appearance: none; padding-right: 24px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--sr-text-secondary) 50%), linear-gradient(135deg, var(--sr-text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+/* UAT cu-4 P3-2: in a narrow two-up (Do's 450 px column) one row holds only a stub of the select ("Tab"): the select gets the row
+   to itself, so the walkthrough's title shows whole, and Own input and Close two-up share the next one. Wider two-ups keep V12's one row. */
+@container (max-width: 599px) {
+  .lab-two-up-head { flex-wrap: wrap; }
+  .lab-two-up-head .lab-compare { flex: 1 1 100%; max-width: 100%; }
+}
+/* A4 (settings-progress-ref): phone touch targets, 44 x 44 for the step buttons, 44 tall for Predict, Own input and Snapshot. */
+@media (max-width: 767px) {
+  .lab-btn-icon { min-width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); }
+  .lab-bar .sr-btn, .lab-bar-secondary .sr-btn { min-height: var(--sr-size-hit-touch); }
+}
+
+/* UAT J6: Play / Pause / Replay share one width (the widest), so the step controls never shift */
+.lab-play-stack { display: inline-grid; }
+.lab-play-stack > * { grid-area: 1 / 1; text-align: center; }
+.lab-play-sizer { visibility: hidden; }

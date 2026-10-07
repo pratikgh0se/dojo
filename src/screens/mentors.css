@@ -1,0 +1,22 @@
+.mentor-rule { background: var(--sr-surface-panel); border: 3px solid var(--sr-energy-accent); box-shadow: none; padding: 16px; }
+.mentor-rule p { margin: 0; font-size:var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+.mentor-rule b { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
+.protocol { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.protocol-step p { margin: 0 0 8px; font-size:var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+.protocol-step .prompt { font-size: var(--type-small); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.protocol-step .sub-title { margin-top: 0; color: var(--sr-label-accent); }
+.rooms { display: grid; gap: 16px; }
+.rooms-title { margin: 8px 0 0; font-size: var(--type-display-s); font-weight: 700; line-height: 1.25; color: var(--sr-label-accent); }
+.room-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.room-card {
+  display: grid; gap: 6px; align-content: start; padding: 10px; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.room-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.room-name { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; font-weight:700;}
+.room-fit, .room-how { margin: 0; font-size:var(--type-small); color: var(--sr-text-secondary-ontile); }
+.room-how b { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-primary); font-weight:700;}
+/* A4 (settings-progress-ref): room links are 44 px touch targets on phone. */
+@media (max-width: 767px) { .room-name { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); } }
+/* Controller ruling 8 S9: long paragraphs on Mentors read as Body 17. */
+.mentors p:not(.prompt) { font-size: var(--type-body); line-height: var(--type-leading); }

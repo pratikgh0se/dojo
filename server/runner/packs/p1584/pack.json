@@ -1,0 +1,111 @@
+{
+  "id": "p1584",
+  "title": "Min Cost to Connect All Points",
+  "fn": "minCostConnectPoints",
+  "signature": "func minCostConnectPoints(points [][]int) int",
+  "params": [
+    {
+      "name": "points",
+      "type": "[][]int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// minCostConnectPoints returns the least total Manhattan distance that connects every point.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   pq := tk.Heap(\"pq\"); pq.Push(j, cost); j, cost := pq.Pop()\n//   g := tk.Graph(\"mst\", false); g.Edge(i, j, cost); g.Visit(j)\nfunc minCostConnectPoints(points [][]int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            2,
+            2
+          ],
+          [
+            3,
+            10
+          ],
+          [
+            5,
+            2
+          ],
+          [
+            7,
+            0
+          ]
+        ]
+      ],
+      "expected": 20
+    },
+    {
+      "args": [
+        [
+          [
+            3,
+            12
+          ],
+          [
+            -2,
+            5
+          ],
+          [
+            -4,
+            1
+          ]
+        ]
+      ],
+      "expected": 18
+    },
+    {
+      "args": [
+        [
+          [
+            0,
+            0
+          ]
+        ]
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            -1,
+            1
+          ]
+        ]
+      ],
+      "expected": 4
+    },
+    {
+      "args": [
+        [
+          [
+            -1000000,
+            -1000000
+          ],
+          [
+            1000000,
+            1000000
+          ]
+        ]
+      ],
+      "expected": 4000000
+    }
+  ]
+}

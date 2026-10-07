@@ -1,0 +1,42 @@
+.help-ladder { display: grid; gap: 12px; min-width: 0; }
+.ladder-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ladder-spent { font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.rung { display: grid; gap: 8px; min-width: 0; }
+/* the rung's button (not .rung-open: that is the open rung's state class, and the collision stripped rung 1's panel) */
+.rung-btn {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; width: 100%;
+  padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.rung-btn:disabled { cursor: default; }
+/* a disabled button swallows its click: let a locked rung's own panel take it and say why (cu-r2 A2#6) */
+.rung-locked, .rung-na { cursor: help; }
+.rung-locked .rung-btn:disabled, .rung-na .rung-btn:disabled { pointer-events: none; }
+.rung-btn:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+.rung-num, .rung-name { font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; font-weight:700;}
+.rung-locked .rung-name, .rung-na .rung-name { color: var(--sr-text-secondary); }
+.rung-cube {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 32px; height: 32px; padding: 0 4px; text-align: center; font-family: var(--sr-font-mono); font-size:var(--type-meta);
+  border: 2px solid var(--sr-edge-dark); background: var(--sr-surface-well);
+}
+.rung-unlocked .rung-cube { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); }
+.rung-body { display: grid; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.rung-note { margin: 0; font-size:var(--type-small); color: var(--sr-text-secondary); }
+.rung-hint { margin: 0; }
+.rung-links { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.rung-why { margin: 0; font-size:var(--type-small); color: var(--sr-text-secondary); }
+.rung-why-link { margin-left: 6px; }
+.rung-why-link::after { content: 'See the honesty chart'; }
+.picture-player { margin: 0; display: grid; gap: 8px; padding: 8px; border: 2px solid var(--sr-edge-dark); background: var(--sr-surface-well); min-width: 0; }
+.picture-diagram { display: block; width: 100%; min-height: 240px; overflow: auto; }
+.ladder-solution { display: grid; gap: 8px; min-width: 0; }
+.sol-approach { margin: 0; }
+.sol-pseudo { margin: 0; padding-left: 22px; font-family: var(--sr-font-mono); font-size:var(--type-meta); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ladder-quiz { display: grid; gap: 8px; }
+.quiz-item { display: grid; gap: 4px; }
+.quiz-item input { width: 100%; min-width: 0; }
+.quiz-result { margin: 0; font-family: var(--sr-font-mono); }
+
+/* ruling 7 S4: a locked rung is dashed, its name secondary */
+.rung.rung-locked { border: 2px dashed var(--sr-edge-mid); box-shadow: none; }
+/* triage A13: rung buttons are 44 tall on phone */
+@media (max-width: 767px) { .rung-btn { min-height: var(--sr-size-hit-touch); } }

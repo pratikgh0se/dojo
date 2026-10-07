@@ -1,0 +1,21 @@
+{
+  "plan": {
+    "1": "BFS / DFS",
+    "2": "TOPO SORT",
+    "3": "UNION-FIND",
+    "4": "SHORTEST PATH",
+    "5": "BFS / DFS",
+    "6": "BFS / DFS",
+    "7": "DP \u00b7 TABULATION",
+    "8": "DP \u00b7 TABULATION",
+    "9": "DP \u00b7 TABULATION",
+    "10": "DP \u00b7 TABULATION",
+    "11": "HEAP / PQ",
+    "12": "BACKTRACKING",
+    "15": "SLIDING WINDOW",
+    "16": "LRU \u00b7 DESIGN",
+    "18": "CYCLE \u00b7 FAST/SLOW",
+    "20": null,
+    "24": "GREEDY"
+  }
+}

@@ -1,0 +1,62 @@
+/* The study session (ux spec section 3). Type comes from the scale tokens only. */
+.study-form { display: grid; gap: 16px; }
+.study-fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: 8px; min-width: 0; }
+.study-fieldset legend { padding: 0; margin-bottom: 4px; font-weight: 700; font-size: var(--type-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--sr-text-secondary); }
+.study-custom { display: flex; flex-wrap: wrap; gap: 12px; }
+.study-note { margin: 0; color: var(--sr-text-primary); }
+.study-count { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); justify-self: end; }
+.study-form .p-field > label { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+.study-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 768px) { .study-grid { grid-template-columns: minmax(0, 1fr) 220px; } }
+/* ui-do D3.6: on phone the clock comes first */
+@media (max-width: 767px) { .study-grid .study-side { order: -1; } }
+/* UAT cu-4 P3-13: the brief's lines stay together at the top; as grids they stretched to the clock column's height (Pause made it
+   taller) and spread the title, the plan line and the goal apart */
+.study-brief { display: grid; gap: 12px; min-width: 0; align-content: start; }
+.study-card { display: grid; gap: 8px; align-content: start; }
+.study-card-title { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-title); line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+.study-goal { margin: 0; font-weight: 700; color: var(--sr-label-accent); }
+.study-card-text { margin: 0; white-space: pre-wrap; }
+.study-side { display: grid; gap: 12px; align-content: start; }
+.study-clock { display: grid; gap: 4px; justify-items: start; }
+.study-phase-box { justify-self: stretch; }
+.study-phase { font-family: var(--sr-font-pixel); font-size: var(--type-display-m); font-weight: 700; line-height: 1.2; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.study-clock[data-phase='break'] .study-phase, .study-clock[data-phase='long'] .study-phase { color: var(--sr-label-ok); }
+.study-timer { font-family: var(--sr-font-pixel); font-size: var(--type-display-l); line-height: 1.1; font-variant-numeric: tabular-nums; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.study-blocks { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.study-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* UAT cu-4 P3-18 (do-session-brief-834 / -393): in the session panel the buttons are full width of their column, stacked: the
+   220 px column beside the card text on a tablet or desktop, the whole width on a phone (focus mode keeps its own row) */
+.study-side .study-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+.study-side .study-actions .sr-btn { width: 100%; }
+.study-notes { display: grid; gap: 4px; margin-top: 12px; }
+.study-notes textarea { min-height: 120px; }
+
+/* focus mode: nothing but the brief, the clock, the notes and two buttons */
+.do-focus { min-height: 100vh; min-height: 100dvh; display: grid; align-content: center; justify-items: center; padding: 24px; }
+.focus-view { width: 100%; max-width: 760px; display: grid; gap: 24px; }
+.do-focus .study-timer { font-size: var(--type-display-xl); line-height: 1.1; }
+.do-focus .study-notes textarea { min-height: 200px; font-size: var(--type-body); }
+
+.hist-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.hist-row { display: grid; gap: 4px; padding: 8px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.hist-row p { margin: 0; }
+.hist-row .hist-row-head { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+/* shell-today-board A2: the card list; with more than 6 cards it scrolls inside a well (max-height 264). */
+.study-cards { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* sim-align F1: each row keeps its full height (a 3-line label grows its row; Mobile Safari shrank rows in the well) */
+.study-cards > .sr-choice { flex: none; min-height: min-content; }
+.study-cards > .sr-choice > span { min-width: 0; overflow-wrap: anywhere; }
+.do-focus:focus { outline: none; }
+.study-cards-well { max-height: 264px; overflow-y: auto; padding: 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+/* shell-today-board M21: Focus and Break minutes stack on phone */
+@media (max-width: 767px) { .study-custom { flex-direction: column; } }
+
+/* UAT cu-2 P3-17 (focus-mode-375): End session and Exit focus mode share one row on a phone. With classic scrollbars the
+ * 375 window has 15 px less, so the screen's side padding is 16 there and the two buttons do not wrap. */
+@media (max-width: 767px) {
+  .do-focus { padding: 24px 16px; }
+  .do-focus .study-actions { flex-wrap: nowrap; }
+  .do-focus .study-actions .sr-btn { min-width: 0; padding: 0 10px; }
+}

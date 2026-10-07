@@ -1,0 +1,73 @@
+{
+  "id": "p877",
+  "title": "Stone Game",
+  "fn": "stoneGame",
+  "signature": "func stoneGame(piles []int) bool",
+  "params": [
+    {
+      "name": "piles",
+      "type": "[]int"
+    }
+  ],
+  "returns": "bool",
+  "starter": "package main\n\n// stoneGame reports whether Alice, moving first and both playing their best, ends with more stones (she takes a pile from either end).\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   tk.Enter(\"best\", i, j); tk.Hit(\"best\", i, j); tk.Exit(v)\n//   gt := tk.GameTable(\"g\"); gt.Set(\"0-3\", \"win\", 5)\nfunc stoneGame(piles []int) bool {\n\treturn false\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          5,
+          3,
+          4,
+          5
+        ]
+      ],
+      "expected": true
+    },
+    {
+      "args": [
+        [
+          3,
+          7,
+          2,
+          3
+        ]
+      ],
+      "expected": true
+    },
+    {
+      "args": [
+        [
+          2,
+          1
+        ]
+      ],
+      "expected": true
+    },
+    {
+      "args": [
+        [
+          7,
+          8,
+          8,
+          10,
+          1,
+          3
+        ]
+      ],
+      "expected": true
+    },
+    {
+      "args": [
+        [
+          6,
+          1,
+          2,
+          5,
+          3,
+          4
+        ]
+      ],
+      "expected": true
+    }
+  ]
+}

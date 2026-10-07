@@ -1,0 +1,204 @@
+/* app/src/screens/ai/projects.css — chain P (AI lab projects). Tokens only, radius 0, stepped motion. */
+.p-region { display: grid; gap: 12px; min-width: 0; }
+.p-region-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.p-region-head .sr-panel-title { margin: 0; }
+.p-scroll { overflow-x: auto; max-width: 100%; min-width: 0; padding-bottom: 4px; }
+.p-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.p-cube { display: inline-block; position: relative; flex: none; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+.p-cube-md { width: 14px; height: 14px; }
+.p-cube-sm { width: 8px; height: 8px; border-width: 1px; }
+.p-cube[data-state='partial'] { border-color: var(--sr-energy-accent); }
+.p-cube[data-state='partial']::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 50%; background: var(--sr-energy-accent); }
+.p-cube[data-state='full'] { background: var(--sr-energy-accent); border-color: var(--sr-energy-accent-shade); }
+
+.p-loader { display: inline-flex; align-items: center; gap: 4px; }
+.p-loader i { display: inline-block; width: 8px; height: 8px; background: var(--sr-surface-muted); animation: p-blink 480ms steps(1) infinite; }
+.p-loader i:nth-child(2) { animation-delay: 160ms; }
+.p-loader i:nth-child(3) { animation-delay: 320ms; }
+.p-loader-text { margin-left: 4px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+@keyframes p-blink { 0% { background: var(--sr-energy-accent); } 34% { background: var(--sr-surface-muted); } }
+
+.p-backdrop {
+  position: fixed; inset: 0; z-index: var(--sr-z-modal); overflow-y: auto;
+  /* UAT cu-7 P3-8: a wheel or swipe over the dialog never scrolls the page behind it */
+  overscroll-behavior: contain;
+  background: color-mix(in srgb, var(--sr-edge-dark) 70%, transparent);
+}
+.p-dialog {
+  position: relative; margin: 48px auto; width: min(640px, calc(100vw - 32px)); max-height: calc(100dvh - 96px); overflow-y: auto;
+  min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px; background: var(--sr-surface-panel); color: var(--sr-text-primary);
+  border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+  animation: srin var(--sr-motion-base) steps(4);
+}
+.p-dialog-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.p-dialog-title { margin: 0; font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); overflow-wrap: anywhere; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+/* F6.6 phone: full content width (x = 16 .. vw - 16), 16 px top margin. */
+/* sim-align F2: on phone the backdrop holds a 16 px gutter on every side and the box fills the rest, so the inset never
+   depends on how the browser resolves 100vw (Mobile Safari put the box 3 px from the edges) */
+@media (max-width: 767px) {
+  .p-backdrop { padding: 16px; }
+  .p-dialog { width: auto; max-width: none; margin: 0; max-height: calc(100dvh - 32px); }
+}
+.p-dialog:focus { outline: none; }
+/* UAT cu-3p P3-16: a dialog taller than the window scrolls inside itself, and its actions went with the content (Check
+ * answers / Cancel sat below the fold of a tall Check dialog). The actions row sticks to the bottom of the dialog's scroll
+ * area, on the panel's own colour, so it is always in view and always reachable; when the dialog fits, it is where it was:
+ * its 16 px padding is taken from the dialog's bottom padding (margin -16), and its 8 px top padding from the gap above.
+ * A sticky box keeps clear of the scroller's padding, so `bottom: -16px` puts it flush with the dialog's inner edge. */
+.p-dialog .p-actions {
+  position: sticky; bottom: -16px; z-index: 1; margin: -8px 0 -16px; padding: 8px 0 16px; background: var(--sr-surface-panel);
+}
+/* UAT cu-r3 A12: only the dialog's own footer row sticks; a row inside a subsection (the Grade section's Request grade) is ordinary
+ * content, or it stuck over the footer and sat half hidden behind it. */
+.p-dialog .p-subsection .p-actions { position: static; margin: 0; padding: 0; background: none; }
+/* A field that scrolls into view (a Tab to it, scrollIntoView) must stop above the row, not under it: the row is 60 px tall
+ * (8 + 36 + 16), two 44 px buttons and their gap when they stack below 400 px (8 + 44 + 8 + 44 + 16). */
+.p-dialog { scroll-padding-bottom: 68px; }
+@media (max-width: 399px) { .p-dialog { scroll-padding-bottom: 128px; } }
+/* ui-dialogs: below 400 px the action buttons stack full width, 44 tall. */
+@media (max-width: 399px) { .p-dialog .p-actions { flex-direction: column; align-items: stretch; } .p-dialog .p-actions > .sr-btn { flex: none; width: 100%; height: var(--sr-size-hit-touch); } }
+.p-dialog p.dl-text { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+
+.p-form { display: grid; gap: 10px; }
+.p-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; } /* UAT cu-r3 A12: the column is the field's width, not its input's intrinsic width (VALUE overran UNIT) */
+/* shell-today-board M20: dialog field labels are Chivo 15/700 upper secondary; inputs 36 tall (44 on phone), padding 6 8 */
+.p-field > label { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; line-height: 1.4; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.p-field input, .p-field select, .p-field textarea {
+  min-height: var(--sr-size-control-h); padding: 6px 8px; font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-primary);
+  background-color: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}
+/* UAT cu-3 P3-8: a select in a dialog keeps the global select's drawn arrow and the room for it (this rule used the `background`
+ * shorthand and a 6 8 padding, which wiped both, so "Day type" and "Deliverable kind" looked like plain boxes). */
+.p-field select { padding-right: 24px; }
+.p-field textarea { min-height: 120px; resize: vertical; }
+@media (max-width: 767px) { .p-field input:not([type='checkbox']):not([type='radio']), .p-field select { min-height: var(--sr-size-hit-touch); } }
+.p-field [aria-invalid='true'] { border-color: var(--sr-signal-danger); }
+.p-err-slot { min-height: 1.45em; line-height: 1.45; }
+/* UAT cu-r3 A12: every field in the artifact form reserves its error line, so an inline error never reflows the form (a click
+ * aimed at a field no longer lands on its neighbour). Two lines under 480 px, where the longer messages wrap. */
+.p-field > .p-err-slot { min-height: calc(1.45em * var(--p-err-lines, 1)); line-height: 1.45; }
+@media (max-width: 479px) { .p-dialog { --p-err-lines: 2; } }
+.p-err { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-danger); }
+.p-note { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.p-done {
+  display: inline-block; padding: 1px 6px; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px;
+  color: var(--sr-text-onaccent); background: var(--sr-signal-ok); border: 1px solid var(--sr-edge-dark); font-weight:700;}
+
+/* Overall /ai layout: one column (stacked, DOM order) below 1100px; two columns above it.
+   Evidence and Build board (marked .p-grid-full) always span both columns; the cube ladder
+   sits beside the Learn board, and the timeline beside the Measures wall, by DOM order alone. */
+.p-grid { display: grid; gap: 16px; min-width: 0; }
+@media (min-width: 1100px) {
+  /* K4: Learn -> build -> prove (3fr) beside the Learn board (2fr). */
+  .p-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+  .p-grid > .p-grid-full { grid-column: 1 / -1; }
+}
+
+/* R1 Evidence */
+.p-evidence { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.p-evi { display: grid; gap: 6px; text-align: left; cursor: pointer; font: inherit; color: var(--sr-text-primary); }
+.p-evi-label { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; color: var(--sr-text-secondary-ontile); font-weight:700;}
+.p-evi-value { font-family: var(--sr-font-pixel); font-size:var(--type-display-m); line-height: 1.2; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+
+/* R2 cube ladder */
+.p-legend { font-size:var(--type-meta); }
+.p-cubes { display: grid; gap: 4px; min-width: 460px; }
+.p-cube-row {
+  display: grid; grid-template-columns: minmax(180px, 1fr) repeat(3, 24px) minmax(150px, auto); gap: 8px; align-items: center;
+  padding: 4px 8px; cursor: pointer; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  border-left: 6px solid var(--sr-surface-muted);
+}
+.p-cube-row[data-complete='true'] { border-left-color: var(--sr-signal-ok); }
+/* UAT cu-5 P3-14: on a phone a ladder row no longer scrolls sideways with its Blank test button and "Redo due" off screen: the stage
+   name and its three cubes share the first line, the button and the redo date the next */
+@media (max-width: 767px) {
+  .p-cubes { min-width: 0; }
+  .p-cube-row { grid-template-columns: minmax(0, 1fr) repeat(3, 24px); }
+  .p-cube-blank { grid-column: 1 / -1; justify-content: flex-start; }
+}
+.p-cube-head { min-width: 0; }
+.p-link { padding: 0; cursor: pointer; text-align: left; font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-primary); background: none; border: 0; overflow-wrap: anywhere; }
+.p-link:hover { color: var(--sr-link); }
+.p-cube-cell { display: flex; justify-content: center; }
+.p-cube-blank { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.p-due { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); }
+.p-checkpoint {
+  padding: 4px 10px; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px;
+  color: var(--sr-text-onaccent); background: var(--sr-chart-marker); border: 2px solid var(--sr-edge-dark); font-weight:700;}
+
+/* Blank-editor test */
+.p-rules { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); }
+.p-timer { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-l); line-height: 1.1; letter-spacing: 2px; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.p-ok { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-ok); }
+
+/* Kanbans (R3, R4): side by side at desktop, stacked full width at ≤ 760px */
+.p-kanban { display: grid; gap: 8px; min-width: 0; }
+.p-kanban-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.p-kanban-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 767px) { .p-kanban-4, .p-kanban-5 { grid-template-columns: minmax(0, 1fr); } }
+/* K4 tablet: the Build board's five columns scroll inside the panel, each at least 200 wide. */
+@media (min-width: 768px) and (max-width: 1099px) { .p-kanban-5 { grid-template-columns: repeat(5, minmax(200px, 1fr)); overflow-x: auto; padding-bottom: 4px; } }
+.p-kcol { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.p-kcol-head { margin: 0; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; color: var(--sr-text-secondary); font-weight:700;}
+.p-klist {
+  list-style: none; margin: 0; padding: 4px; display: grid; gap: 6px; align-content: start; min-height: 56px;
+  background: var(--sr-surface-well); border: 2px dashed var(--sr-edge-mid);
+}
+.p-kcard { display: grid; gap: 4px; padding: 6px 8px; min-width: 0; font-size:var(--type-small); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); }
+.p-kcard-title { overflow-wrap: anywhere; }
+.p-mini { display: inline-flex; gap: 2px; }
+
+/* R4 Build board cards */
+.p-card {
+  display: grid; gap: 6px; padding: 8px; min-width: 0; cursor: grab; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.p-card.done { border-color: var(--sr-signal-ok); }
+.p-card-open { padding: 0; cursor: pointer; text-align: left; font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-primary); background: none; border: 0; overflow-wrap: anywhere; }
+.p-card-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.p-chip { padding: 0 4px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); border: 1px solid var(--sr-edge-mid); }
+.p-chip-measure { color: var(--sr-text-primary); border-color: var(--sr-energy-accent); }
+.p-chip-grade { color: var(--sr-text-primary); border-color: var(--sr-signal-info); }
+.p-repo { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--sr-text-secondary-ontile); box-shadow: 2px 2px 0 var(--sr-energy-rival); }
+.p-gate {
+  margin: 0; padding: 6px 8px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-danger);
+  background: var(--sr-surface-well); border: 2px solid var(--sr-signal-danger);
+}
+
+/* Dialog subsections: measures, grade */
+.p-subsection { display: grid; gap: 8px; padding-top: 8px; border-top: 2px solid var(--sr-edge-mid); }
+.p-subtitle { margin: 0; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; color: var(--sr-label-accent); font-weight:700;}
+.p-measure-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0 8px; align-items: end; }
+/* UAT cu-r3 A12: fields keep their label row and error slot, so VALUE / UNIT labels never overlap after an error; the button
+ * sits level with the inputs, above the error line it shares a row with. */
+.p-measure-row > .p-field > label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-measure-row > .sr-btn { margin-bottom: calc(1.45em * var(--p-err-lines, 1) + 4px); }
+.p-measure-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.p-measure-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.p-remove::after { content: 'Remove'; }
+
+/* Grade */
+.p-grade-error { display: grid; gap: 6px; padding: 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-signal-danger); }
+.p-fix { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.5; color: var(--sr-text-primary); }
+.p-raw { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-primary); overflow-wrap: anywhere; }
+.p-grade-result { display: grid; gap: 6px; }
+.p-grade-line { margin: 0; display: flex; gap: 10px; align-items: baseline; }
+.p-grade-score { font-family: var(--sr-font-pixel); font-size:var(--type-display-m); line-height: 1.2; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.p-grade-verdict { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); }
+.p-grade-verdict.passed { color: var(--sr-label-ok); }
+.p-grade-list { margin: 0; padding-left: 18px; display: grid; gap: 2px; font-size:var(--type-small); }
+
+/* R5 timeline, R6 measures wall */
+.p-timeline { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; align-items: start; }
+@media (max-width: 760px) { .p-timeline { grid-template-columns: minmax(0, 1fr); } }
+.p-table { width: 100%; border-collapse: collapse; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-primary); }
+.p-table th, .p-table td { padding: 3px 8px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--sr-edge-mid); }
+.p-table th { font-weight: normal; color: var(--sr-text-secondary); }
+.p-table-compact th, .p-table-compact td { padding: 2px 6px; font-size:var(--type-meta); }
+.p-firsts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.p-first { display: grid; gap: 4px; min-width: 0; }
+.p-first-src { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; line-height: 1.45; letter-spacing: 0; color: var(--sr-text-secondary-ontile); -webkit-font-smoothing: auto; text-rendering: auto; }
+.p-first-label { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; color: var(--sr-text-secondary-ontile); font-weight:700;}
+.p-first-value { overflow-wrap: anywhere; font-family: var(--sr-font-pixel); font-size:var(--type-display-m); line-height: 1.2; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}

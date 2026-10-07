@@ -1,0 +1,85 @@
+{
+  "id": "p215",
+  "title": "Kth Largest Element in an Array",
+  "fn": "findKthLargest",
+  "signature": "func findKthLargest(nums []int, k int) int",
+  "params": [
+    {
+      "name": "nums",
+      "type": "[]int"
+    },
+    {
+      "name": "k",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// findKthLargest returns the k-th largest value in nums (counting repeats).\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   h := tk.Heap(\"h\"); h.Push(x, x); key, prio := h.Pop(); key, _ = h.Peek(); h.Len()\nfunc findKthLargest(nums []int, k int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          3,
+          2,
+          1,
+          5,
+          6,
+          4
+        ],
+        2
+      ],
+      "expected": 5
+    },
+    {
+      "args": [
+        [
+          3,
+          2,
+          3,
+          1,
+          2,
+          4,
+          5,
+          5,
+          6
+        ],
+        4
+      ],
+      "expected": 4
+    },
+    {
+      "args": [
+        [
+          1
+        ],
+        1
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        [
+          -1,
+          -1
+        ],
+        2
+      ],
+      "expected": -1
+    },
+    {
+      "args": [
+        [
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1
+        ],
+        5
+      ],
+      "expected": 3
+    }
+  ]
+}

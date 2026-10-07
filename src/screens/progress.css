@@ -1,0 +1,86 @@
+.rings { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.pace-table { width: 100%; border-collapse: collapse; font-size:var(--type-small); margin-bottom: 12px; }
+.pace-table th, .pace-table td { text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--sr-edge-shade-panel); }
+.pace-table th { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); font-weight:700;}
+.pace-table td { font-family: var(--sr-font-mono); }
+.verdict-ahead { border-color: var(--sr-signal-ok); color: var(--sr-label-ok); }
+.verdict-behind { border-color: var(--sr-signal-danger); color: var(--sr-label-danger); }
+.verdict-on { border-color: var(--sr-edge-mid); }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+/* P1 #10 stage badges (F6.12): 30 x 30 control bevel, Space Mono 14; earned is the accent fill. */
+.badge {
+  display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary);
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.badge.on {
+  color: var(--sr-text-onaccent); background: var(--sr-energy-accent);
+  box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade), 0 4px 0 var(--sr-edge-dark);
+}
+.ladder-usage-table { border-collapse: collapse; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ladder-usage-table th, .ladder-usage-table td { padding: 2px 8px; text-align: right; }
+.ev-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 767px) { .ev-cols { grid-template-columns: minmax(0, 1fr); } }
+.ev-col { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.ev-col-title { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; text-transform: uppercase; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.ev-stat { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; color: inherit; text-decoration: none; background: var(--sr-surface-well); }
+.ev-stat:hover .ev-label { text-decoration: underline; }
+.ev-value { flex: none; white-space: nowrap; font-family: var(--sr-font-mono); font-size: var(--type-small); font-weight: 400; }
+/* UAT cu-3p P3-13: at tablet width (836) the three columns are about 230 px, and the Design radar (which draws its seven labels
+ * beside its square) shrank to a 50 px square with the labels on top of each other, and "0 / 192" broke over two lines. Between
+ * 768 and 1099 the Design column takes a row of its own below DSA and AI, wide enough for the radar; the value keeps one line
+ * (its label wraps instead). */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .ev-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ev-cols > .ev-col:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+}
+/* A4 (settings-progress-ref): Evidence rows are 44 px touch targets on phone. */
+@media (max-width: 767px) { .ev-stat { min-height: var(--sr-size-hit-touch); } }
+.ev-radar-link { display: block; color: inherit; }
+
+.study-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.study-row { display: grid; gap: 4px; padding: 8px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.study-row p { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+.study-more { margin-top: 12px; }
+.study-row p.study-row-head { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+
+/* P1 #3 Pace: delta bars around a centre axis, verdict, sentence, three stat wells (F6.4). */
+.pace-panel { display: grid; gap: 12px; min-width: 0; }
+.pace-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pace-head .sr-panel-title { margin: 0; }
+.pace-verdict { font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.pace-verdict.verdict-ahead, .pace-row.verdict-ahead .pace-word { color: var(--sr-label-ok); }
+.pace-verdict.verdict-behind, .pace-row.verdict-behind .pace-word { color: var(--sr-label-danger); }
+.pace-bars { display: grid; gap: 8px; padding: 12px; }
+.pace-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 48px 72px; gap: 12px; align-items: center; }
+.pace-label, .pace-word { font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.pace-word { text-align: right; }
+.pace-track { display: grid; grid-template-columns: 1fr 1fr; height: 14px; border-left: 0; }
+.pace-neg { display: flex; justify-content: flex-end; border-right: 2px solid var(--sr-edge-mid); }
+.pace-pos { display: flex; justify-content: flex-start; }
+.pace-neg i, .pace-pos i { display: block; height: 10px; align-self: center; }
+.pace-neg i { background: var(--sr-signal-danger); }
+.pace-pos i { background: var(--sr-signal-ok); }
+.pace-delta { font-family: var(--sr-font-mono); font-size: var(--type-small); text-align: right; color: var(--sr-text-primary); }
+.pace-text { margin: 0; font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+.pace-wells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pace-well { display: grid; gap: 4px; padding: 8px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); min-width: 0; }
+.pace-well-label { font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.pace-well-value { font-family: var(--sr-font-mono); font-size: var(--type-small); color: var(--sr-text-primary); }
+
+/* P2: rings 5 across (desktop/tablet), 2 per row with the last centred on phone; redo tiles and review stats. */
+@media (max-width: 767px) {
+  .rings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rings > :last-child:nth-child(odd) { grid-column: 1 / -1; justify-self: center; width: calc(50% - 6px); }
+  /* cu-r1b F-B12: the verdict stays in the row (a fourth column) instead of dropping under the track name */
+  .pace-row { grid-template-columns: 88px minmax(0, 1fr) 36px 76px; gap: 6px; }
+  .pace-label, .pace-word { white-space: nowrap; }
+  .pace-wells { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* P1 #8 Redo tiles: value Display S, label Chivo 15 secondary; 3 columns, 1 on phone. */
+.progress-redo .stat-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.progress-redo .stat-value { font-size: var(--type-display-s); line-height: 1.25; font-weight: 400; }
+.progress-redo .stat-label { font-family: var(--sr-font-body); font-size: var(--type-small); }
+@media (max-width: 767px) { .progress-redo .stat-strip { grid-template-columns: minmax(0, 1fr); } }

@@ -1,0 +1,69 @@
+{
+  "id": "p198",
+  "title": "House Robber",
+  "fn": "rob",
+  "signature": "func rob(nums []int) int",
+  "params": [
+    {
+      "name": "nums",
+      "type": "[]int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// rob returns the most money you can take from houses in a row without robbing two adjacent houses.\n//\n// Optional: add import \"dojo/tk\" to watch your DP step by step, e.g.\n//   t := tk.Table(\"dp\", 1, n+1)\n//   t.Set(0, i, v, tk.Dep(0, i-1), tk.Dep(0, i-2), tk.Rule(\"{0} + {1}\"))\nfunc rob(nums []int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          1,
+          2,
+          3,
+          1
+        ]
+      ],
+      "expected": 4
+    },
+    {
+      "args": [
+        [
+          2,
+          7,
+          9,
+          3,
+          1
+        ]
+      ],
+      "expected": 12
+    },
+    {
+      "args": [
+        [
+          2,
+          1,
+          1,
+          2
+        ]
+      ],
+      "expected": 4
+    },
+    {
+      "args": [
+        [
+          0
+        ]
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        [
+          5,
+          1,
+          1,
+          5
+        ]
+      ],
+      "expected": 10
+    }
+  ]
+}

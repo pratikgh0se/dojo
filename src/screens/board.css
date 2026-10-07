@@ -1,0 +1,168 @@
+/* ui-board (PLATFORM "Board"), house style per ui-foundation. */
+.board { display: grid; gap: 16px; min-width: 0; }
+.board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.board-title { margin: 0; font-size: var(--type-display-m); font-weight: 700; line-height: 1.2; }
+.now-tag { color: var(--sr-label-accent); }
+
+/* B1.3 strip: 72 cells, 24 tall, gap 2; one row desktop, 36 per row tablet, 7 per row phone (G4 ruling); never scrolls. */
+.strip { display: grid; grid-template-columns: repeat(var(--strip-n, 72), minmax(0, 1fr)); gap: 2px; } /* cu-r1b F-B15: 73+ cells (a card slid past S72) stay on the one desktop row */
+.strip-cell { position: relative; display: block; height: 24px; min-width: 0; padding: 0; background: transparent; border: 2px solid var(--sr-edge-mid); cursor: pointer; }
+.strip-cell.now { border-color: var(--sr-energy-accent); }
+.strip-cell.sel { background: var(--sr-energy-accent); border-color: var(--sr-energy-accent); }
+.strip-cell.blink { animation: strip-blink 320ms steps(2); }
+@keyframes strip-blink { 50% { background: var(--sr-signal-warn); } }
+
+.debt { display: grid; gap: 8px; }
+.debt-bar { position: relative; display: flex; gap: 2px; min-height: 14px; flex-wrap: wrap; }
+.debt-seg { width: 10px; height: 14px; }
+.debt-seg.own { background: var(--sr-edge-mid); }
+.debt-seg.slid { background: var(--sr-signal-danger); }
+.debt-avg { position: absolute; top: -3px; width: 2px; height: 20px; background: var(--sr-chart-marker); }
+.debt-legend { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.debt-lead { font-family: var(--sr-font-body); }
+.debt-legend [title] { cursor: help; }
+
+/* B3: four equal columns on desktop (gap 16) and tablet (gap 12, all four visible, no scroll); one stack on phone. */
+.columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.col {
+  min-width: 0; min-height: 120px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; padding: 16px;
+  background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+}
+.col-slid { border-left: 4px solid var(--sr-signal-danger); }
+.col-head {
+  margin: 0 0 12px; font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--sr-label-accent); overflow-wrap: break-word; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.col-count, .col-min { color: inherit; }
+.col-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; }
+.col-empty { margin: 16px 0 0; text-align: center; font-size: var(--type-small); line-height: 1.55; color: var(--sr-text-secondary); }
+.col-toggle {
+  width: 100%; min-height: var(--sr-size-hit-touch); display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer;
+}
+.col-caret {
+  flex: none; width: var(--sr-size-control-h-sm); height: var(--sr-size-control-h-sm); display: grid; place-items: center; font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small);
+  color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+  -webkit-font-smoothing: auto;
+}
+.col-caret::after { content: attr(data-caret); }
+
+/* B2 card: tile bevel, padding 12, gap 6, 4 px left track bar.
+ * Ruling 23 K2: a card's width follows its column. The one grid track is minmax(0, 1fr), not `auto`: an auto track
+ * is as wide as its widest unbreakable child (a "3Blue1Brown calculus" chip, a Move to sprint… button), and that
+ * pushed the card's content out past the card and the column at 834 (UAT cu-1 P2-1). Every child may shrink. */
+.card {
+  position: relative; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; cursor: grab;
+  /* sim-align F11: a long press anywhere on the card (its text included) starts the drag, never a text selection */
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); border-left: 4px solid var(--sr-energy-accent);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+  transition: transform var(--sr-motion-fast) steps(3);
+}
+.card > * { min-width: 0; }
+.card.track-interview { border-left-color: var(--sr-energy-rival); }
+.card.track-design { border-left-color: var(--sr-signal-arcane); }
+/* A slid-in card keeps the red rule it always had (the Slid column marks it too). */
+.card.slid { border-left-color: var(--sr-signal-danger); }
+/* The lift on press is for the card itself. A press on a control inside it (Pin, Move to sprint…, a menu item) must not move
+ * the card: a transform makes the card its own stacking context, which put its open menu under the next card between the
+ * press and the release, so the click fell through (UAT cu-3p P2-1, ruling 25 R4). */
+.card[draggable='true']:active:not(:has(.sr-btn:active, [role='menu']:active)) { transform: translateY(-4px); }
+/* R4: a card that holds an open menu stands above the cards after it, whatever else the cards do. */
+.card:has([role='menu']) { z-index: var(--sr-z-dropdown); }
+/* UAT r2 J7: a card opens on click */
+.card[data-opens='true'] { cursor: pointer; }
+.card-title {
+  margin: 0; font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-body); line-height: 1.4; overflow-wrap: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.card-meta { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); line-height: 1.45; color: var(--sr-text-secondary-ontile); }
+/* ruling 20 S4: a split card is an uncounted group line above its parts (no tile, no bevel, never a drag target) */
+.card-group {
+  display: block; min-width: 0; padding: 4px 0 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45;
+  color: var(--sr-text-secondary); text-decoration: none; overflow-wrap: anywhere; border-bottom: 1px dashed var(--sr-edge-shade-tile);
+}
+.card-group:hover, .card-group:focus-visible { color: var(--sr-text-primary); }
+.card-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-chips .chip { max-width: 100%; overflow-wrap: anywhere; }
+.card-chips .chip.chip-src { overflow-wrap: normal; }
+/* shell-today-board M16 (F6.1): a tool label never wraps; whole buttons wrap in the row instead (ellipsis only
+ * as a last resort in a card narrower than the label). */
+/* K2: `display: block` (a flex button has no text box for the ellipsis, and would clip both ends of its label); the line
+ * box is the button's inner height, so the label stays vertically centred. */
+.card .bd-tools > .sr-btn, .card .rail > .sr-btn {
+  display: block; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center;
+  height: var(--sr-size-control-h-sm); line-height: calc(var(--sr-size-control-h-sm) - 4px); padding-top: 0; padding-bottom: 0;
+}
+/* UAT r3 J7: at 1280 a card is 208 px inside, and Pin + Move to sprint… (and Do ▸ · Slide › · Done ✓) missed one row by
+ * a few px, so the tools took two rows and the reserved rail two more (an empty band of about 85 px at rest).
+ * A little less padding and gap puts each on one row; the rail row is still reserved, so hovering moves nothing. */
+.card .bd-tools, .card .rail { gap: 6px; }
+.card .bd-tools > .sr-btn, .card .rail > .sr-btn { padding-left: 6px; padding-right: 6px; }
+/* UAT cu-3 P3-2: pinning must not make the card taller. "Unpin" is wider than "Pin": at a 208 px content width Pin + Move to
+ * sprint… fitted one row and Unpin + Move to sprint… did not (a second tools row), and a "Pinned" chip could open a new chip
+ * line. So: the tools row is tightened (4 gap, 3 padding, 0.3 letter-spacing: Unpin + Move to sprint… is 203 of 208 px), and
+ * the Pin button is as wide as Unpin (4em), so the row wraps the same way in both states at every width. */
+.card .bd-tools { gap: 4px; }
+.card .bd-tools > .sr-btn { padding-left: 3px; padding-right: 3px; letter-spacing: 0.3px; }
+.card .bd-tools > .pin-btn { min-width: 4em; }
+/* The "Pinned" chip's place in the chips row is always taken: an unpinned card keeps it as an invisible stand-in, so the row
+ * wraps the same pinned or not and a card with no other chip keeps its chip line. */
+.pin-ghost { visibility: hidden; }
+.pin-ghost::before { content: 'Pinned'; }
+/* re-UAT J7: the rail's row is always laid out (reserved) and only shown on hover/focus, so hovering a card never
+ * changes its height or moves the cards below it under the pointer. Hidden, it is out of the tab order and a11y tree. */
+.rail { display: flex; visibility: hidden; gap: 8px; flex-wrap: wrap; }
+.card:hover .rail, .card:focus-within .rail { visibility: visible; }
+.rail .sr-btn { height: var(--sr-size-control-h-sm); padding: 0 8px; font-size:var(--type-meta); }
+.card.bounce { animation: bounce 160ms steps(3); }
+@keyframes bounce {
+  0% { transform: translateX(0); }
+  33% { transform: translateX(-6px); }
+  66% { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}
+
+.board-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 1099px) {
+  .strip { grid-template-columns: repeat(36, minmax(0, 1fr)); }
+  .columns { gap: 12px; }
+}
+/* Touch (tablet and phone): the rail is always visible. */
+@media (hover: none), (max-width: 1099px) {
+  .rail { visibility: visible; }
+}
+@media (max-width: 767px) {
+  .columns { grid-template-columns: minmax(0, 1fr); }
+  .col { padding: 16px; }
+  .col-head { margin: 0; }
+  .col.col-closed { min-height: 0; }
+  .col-body { margin-top: 12px; }
+  .board-actions { width: 100%; }
+  .board-actions > .sr-btn { flex: 1 1 0; }
+  .card .rail > .sr-btn, .card .bd-tools > .sr-btn { height: var(--sr-size-hit-touch); line-height: calc(var(--sr-size-hit-touch) - 4px); padding: 0 12px; }
+}
+
+/* G4 review: on phone the strip is 7 cells a row (7 x 49 px at a 343 px content width; 8 or 9 a row cannot
+ * give a 44 px target). Each button IS its whole grid cell (44 tall, gap 0), so targets never overlap; the
+ * visible cell is drawn inside it by ::before, inset into what used to be the gaps. */
+@media (max-width: 767px) {
+  .strip { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }
+  .strip-cell, .strip-cell.now, .strip-cell.sel { height: var(--sr-size-hit-touch); background: transparent; border: 0; }
+  .strip-cell::before { content: ''; position: absolute; inset: 10px 4px; border: 2px solid var(--sr-edge-mid); }
+  .strip-cell.now::before { border-color: var(--sr-energy-accent); }
+  .strip-cell.sel::before { background: var(--sr-energy-accent); border-color: var(--sr-energy-accent); }
+}
+
+/* UAT cu-3p P3-6: at tablet width (834) a card's content is 120 px, and "Move to sprint…" is 139, so it was cut to "MOVE TO SP…"
+ * and the rail's Do ▸ and Slide › (47 + 6 + 67 = 120) fell one per row. A little less padding on the column (10) and the card (8)
+ * and a tighter label give the card 140 px for a 136 px label: the row is Pin, then Move to sprint… whole, then Do ▸ · Slide ›,
+ * then Done ✓ (the mockup's rows). Narrower than about 820 the ellipsis is still the last resort (M16). */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .col { padding: 10px; }
+  .card { padding: 8px; }
+  .card .bd-tools > .sr-btn { padding-left: 2px; padding-right: 2px; letter-spacing: 0; }
+  .card .rail { gap: 4px; }
+}

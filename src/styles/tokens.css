@@ -1,0 +1,175 @@
+/* STILL ROOM tokens — generated from assets/tokens.json v0.2.1. Dark only (ux spec §2): the light theme is removed. */
+:root{
+  color-scheme: dark;
+  --sr-version: "0.2.1";
+  --sr-energy-accent: #ff8a2a;
+  --sr-energy-accent-glow: #ffb545;
+  --sr-energy-accent-shade: #b8501a;
+  --sr-energy-rival: #3ab4ff;
+  --sr-energy-rival-glow: #9fdcff;
+  --sr-energy-rival-shade: #1e6fc2;
+  --sr-energy-boss: #c084fc;
+  --sr-energy-boss-glow: #e4d0ff;
+  --sr-energy-boss-shade: #5a2d82;
+  --sr-signal-ok: #3ddc84;
+  --sr-signal-warn: #ffe05a;
+  --sr-signal-danger: #ff4d4d;
+  --sr-signal-danger-onlight: #c2331f;
+  --sr-signal-arcane: #8c75fa;
+  /* Lightened tint of --sr-signal-arcane: the saturated value is only ~3.8:1 on
+   * --sr-surface-panel, under WCAG's 4.5:1 text minimum (D-59). Used for text on that background
+   * (e.g. the kit palette's 'ai' family label) where --sr-signal-arcane itself stays on
+   * non-text uses (borders, glyphs) to match the prototype. */
+  --sr-signal-arcane-label: #a391fb;
+  --sr-signal-info: #4dd8ff;
+  --sr-chart-cat-1: #ff8a2a;
+  --sr-chart-cat-2: #3ab4ff;
+  --sr-chart-cat-3: #3ddc84;
+  --sr-chart-cat-4: #c084fc;
+  --sr-chart-cat-5: #ffe05a;
+  --sr-chart-cat-6: #ff4d4d;
+  --sr-chart-cat-7: #5eead4;
+  --sr-chart-cat-8: #f2c14e;
+  --sr-chart-seq-orange: #3a2a22, #7a4418, #b8501a, #ff8a2a, #ffb545, #ffd9a8;
+  /* the same ramp, one value each (the Consistency calendar's cells) */
+  --sr-chart-seq-orange-1: #7a4418;
+  --sr-chart-seq-orange-2: #b8501a;
+  --sr-chart-seq-orange-3: #ff8a2a;
+  --sr-chart-seq-orange-4: #ffb545;
+  --sr-chart-seq-orange-5: #ffd9a8;
+  --sr-chart-seq-blue: #1a2340, #1e4fa0, #1e6fc2, #3ab4ff, #9fdcff, #dff3ff;
+  --sr-chart-diverging: #3ab4ff, #9fdcff, #414968, #ffb545, #ff8a2a;
+  --sr-chart-grid: #1b1f30;
+  --sr-chart-axis: #414968;
+  --sr-chart-label: #b4bad0;
+  --sr-chart-threshold: #ff4d4d;
+  --sr-chart-marker: #ffe05a;
+  --sr-diff-add-bg: #12301f;
+  --sr-diff-add-fg: #3ddc84;
+  --sr-diff-remove-bg: #3a1518;
+  --sr-diff-remove-fg: #ff4d4d;
+  --sr-diff-hunk: #414968;
+  --sr-syntax-keyword: #ff8a2a;
+  --sr-syntax-string: #3ddc84;
+  --sr-syntax-number: #ffe05a;
+  --sr-syntax-comment: #5a627f;
+  --sr-syntax-type: #3ab4ff;
+  --sr-syntax-function: #c084fc;
+  --sr-syntax-punctuation: #9aa0b8;
+  --sr-syntax-error: #ff4d4d;
+  --sr-status-queued: #414968;
+  --sr-status-running: #ff8a2a;
+  --sr-status-ok: #3ddc84;
+  --sr-status-failed: #ff4d4d;
+  --sr-status-skipped: #5a627f;
+  --sr-status-cached: #3ab4ff;
+  --sr-status-retrying: #ffe05a;
+  --sr-status-cancelled: #9aa0b8;
+  --sr-surface-panel: #2a2f45;
+  --sr-surface-tile: #3a4162;
+  --sr-surface-well: #0f111c;
+  --sr-surface-muted: #5a627f;
+  --sr-surface-room: #f4efe6;
+  --sr-edge-dark: #0f111c;
+  --sr-chart-well: #0f111c;
+  --sr-edge-mid: #414968;
+  --sr-edge-light-panel: #414968;
+  --sr-edge-light-tile: #56608a;
+  --sr-edge-shade-panel: #1b1f30;
+  --sr-edge-shade-tile: #262b40;
+  --sr-text-primary: #f4efe6;
+  --sr-text-secondary: #b4bad0;
+  --sr-text-onaccent: #1a1d2b;
+  --sr-link: #ffb545;
+  --sr-focus: #ff8a2a;
+  --sr-label-accent: #ffb545;
+  --sr-label-ok: #3ddc84;
+  --sr-label-warn: #ffe05a;
+  --sr-label-danger: #ff7070;
+  --sr-text-secondary-ontile: #b4bad0;
+  --sr-space-1: 4px;
+  --sr-space-2: 8px;
+  --sr-space-3: 12px;
+  --sr-space-4: 16px;
+  --sr-space-6: 24px;
+  --sr-space-8: 32px;
+  --sr-space-12: 48px;
+  --sr-space-16: 64px;
+  --sr-space-35: 14px;
+  --sr-size-radius: 0px;
+  --sr-size-border-control: 2px;
+  --sr-size-border-panel: 3px;
+  --sr-size-border-hero: 4px;
+  --sr-size-bevel-control: 2px;
+  --sr-size-bevel-panel: 3px;
+  --sr-size-bevel-hero: 4px;
+  --sr-size-drop-control: 4px;
+  --sr-size-drop-panel: 8px;
+  --sr-size-drop-hero: 12px;
+  --sr-size-control-h: 36px;
+  --sr-size-control-h-lg: 40px;
+  --sr-size-control-h-sm: 32px;
+  --sr-size-control-h-quiet: 32px;
+  --sr-size-input-h: 30px;
+  --sr-size-row-h: 40px;
+  --sr-size-row-h-compact: 28px;
+  --sr-size-hit-desktop: 30px;
+  --sr-size-hit-touch: 44px;
+  --sr-size-popover-w: 300px;
+  --sr-size-sidebar-w: 220px;
+  --sr-size-inspector-w: 260px;
+  --sr-size-toolbar-h: 44px;
+  --sr-size-titlebar-h: 28px;
+  --sr-size-statusbar-h: 24px;
+  --sr-size-focus-w: 2px;
+  --sr-size-focus-offset: 2px;
+  --sr-size-grid-room: 24px;
+  --sr-size-chart-cube: 4px;
+  --sr-size-chart-gap: 2px;
+  --sr-size-chart-bar: 10px;
+  --sr-motion-fast: 120ms;
+  --sr-motion-base: 160ms;
+  --sr-motion-pop: 220ms;
+  --sr-motion-hit: 90ms;
+  --sr-motion-formflashframe: 80ms;
+  --sr-motion-formflashframes: 4;
+  --sr-motion-trainlean: 500ms;
+  --sr-motion-toastdismiss: 4000ms;
+  --sr-motion-steps-fast: 3;
+  --sr-motion-steps-base: 4;
+  --sr-motion-easing: steps(4);
+  --sr-z-base: 0;
+  --sr-z-sticky: 10;
+  --sr-z-sidebar: 20;
+  --sr-z-dropdown: 100;
+  --sr-z-popover: 200;
+  --sr-z-tooltip: 300;
+  --sr-z-sheet: 400;
+  --sr-z-modal: 500;
+  --sr-z-toast: 600;
+  --sr-z-commandpalette: 700;
+  --sr-z-flash: 900;
+  --sr-flash: #ffffff;
+  --sr-font-pixel: "Silkscreen", monospace;
+  --sr-font-body: "Chivo", system-ui, sans-serif;
+  --sr-font-mono: "Space Mono", ui-monospace, monospace;
+  /* Type scale (ux spec section 1). Silkscreen is drawn on an 8 px grid: only the four display sizes,
+   * only for headings and big numbers. Everything read is Chivo (body 17, secondary 15, never under 14). */
+  --type-display-s: 16px;
+  --type-display-m: 24px;
+  --type-display-l: 32px;
+  --type-display-xl: 48px;
+  --type-title: 22px;
+  --type-body: 17px;
+  --type-small: 15px;
+  --type-meta: 14px;
+  --type-leading: 1.55;
+  --type-measure: 70ch;
+}
+/* bevel recipes */
+.sr-bevel-control{border:2px solid var(--sr-edge-dark);box-shadow:inset 2px 2px 0 var(--sr-edge-light-tile),inset -2px -2px 0 var(--sr-edge-shade-tile),0 4px 0 var(--sr-edge-dark)}
+.sr-bevel-panel{border:3px solid var(--sr-edge-dark);box-shadow:inset 3px 3px 0 var(--sr-edge-light-panel),inset -3px -3px 0 var(--sr-edge-shade-panel),0 8px 0 var(--sr-edge-dark)}
+.sr-bevel-hero{border:4px solid var(--sr-edge-dark);box-shadow:inset 4px 4px 0 var(--sr-accent-glow),inset -4px -4px 0 var(--sr-accent-shade),0 12px 0 var(--sr-edge-dark)}
+.sr-pressed{transform:translateY(4px);box-shadow:inset 2px 2px 0 var(--sr-edge-light-tile),inset -2px -2px 0 var(--sr-edge-shade-tile),0 0 0 var(--sr-edge-dark)}
+:focus-visible{outline:var(--sr-size-focus-w) solid var(--sr-focus);outline-offset:var(--sr-size-focus-offset)}
+@media (prefers-reduced-motion: reduce){*{animation-duration:0s !important;transition-duration:0s !important}}

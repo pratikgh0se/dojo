@@ -1,0 +1,67 @@
+{
+  "bank": "neetcode150",
+  "source": "https://example.com/fixture-sets/a",
+  "snapshot": "2026-01-01",
+  "fetchedAt": "2026-01-01T00:00:00.000Z",
+  "via": "original test fixture",
+  "groups": [
+    "Warmups",
+    "Graph drills"
+  ],
+  "items": [
+    {
+      "id": "p9001",
+      "name": "Pair Finder",
+      "url": "https://leetcode.com/problems/fixture-pair-finder/",
+      "difficulty": "E",
+      "pattern": "TWO POINTERS",
+      "group": "Warmups",
+      "num": 9001
+    },
+    {
+      "id": "p9002",
+      "name": "Window Sum",
+      "url": "https://leetcode.com/problems/fixture-window-sum/",
+      "difficulty": "M",
+      "pattern": "SLIDING WINDOW",
+      "group": "Warmups",
+      "num": 9002
+    },
+    {
+      "id": "p9003",
+      "name": "Island Walk",
+      "url": "https://leetcode.com/problems/fixture-island-walk/",
+      "difficulty": "M",
+      "pattern": "BFS / DFS",
+      "group": "Graph drills",
+      "num": 9003
+    },
+    {
+      "id": "p9004",
+      "name": "Ordering Tasks",
+      "url": "https://leetcode.com/problems/fixture-ordering-tasks/",
+      "difficulty": "M",
+      "pattern": "TOPO SORT",
+      "group": "Graph drills",
+      "num": 9004
+    },
+    {
+      "id": "p207",
+      "name": "Prerequisite Order",
+      "url": "https://leetcode.com/problems/fixture-prerequisite-order/",
+      "difficulty": "M",
+      "pattern": "TOPO SORT",
+      "group": "Graph drills",
+      "num": 207
+    },
+    {
+      "id": "p9005",
+      "name": "Plain Counting",
+      "url": "https://leetcode.com/problems/fixture-plain-counting/",
+      "difficulty": "E",
+      "pattern": null,
+      "group": "Warmups",
+      "num": 9005
+    }
+  ]
+}

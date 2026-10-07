@@ -1,0 +1,67 @@
+{
+  "bank": "blind75",
+  "source": "https://example.com/fixture-sets/b",
+  "snapshot": "2026-01-01",
+  "fetchedAt": "2026-01-01T00:00:00.000Z",
+  "via": "original test fixture",
+  "groups": [
+    "Lists",
+    "Trees"
+  ],
+  "items": [
+    {
+      "id": "p9001",
+      "name": "Pair Finder",
+      "url": "https://leetcode.com/problems/fixture-pair-finder/",
+      "difficulty": "E",
+      "pattern": "TWO POINTERS",
+      "group": "Lists",
+      "num": 9001
+    },
+    {
+      "id": "p9101",
+      "name": "List Splicer",
+      "url": "https://leetcode.com/problems/fixture-list-splicer/",
+      "difficulty": "M",
+      "pattern": null,
+      "group": "Lists",
+      "num": 9101
+    },
+    {
+      "id": "p9102",
+      "name": "Ring Detector",
+      "url": "https://leetcode.com/problems/fixture-ring-detector/",
+      "difficulty": "E",
+      "pattern": "CYCLE \u00b7 FAST/SLOW",
+      "group": "Lists",
+      "num": 9102
+    },
+    {
+      "id": "p9103",
+      "name": "Tree Depth",
+      "url": "https://leetcode.com/problems/fixture-tree-depth/",
+      "difficulty": "E",
+      "pattern": "BFS / DFS",
+      "group": "Trees",
+      "num": 9103
+    },
+    {
+      "id": "p200",
+      "name": "Region Counter",
+      "url": "https://leetcode.com/problems/fixture-region-counter/",
+      "difficulty": "M",
+      "pattern": "BFS / DFS",
+      "group": "Trees",
+      "num": 200
+    },
+    {
+      "id": "p9104",
+      "name": "Hard Window",
+      "url": "https://leetcode.com/problems/fixture-hard-window/",
+      "difficulty": "H",
+      "pattern": "SLIDING WINDOW",
+      "group": "Trees",
+      "num": 9104
+    }
+  ]
+}

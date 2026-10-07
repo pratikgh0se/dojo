@@ -1,0 +1,36 @@
+{
+  "bank": "hellointerview",
+  "source": "https://example.com/fixture-sets/designs",
+  "snapshot": "2026-01-01",
+  "fetchedAt": "2026-01-01T00:00:00.000Z",
+  "via": "original test fixture",
+  "groups": [
+    "Design drills"
+  ],
+  "items": [
+    {
+      "id": "hi-fx-chat",
+      "name": "Fixture Chat",
+      "url": "https://example.com/fixture/chat",
+      "difficulty": null,
+      "pattern": null,
+      "group": "Design drills"
+    },
+    {
+      "id": "hi-fx-cache",
+      "name": "Fixture Cache",
+      "url": "https://example.com/fixture/cache",
+      "difficulty": null,
+      "pattern": null,
+      "group": "Design drills"
+    },
+    {
+      "id": "hi-fx-solo",
+      "name": "Fixture Solo Design",
+      "url": "https://example.com/fixture/solo",
+      "difficulty": null,
+      "pattern": null,
+      "group": "Design drills"
+    }
+  ]
+}

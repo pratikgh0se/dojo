@@ -1,0 +1,50 @@
+.stage-ladder { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.stage-band {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 12px; align-items: center;
+  padding: 6px 10px; cursor: pointer; text-align: left; font-family: var(--sr-font-body); font-size:var(--type-small);
+  color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  border-left: 6px solid var(--sr-surface-muted);
+}
+.stage-band.state-done { border-left-color: var(--sr-signal-ok); }
+.stage-band.state-current { border-left-color: var(--sr-energy-accent); }
+.stage-band.state-behind { border-left-color: var(--sr-signal-danger); }
+.stage-band.sel { border-color: var(--sr-energy-accent); }
+.stage-name { overflow-wrap: break-word; min-width: 0; }
+.stage-range, .stage-count { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); }
+.checkpoint {
+  padding: 4px 10px; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--sr-text-onaccent); background: var(--sr-chart-marker); border: 2px solid var(--sr-edge-dark); font-weight:700;}
+.stage-rows { display: grid; gap: 4px; }
+.stage-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 4px; border: 2px solid transparent; }
+.stage-row.open { border-color: var(--sr-energy-accent); }
+.stage-row-label {
+  width: 48px; height: var(--sr-size-control-h-sm); padding: 0 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; /* rerun: padding on the F3 scale, no UA 1 px */ font-family: var(--sr-font-mono); font-size:var(--type-meta);
+  color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-mid);
+}
+.stage-cubes { display: flex; flex-wrap: wrap; gap: 12px; }
+.cube-cell { display: inline-flex; align-items: center; gap: 4px; }
+.cube-label { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.sprint-tickets { display: grid; gap: 8px; margin-top: 12px; }
+.stage-ticket { display: grid; gap: 4px; }
+.ticket-text { margin: 0 0 0 30px; font-size:var(--type-small); color: var(--sr-text-secondary); }
+.ticket-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 0 30px; }
+.proof { margin: 4px 0 0; font-size:var(--type-small); }
+.proof b { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
+.balance-list { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 16px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.balance-list b { color: var(--sr-text-primary); }
+.shelf summary { cursor: pointer; margin: 0; }
+.shelf-group { margin-top: 12px; }
+.working-with-ai { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+.wwai-title { margin: 8px 0 0; font-size: var(--type-display-s); line-height: 1.25; }
+@media (max-width: 640px) { .stage-band { grid-template-columns: minmax(0, 1fr) auto; } }
+
+/* Chain P: the rung cube sits beside (not inside) the band button, so the button's name and the li text stay as they were. */
+.stage-li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+/* F3 phone: every control on the AI tab is a 44 px touch target. */
+@media (max-width: 767px) {
+  .ai .p-link, .ai .p-card-open { min-height: var(--sr-size-hit-touch); }
+  .ai .tick { min-width: var(--sr-size-hit-touch); min-height: var(--sr-size-hit-touch); }
+  .ai .stage-row-label { width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); }
+  /* A4 (settings-progress-ref): the "Optional shelf · n" summary. */
+  .shelf > summary { min-height: var(--sr-size-hit-touch); padding: 12px 0; }
+}

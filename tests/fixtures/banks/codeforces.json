@@ -1,0 +1,64 @@
+{
+  "bank": "codeforces",
+  "source": "https://example.com/fixture-sets/ladder",
+  "snapshot": "2026-01-01",
+  "fetchedAt": "2026-01-01T00:00:00.000Z",
+  "via": "original test fixture",
+  "groups": [
+    "1200",
+    "1300",
+    "1400"
+  ],
+  "items": [
+    {
+      "id": "cf-9001A",
+      "name": "Fixture Parity",
+      "url": "https://codeforces.com/problemset/problem/9001/A",
+      "difficulty": 1200,
+      "pattern": null,
+      "group": "1200",
+      "contestId": 9001,
+      "index": "A"
+    },
+    {
+      "id": "cf-9002B",
+      "name": "Fixture Strings",
+      "url": "https://codeforces.com/problemset/problem/9002/B",
+      "difficulty": 1200,
+      "pattern": "STRING MATCH",
+      "group": "1200",
+      "contestId": 9002,
+      "index": "B"
+    },
+    {
+      "id": "cf-9003C",
+      "name": "Fixture Greedy",
+      "url": "https://codeforces.com/problemset/problem/9003/C",
+      "difficulty": 1300,
+      "pattern": "GREEDY",
+      "group": "1300",
+      "contestId": 9003,
+      "index": "C"
+    },
+    {
+      "id": "cf-9004A",
+      "name": "Fixture Sums",
+      "url": "https://codeforces.com/problemset/problem/9004/A",
+      "difficulty": 1300,
+      "pattern": null,
+      "group": "1300",
+      "contestId": 9004,
+      "index": "A"
+    },
+    {
+      "id": "cf-9005D",
+      "name": "Fixture Paths",
+      "url": "https://codeforces.com/problemset/problem/9005/D",
+      "difficulty": 1400,
+      "pattern": "SHORTEST PATH",
+      "group": "1400",
+      "contestId": 9005,
+      "index": "D"
+    }
+  ]
+}

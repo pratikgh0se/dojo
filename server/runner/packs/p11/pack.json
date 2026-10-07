@@ -1,0 +1,77 @@
+{
+  "id": "p11",
+  "title": "Container With Most Water",
+  "fn": "maxArea",
+  "signature": "func maxArea(height []int) int",
+  "params": [
+    {
+      "name": "height",
+      "type": "[]int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// maxArea returns the most water two of the vertical lines can hold together with the x-axis.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   a := tk.Array(\"h\", height); a.Pointer(\"l\", l); a.Pointer(\"r\", r); a.Window(l, r)\nfunc maxArea(height []int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          1,
+          8,
+          6,
+          2,
+          5,
+          4,
+          8,
+          3,
+          7
+        ]
+      ],
+      "expected": 49
+    },
+    {
+      "args": [
+        [
+          1,
+          1
+        ]
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        [
+          4,
+          3,
+          2,
+          1,
+          4
+        ]
+      ],
+      "expected": 16
+    },
+    {
+      "args": [
+        [
+          1,
+          2,
+          1
+        ]
+      ],
+      "expected": 2
+    },
+    {
+      "args": [
+        [
+          2,
+          3,
+          4,
+          5,
+          18,
+          17,
+          6
+        ]
+      ],
+      "expected": 17
+    }
+  ]
+}

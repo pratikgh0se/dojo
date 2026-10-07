@@ -1,0 +1,95 @@
+{
+  "id": "p543",
+  "title": "Diameter of Binary Tree",
+  "fn": "diameterOfBinaryTree",
+  "signature": "func diameterOfBinaryTree(root *TreeNode) int",
+  "params": [
+    {
+      "name": "root",
+      "type": "*TreeNode"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// diameterOfBinaryTree returns the number of edges on the longest path between any two nodes. TreeNode is declared for you: type TreeNode struct { Val int; Left, Right *TreeNode }.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   t := tk.Tree(\"t\"); t.Node(id, val, parent, \"L\"); t.Visit(id); t.Mark(id, \"h=2\")\nfunc diameterOfBinaryTree(root *TreeNode) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        [
+          1
+        ]
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        [
+          1,
+          2,
+          null,
+          3,
+          null,
+          4
+        ]
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        [
+          4,
+          -7,
+          -3,
+          null,
+          null,
+          -9,
+          -3,
+          9,
+          -7,
+          -4,
+          null,
+          6,
+          null,
+          -6,
+          -6,
+          null,
+          null,
+          0,
+          6,
+          5,
+          null,
+          9,
+          null,
+          null,
+          -1,
+          -4,
+          null,
+          null,
+          null,
+          -2
+        ]
+      ],
+      "expected": 8
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+.prose-list { margin: 0; padding-left: 24px; display: grid; gap: 6px; font-size:var(--type-small); line-height: 1.55; }
+.prose-list b { color: var(--sr-label-accent); font-weight: 700; }
+.prose-intro { margin: 0 0 8px; font-size:var(--type-small); line-height: 1.55; }
+.prose-sub { margin: 8px 0 0; font-size:var(--type-small); color: var(--sr-text-secondary); }
+.prose-plain { display: grid; gap: 6px; }
+.table-scroll { overflow-x: auto; min-width: 0; padding-bottom: 4px; }
+.prose-table { width: 100%; border-collapse: collapse; font-size:var(--type-small); }
+.prose-table th, .prose-table td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 2px solid var(--sr-edge-shade-panel); }
+.prose-table th { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); font-weight:700;}
+.prose-table tr.hl td { color: var(--sr-label-accent); font-weight: 700; }
+.prompt-block { margin: 0 0 12px; }
+.prompt-title { margin-bottom: 4px; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.prompt {
+  margin: 0; padding: 10px; white-space: pre-wrap; font-family: var(--sr-font-mono); font-size:var(--type-meta);
+  color: var(--sr-text-primary); background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}

@@ -1,0 +1,61 @@
+{
+  "generated": "2026-09-05",
+  "planVersion": "fx-1",
+  "sprint_days": 14,
+  "total_sprints": 72,
+  "rotation": {
+    "Mon": "AI · watch",
+    "Tue": "Interview · code",
+    "Wed": "AI · build",
+    "Thu": "Interview · design",
+    "Fri": "Off",
+    "Sat": "AI build + news slot",
+    "Sun": "Interview + review"
+  },
+  "sprints": [
+    {
+      "sprint": 1, "block": 1, "block_title": "B1", "block_theme": "T1", "focus_ai": "fa1", "focus_interview": "fi1", "proof": null,
+      "ai": [
+        { "id": "m1w1t1", "skill": "aieng", "text": "Rung 1, the API call. Watch the course, then build a CLI", "links": [ { "label": "Anthropic Academy: Claude with the Anthropic API (free)", "url": "https://example.com/academy" } ] }
+      ],
+      "interview": [
+        { "id": "m1w1i1", "skill": "dsa", "text": "Set the routine: 25 minutes per problem", "links": [ { "label": "Tech Interview Handbook", "url": "https://example.com/tih" } ] }
+      ]
+    },
+    {
+      "sprint": 2, "block": 1, "block_title": "B1", "block_theme": "T1", "focus_ai": "fa2", "focus_interview": "fi2", "proof": null,
+      "ai": [
+        { "id": "m1w2t1", "skill": "math", "text": "Watch Essence of Linear Algebra chapters 1 to 8", "links": [ { "label": "3Blue1Brown linear algebra", "url": "https://example.com/3b1b" } ] }
+      ],
+      "interview": [
+        { "id": "m1w2i1", "skill": "dsa", "text": "Topological sort warm-up", "links": [ { "label": "DSA bank tab", "url": "https://example.com/bank" } ] }
+      ]
+    },
+    {
+      "sprint": 3, "block": 1, "block_title": "B1", "block_theme": "T1", "focus_ai": "fa3", "focus_interview": "fi3", "proof": "A public repo",
+      "ai": [
+        { "id": "m1w3t1", "skill": "math", "text": "Calculus intuition", "links": [ { "label": "3Blue1Brown calculus", "url": "https://example.com/calc" } ] }
+      ],
+      "interview": []
+    }
+  ],
+  "dsa_bank": [
+    {
+      "sprint": 1, "topic": "Graphs: BFS and DFS", "pattern": "Graphs; Island (Matrix Traversal)", "note": "Templates first.",
+      "problems": [
+        { "num": 200, "name": "Number of Islands", "url": "https://leetcode.com/problems/number-of-islands/", "difficulty": "M", "premium": false },
+        { "num": 127, "name": "Word Ladder", "url": "https://leetcode.com/problems/word-ladder/", "difficulty": "H", "premium": false },
+        { "num": 1, "name": "Two Sum", "url": "https://leetcode.com/problems/two-sum/", "difficulty": "E", "premium": false }
+      ]
+    }
+  ],
+  "design_bank": [
+    {
+      "tier": "Foundations (sprints 2 to 3)", "skill": "sysd",
+      "items": [
+        { "id": "d-method", "title": "The method, on a whiteboard, in 45 minutes", "difficulty": "M", "deep_dives": ["Requirements", "API first", "One deep dive", "Failure modes"], "refs": [ { "label": "Hello Interview free guides", "url": "https://example.com/hello" } ] },
+        { "id": "d-estimate", "title": "Back-of-envelope sheet", "difficulty": "M", "deep_dives": ["Latency", "Throughput", "Storage", "Cost"], "refs": [ { "label": "System Design Primer", "url": "https://example.com/sdp" } ] }
+      ]
+    }
+  ]
+}

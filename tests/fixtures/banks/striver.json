@@ -1,0 +1,47 @@
+{
+  "bank": "striver",
+  "source": "https://example.com/fixture-sets/c",
+  "snapshot": "2026-01-01",
+  "fetchedAt": "2026-01-01T00:00:00.000Z",
+  "via": "original test fixture",
+  "groups": [
+    "Step 1: Sorting basics",
+    "Step 2: Searching"
+  ],
+  "items": [
+    {
+      "id": "p9201",
+      "name": "Bubble Order",
+      "url": "https://leetcode.com/problems/fixture-bubble-order/",
+      "difficulty": "E",
+      "pattern": "SORTING",
+      "group": "Step 1: Sorting basics",
+      "num": 9201
+    },
+    {
+      "id": "striver-merge-demo",
+      "name": "Merge Demo",
+      "url": "https://leetcode.com/problems/fixture-merge-demo/",
+      "difficulty": "M",
+      "pattern": "SORTING",
+      "group": "Step 1: Sorting basics"
+    },
+    {
+      "id": "p9202",
+      "name": "Search a Sorted Row",
+      "url": "https://leetcode.com/problems/fixture-sorted-row/",
+      "difficulty": "M",
+      "pattern": "BINARY SEARCH",
+      "group": "Step 2: Searching",
+      "num": 9202
+    },
+    {
+      "id": "striver-bit-demo",
+      "name": "Bit Demo",
+      "url": "https://leetcode.com/problems/fixture-bit-demo/",
+      "difficulty": null,
+      "pattern": "BIT TRICKS",
+      "group": "Step 2: Searching"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+.settings { display: grid; gap: 16px; max-width: 720px; min-width: 0; }
+.settings .screen-title { margin: 0; font-weight: 700; line-height: 1.2; }
+.settings .sr-panel { display: grid; gap: 12px; min-width: 0; }
+.settings .sr-panel-title { margin: 0; }
+.settings p { margin: 0; }
+/* ST2: field rows are inline (field + its button, gap 8) on desktop and tablet; stacked on phone. */
+.start-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.settings input[type='text'], .settings input[type='number'], .settings select { height: var(--sr-size-control-h); }
+.settings .date-iso { width: 160px; }
+.settings .num-160 { width: 160px; }
+.settings input[aria-invalid='true'] { border-color: var(--sr-signal-danger); }
+.settings-note { font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.55; color: var(--sr-text-secondary); }
+/* a long data path (a deep DOJO_HOME) breaks anywhere rather than widening the page at 375 */
+.settings-note code { overflow-wrap: anywhere; }
+.settings-meta { font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+.settings .form-error { font-size: var(--type-meta); }
+.sr-btn-sm { height: var(--sr-size-control-h-sm); padding: 0 8px; font-size: var(--type-meta); }
+@media (max-width: 767px) {
+  .start-form { flex-direction: column; align-items: stretch; }
+  .start-form > .sr-btn, .bk-actions > .sr-btn { width: 100%; height: var(--sr-size-hit-touch); }
+  .settings .date-iso { width: 100%; }
+  /* settings-progress-ref rerun (F3 inputs, ruling 3.6): inputs are 44 tall on phone */
+  .settings input[type='text'], .settings input[type='number'], .settings select { height: var(--sr-size-hit-touch); }
+  /* UAT cu-r3 A24: Restore is a full-width, 44 px tall control on phone (it measured 38 and content-wide) */
+  /* cu-final row 24: the real app measured it 41-42 against a 44 rule (a screenshot reads about 0.92 to 0.95 of CSS px), so
+   * it is 48 tall: 44 or more on any reading, and still one row of the list */
+  .bk-item > .sr-btn { flex: 1 1 100%; width: 100%; height: 48px; min-height: 48px; padding: 0 12px; }
+}
+.radio { display: flex; align-items: center; gap: 8px; color: var(--sr-text-primary); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.kv dt { color: var(--sr-text-secondary); }
+.kv dd { margin: 0; }
+.sub { margin: 0; font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-text-secondary); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.archived { margin: 0; padding-left: 16px; font-size:var(--type-small); }
+
+.bk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.bk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.bk-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.bk-name { font-family: var(--sr-font-mono); font-size:var(--type-small); overflow-wrap: anywhere; }

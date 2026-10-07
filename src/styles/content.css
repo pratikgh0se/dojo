@@ -1,0 +1,28 @@
+/* Shared classes for the M5 content screens (DSA, Designs, AI, Map, Progress, Week, Overview, Mentors, Ritual). */
+.content-screen { display: grid; gap: 16px; min-width: 0; }
+.content-screen > * { min-width: 0; }
+.content-screen .screen-title { margin: 0; }
+.hint, .empty { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+/* F7 empty sentence: Chivo 15 / 400 secondary inside the panel that would hold the data. */
+.empty { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; }
+.rows { display: grid; gap: 6px; }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.sub-title {
+  margin: 12px 0 6px; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--sr-text-secondary); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.ext { font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+/* A7 (settings-progress-ref, F6.12): difficulty chips keep the E/M/H border with primary text. */
+.diff-chip.diff-E { border-color: var(--sr-label-ok); }
+.diff-chip.diff-M { border-color: var(--sr-energy-accent); }
+.diff-chip.diff-H { border-color: var(--sr-label-danger); }
+.chip.diff-E, .chip.diff-M, .chip.diff-H { color: var(--sr-text-primary); }
+.state-chip {
+  font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase;
+  padding: 0 6px; border: 2px solid var(--sr-edge-mid); color: var(--sr-text-secondary); font-weight:700;}
+.stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.stat {
+  display: grid; gap: 2px; padding: 10px 12px; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.stat-value { font-family: var(--sr-font-pixel); font-size:var(--type-display-m); line-height: 1.2; color: var(--sr-text-primary); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.stat-label { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); }

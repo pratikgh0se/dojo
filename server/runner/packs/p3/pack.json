@@ -1,0 +1,46 @@
+{
+  "id": "p3",
+  "title": "Longest Substring Without Repeating Characters",
+  "fn": "lengthOfLongestSubstring",
+  "signature": "func lengthOfLongestSubstring(s string) int",
+  "params": [
+    {
+      "name": "s",
+      "type": "string"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// lengthOfLongestSubstring returns the length of the longest substring of s without a repeated character.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   a := tk.Chars(\"s\", s); a.Pointer(\"lo\", lo); a.Pointer(\"hi\", i); a.Window(lo, i)\nfunc lengthOfLongestSubstring(s string) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        "abcabcbb"
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        "bbbbb"
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        "pwwkew"
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        ""
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        "abba"
+      ],
+      "expected": 2
+    }
+  ]
+}

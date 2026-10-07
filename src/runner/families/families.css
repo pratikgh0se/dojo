@@ -1,0 +1,124 @@
+/* ui-visual-families.md: the family panes in the trace band (dark tokens only; lazy, with FamilyPanels). */
+/* V0.1: each panel is a trace pane: a well with a 2 px edge, padding 12 (phone 8: Controller ruling 2) */
+.fam-panel { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; min-width: 0; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); padding: 12px; }
+@media (max-width: 767px) { .fam-panel { padding: 8px; } }
+@media (min-width: 1100px) { .fam-grid .fam-span { grid-column: 1 / -1; } }
+.fam-label { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); text-align: left; }
+.dp-view p.fam-caption { min-height: 24px; overflow-wrap: anywhere; font-family: var(--sr-font-mono); font-size: var(--type-small); line-height: 1.6; color: var(--sr-energy-accent); }
+.fam-box { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; min-width: 0; }
+.fam-box + .fam-box { margin-top: 8px; }
+/* UAT cu-5 P2-1: a structure not declared yet in this case: an empty box that holds its room in the pane, unseen */
+.fam-ahead { visibility: hidden; }
+/* the steps a pane is measured at (Pane in FamilyPanels): hidden, outside the flow, as wide as the pane's content; gone before the first paint */
+.fam-probe { position: absolute; left: 12px; right: 12px; top: 0; visibility: hidden; pointer-events: none; }
+@media (max-width: 767px) { .fam-probe { left: 8px; right: 8px; } }
+.fam-probe .fam-box + .fam-box { margin-top: 0; }
+.dp-view p.fam-name, .dp-view p.fam-meta { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.dp-view p.fam-empty, .dp-view p.fam-note { font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-secondary); }
+.dp-view p.fam-count { font-family: var(--sr-font-mono); font-size: var(--type-small); color: var(--sr-text-primary); }
+.fam-sc { overflow: auto; min-width: 0; max-width: 100%; padding: 4px; }
+.fam-off { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+
+/* V0.4 / V0.5: square tiles and cells, one meaning per colour (no opacity) */
+.fam-cell, .fam-node {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 36px; height: 32px; padding: 0 8px;
+  white-space: nowrap; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-primary);
+  background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}
+.fam-cells .fam-cell, .fam-chain .fam-cell { min-width: 48px; height: 40px; }
+/* cells that hold values (heap, queue, list) are filled tiles, as DP set cells are */
+.fam-cells .fam-cell[data-state='idle'], .fam-chain .fam-cell[data-state='idle'], .heap-tree .fam-node[data-state='idle'] { background: var(--sr-surface-tile); border-color: var(--sr-edge-dark); }
+.fam-cells .fam-wide { min-width: 64px; }
+.fam-sq { min-width: 40px; height: 40px; padding: 0 6px; }
+.fam-node { position: absolute; }
+[data-state='seen'].fam-cell, [data-state='seen'].fam-node { background: var(--sr-surface-tile); border-color: var(--sr-edge-dark); }
+[data-state='visited'].fam-cell, [data-state='visited'].fam-node { background: var(--sr-surface-tile); border-color: var(--sr-signal-ok); }
+[data-state='window'].fam-cell { background: var(--sr-surface-tile); box-shadow: inset 0 -4px 0 var(--sr-signal-ok); }
+[data-root='true'].fam-node { border-color: var(--sr-signal-ok); }
+.fam-cell[data-state='current'], .fam-node[data-state='current'], .fam-ptr[data-state='current'] { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); color: var(--sr-text-onaccent); font-weight: 700; }
+/* ruling 7 S8: a current DSU root keeps the root's green border */
+.fam-node[data-state='current'][data-root='true'] { border-color: var(--sr-signal-ok); }
+.fam-probe[data-pred='true'] { box-shadow: inset 0 -4px 0 var(--sr-signal-ok); }
+.fam-probe[data-pred='false'] { box-shadow: inset 0 -4px 0 var(--sr-label-warn); }
+.fam-probe.fam-outside { color: var(--sr-text-secondary); border-style: dashed; }
+.fam-game[data-outcome='win'] { border-color: var(--sr-signal-ok); }
+.fam-game[data-outcome='lose'] { border-color: var(--sr-signal-danger); }
+.fam-game[data-outcome='draw'] { border-color: var(--sr-text-secondary); }
+.fam-game[data-outcome='unknown'] { border-style: dashed; }
+.fam-game[data-outcome='win'] .fam-outcome { color: var(--sr-label-ok); }
+.fam-game[data-outcome='lose'] .fam-outcome { color: var(--sr-label-danger); }
+.fam-game[data-outcome='draw'] .fam-outcome, .fam-game[data-outcome='unknown'] .fam-outcome { color: var(--sr-text-secondary); }
+.fam-game[data-state='current'] .fam-outcome { color: var(--sr-text-onaccent); }
+
+/* V0.8 index labels under the cells; tags and pointers */
+.fam-cells { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; width: max-content; }
+.fam-wrap { flex-wrap: wrap; width: auto; row-gap: 8px; }
+.fam-col { display: grid; justify-items: center; align-content: start; gap: 4px; }
+.fam-index { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); text-align: center; }
+.fam-tags { display: grid; justify-items: center; min-height: 20px; }
+.fam-tag { font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.fam-ptr {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 40px; height: 28px; padding: 0 6px; justify-self: center;
+  font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-primary); border: 2px dashed var(--sr-edge-mid); white-space: nowrap;
+}
+
+/* V1 graph and the SVG drawings: natural size (V0.3), text 14 px */
+.fam-svg { display: block; overflow: visible; }
+.fam-svg text { font-family: var(--sr-font-mono); font-size: var(--type-meta); fill: var(--sr-text-primary); }
+.fam-tile rect { fill: var(--sr-surface-well); stroke: var(--sr-edge-mid); stroke-width: 2; }
+.fam-tile[data-state='seen'] rect { fill: var(--sr-surface-tile); stroke: var(--sr-edge-dark); }
+.fam-tile[data-state='visited'] rect { fill: var(--sr-surface-tile); stroke: var(--sr-signal-ok); }
+.fam-tile[data-state='current'] rect { fill: var(--sr-energy-accent); stroke: var(--sr-edge-dark); }
+.fam-tile[data-state='current'] text { fill: var(--sr-text-onaccent); font-weight: 700; }
+.fam-edge line { stroke: var(--sr-edge-mid); stroke-width: 2; }
+.fam-edge .fam-head { fill: var(--sr-edge-mid); }
+.fam-edge[data-state='tree'] line { stroke: var(--sr-signal-ok); stroke-width: 3; }
+.fam-edge[data-state='tree'] .fam-head { fill: var(--sr-signal-ok); }
+.fam-edge[data-state='current'] line { stroke: var(--sr-energy-accent); stroke-width: 4; }
+.fam-edge[data-state='current'] .fam-head { fill: var(--sr-energy-accent); }
+.fam-chip { fill: var(--sr-surface-well); }
+
+/* V2 heap tree, V4 DSU sets, V9 tree: tiles placed by the tidy layout, orthogonal edges */
+.fam-tree { position: relative; flex: none; }
+.fam-tree-edges { position: absolute; left: 0; top: 0; overflow: visible; }
+.fam-tree-edges polyline { stroke: var(--sr-edge-mid); stroke-width: 2; }
+.fam-forest { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start; }
+
+/* V5 array */
+.fam-array { display: grid; gap: 4px; justify-items: center; align-items: start; width: max-content; }
+.fam-bracket { justify-self: stretch; border-top: 2px solid var(--sr-signal-ok); text-align: center; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-label-ok); padding-top: 2px; }
+
+/* V6 binary search */
+.fam-search { display: grid; gap: 4px; justify-items: center; align-items: end; width: max-content; }
+.fam-marks { display: grid; gap: 4px; justify-items: center; }
+.fam-range { justify-self: stretch; height: 0; border-top: 2px solid var(--sr-energy-accent); margin: 2px 0; }
+.fam-ghost { width: 40px; height: 40px; }
+
+/* V7 linked list */
+.fam-chain { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 0; margin: 0; padding: 0; list-style: none; }
+.fam-link { display: flex; align-items: flex-start; }
+/* rerun F012 (V7): the tile fills its column, so the arrow is exactly 24 px from tile to tile even when a pointer label is wider */
+.fam-chain .fam-col > .fam-cell { justify-self: stretch; }
+.fam-arrow { position: relative; width: 24px; height: 40px; flex: none; }
+.fam-arrow::before { content: ''; position: absolute; left: 0; right: 8px; top: 19px; border-top: 2px solid var(--sr-edge-mid); }
+.fam-arrow::after { content: ''; position: absolute; right: 0; top: 16px; border-left: 8px solid var(--sr-edge-mid); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.fam-nil { display: inline-flex; align-items: center; height: 28px; margin-top: 6px; padding: 0 6px; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); border: 2px dashed var(--sr-edge-mid); }
+
+/* V8 intervals */
+.fam-ivs { position: relative; display: grid; gap: 8px; padding-top: 4px; }
+.fam-iv-row { position: relative; height: 24px; }
+.fam-bar {
+  position: absolute; top: 0; height: 24px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; white-space: nowrap;
+  font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+}
+.fam-bar-out .fam-bar-text { position: absolute; left: calc(100% + 6px); }
+.fam-bar[data-state='current'] { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); font-weight: 700; }
+.fam-bar-out[data-state='current'] { color: var(--sr-text-primary); }
+.fam-mark { position: absolute; top: 2px; white-space: nowrap; font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.fam-axis { position: relative; height: 24px; border-top: 2px solid var(--sr-edge-mid); margin-top: 4px; }
+.fam-tick { position: absolute; top: 4px; transform: translateX(-50%); font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+
+/* V10 game table */
+.fam-games { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fam-game { min-width: 96px; height: 40px; }
+

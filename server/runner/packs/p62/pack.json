@@ -1,0 +1,55 @@
+{
+  "id": "p62",
+  "title": "Unique Paths",
+  "fn": "uniquePaths",
+  "signature": "func uniquePaths(m int, n int) int",
+  "params": [
+    {
+      "name": "m",
+      "type": "int"
+    },
+    {
+      "name": "n",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// uniquePaths returns how many paths a robot has from the top-left to the bottom-right of an m\u00d7n grid, moving only right or down.\n//\n// Optional: add import \"dojo/tk\" to watch your DP step by step, e.g.\n//   t := tk.Table(\"dp\", 1, n+1)\n//   t.Set(0, i, v, tk.Dep(0, i-1), tk.Dep(0, i-2), tk.Rule(\"{0} + {1}\"))\nfunc uniquePaths(m int, n int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        3,
+        7
+      ],
+      "expected": 28
+    },
+    {
+      "args": [
+        3,
+        2
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        1,
+        1
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        7,
+        3
+      ],
+      "expected": 28
+    },
+    {
+      "args": [
+        10,
+        10
+      ],
+      "expected": 48620
+    }
+  ]
+}

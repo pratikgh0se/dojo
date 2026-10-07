@@ -1,0 +1,46 @@
+{
+  "id": "p91",
+  "title": "Decode Ways",
+  "fn": "numDecodings",
+  "signature": "func numDecodings(s string) int",
+  "params": [
+    {
+      "name": "s",
+      "type": "string"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// numDecodings returns how many ways the digit string s decodes, with 'A'..'Z' mapped to \"1\"..\"26\".\n//\n// Optional: add import \"dojo/tk\" to watch your DP step by step, e.g.\n//   t := tk.Table(\"dp\", 1, len(s)+1)\n//   t.Set(0, i, v, tk.Dep(0, i-1), tk.Dep(0, i-2), tk.Rule(\"{0} + {1}\"))\nfunc numDecodings(s string) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        "12"
+      ],
+      "expected": 2
+    },
+    {
+      "args": [
+        "226"
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        "06"
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        "11106"
+      ],
+      "expected": 2
+    },
+    {
+      "args": [
+        "2611055971756562"
+      ],
+      "expected": 4
+    }
+  ]
+}

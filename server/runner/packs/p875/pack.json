@@ -1,0 +1,76 @@
+{
+  "id": "p875",
+  "title": "Koko Eating Bananas",
+  "fn": "minEatingSpeed",
+  "signature": "func minEatingSpeed(piles []int, h int) int",
+  "params": [
+    {
+      "name": "piles",
+      "type": "[]int"
+    },
+    {
+      "name": "h",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// minEatingSpeed returns the smallest eating speed k (bananas per hour) that finishes every pile within h hours.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   s := tk.Search(\"k\", 1, max); s.Mid(mid, ok); s.Hi(mid); s.Lo(mid + 1)\nfunc minEatingSpeed(piles []int, h int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          3,
+          6,
+          7,
+          11
+        ],
+        8
+      ],
+      "expected": 4
+    },
+    {
+      "args": [
+        [
+          30,
+          11,
+          23,
+          4,
+          20
+        ],
+        5
+      ],
+      "expected": 30
+    },
+    {
+      "args": [
+        [
+          30,
+          11,
+          23,
+          4,
+          20
+        ],
+        6
+      ],
+      "expected": 23
+    },
+    {
+      "args": [
+        [
+          1000000000
+        ],
+        2
+      ],
+      "expected": 500000000
+    },
+    {
+      "args": [
+        [
+          312884470
+        ],
+        312884469
+      ],
+      "expected": 2
+    }
+  ]
+}

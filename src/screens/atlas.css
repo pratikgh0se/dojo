@@ -1,0 +1,126 @@
+/* Atlas tab (labs contract §5). Matrix geometry follows the prototype's sr-chart matrix (Atlas section 01):
+   crisp cells inset 2px, Silkscreen 9 labels, a dark well; the page never scrolls sideways (the well does). */
+.atlas { --am-row: 18px; }
+.atlas-head { display: grid; gap: 8px; }
+.atlas-head .eyebrow { margin: 0; font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.atlas-meter { display: flex; flex-wrap: wrap; gap: 2px; }
+.atlas-meter .sr-cube { width: 10px; height: 10px; }
+.atlas-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; font-family:var(--sr-font-body); font-size:var(--type-meta); color: var(--sr-text-secondary); font-weight:700;}
+.atlas-legend li { display: inline-flex; align-items: center; gap: 6px; }
+/* Prefixed atlas- so this collides with nothing else: map.css's `.lg::before` is a different global class. */
+.atlas-lg { display: inline-block; width: 8px; height: 8px; border: 2px solid transparent; }
+.atlas-lg-none { background: var(--sr-edge-mid); }
+.atlas-lg-seen { background: var(--sr-energy-rival); }
+/* UAT J9: the predicted swatch is the row's ✓ marker, so it isn't mistaken for a main-picture cell (also green) */
+.atlas-lg-predicted { width: auto; height: auto; border: 0; background: transparent; color: var(--sr-signal-ok); line-height: 1; font-style: normal; }
+.atlas-lg-predicted::before { content: '\2713'; }
+.atlas-lg-use { border-color: var(--sr-signal-warn); }
+.atlas-lg-main { background: var(--sr-signal-ok); }
+.atlas-lg-side { background: var(--sr-energy-accent); }
+.atlas-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+/* cu-r2 A2#47: the toggle on is not only 4 px lower: it takes the accent border and a leading check, so it reads as on */
+.atlas-tools .sr-btn[aria-pressed='true'] { border-color: var(--sr-energy-accent); }
+.atlas-tools .sr-btn[aria-pressed='true']::before { content: '✓ ' / ''; white-space: pre; }
+.atlas-search { display: grid; gap: 4px; flex: 1 1 280px; max-width: 520px; }
+.atlas-search input { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; min-width: 0; height: var(--sr-size-control-h); }
+@media (max-width: 767px) { .atlas-search input { height: var(--sr-size-hit-touch); } } /* rerun: 36, 44 on phone */
+.atlas-search .hint { margin: 0; min-height: 16px; }
+.atlas-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+/* BA2: the row detail sits beside the matrix on desktop (2fr | 1fr), below it on tablet and phone. */
+@media (min-width: 1100px) { .atlas-top:has(.atlas-detail), .atlas-top:has(.atlas-pick-hint) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+/* UAT cu-6 P3-6: the matrix is 24 px cells (BA2), so with no row open it leaves the right third bare; the hint takes that place on
+   desktop and is left out below 1100, where the detail would sit under the matrix anyway. */
+.atlas-pick-hint { margin: 0; padding: 12px; border: 2px dashed var(--sr-edge-mid); }
+@media (max-width: 1099px) { .atlas-pick-hint { display: none; } }
+
+/* grid-template-columns: minmax(0, 1fr) keeps the implicit column from stretching to the table's own
+   min-width (720px): the table scrolls inside this well on its own, but the legend row below it (which
+   fits in far less space) shrinks and wraps to the well's real width instead of being forced just as wide. */
+/* no left padding: the pinned row headers sit at the well's edge, so a scrolled cell never shows in a strip beside them */
+.atlas-matrix-wrap { container-type: inline-size; min-width: 0; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); padding: 8px 8px 8px 0; overflow-x: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+/* BA2: cells 24 x 18 on desktop; headers Space Mono 14 upper. The table takes its columns' width (not the well's). */
+.atlas-matrix { width: max-content; table-layout: fixed; border-collapse: collapse; font-family: var(--sr-font-mono); font-size: var(--type-meta); text-transform: uppercase; color: var(--sr-chart-label); font-weight: 400; }
+.am-col-atom { width: 24px; }
+.atlas-matrix th, .atlas-matrix td { padding: 0; }
+/* a row is exactly --am-row tall: the 14 px text's own line box never pushes it past 18 on desktop */
+.atlas-matrix tbody { line-height: 16px; }
+.am-col-label { width: 140px; }
+.am-col-num { width: var(--sr-size-hit-touch); }
+.am-corner { text-align: right; padding-right: 6px; font-weight: 400; vertical-align: bottom; }
+/* Headers rotate to vertical by default (16 atom names need more room than a narrow well can spare) and only
+   lie horizontal, like the prototype, once the matrix's own width (not the viewport) has room for them — e.g.
+   the full-width matrix with no detail panel open, but not the same matrix narrowed beside an open panel. */
+.am-atom { height: 64px; vertical-align: bottom; font-weight: 400; text-align: center; }
+.am-atom span { writing-mode: vertical-rl; transform: rotate(180deg); display: inline-block; white-space: nowrap; }
+.am-rowhead { display: flex; align-items: center; justify-content: flex-end; gap: 4px; height: var(--am-row); padding: 0 6px 0 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-label { position: relative; min-width: 0; width: auto; flex: 1 1 auto; height: var(--am-row); text-align: right; padding: 0; font: inherit; color: inherit; text-transform: uppercase; background: transparent; border: 0; cursor: pointer; }
+.am-label-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.am-label:hover, tr.sel .am-label { color: var(--sr-label-accent); }
+.am-marker { flex: none; width: 9px; height: 9px; display: inline-flex; align-items: center; justify-content: center; font-size:var(--type-meta); line-height: 1; font-weight: 700; }
+.am-marker-none { visibility: hidden; }
+.am-marker-seen { background: var(--sr-energy-rival); }
+.am-marker-predicted { color: var(--sr-signal-ok); background: transparent; }
+.atlas-matrix td { width: 24px; height: var(--am-row); text-align: center; box-sizing: border-box; }
+/* Prototype parity (Atlas §01): each cell is a full-size filled block — main-picture green, side-panel orange,
+   empty cells the dark well — not a small outlined square. The learner's seen/predicted state is shown by the
+   row marker (.am-marker) instead of recolouring the cells, so the kind colours are never hidden. */
+.am-cube { display: block; width: calc(100% - 2px); height: calc(100% - 2px); margin: 1px auto; }
+tr td[data-kind='main'] .am-cube { background: var(--sr-signal-ok); }
+tr td[data-kind='side'] .am-cube { background: var(--sr-energy-accent); }
+/* --sr-edge-mid (not --sr-chart-well, the wrap's own background): an empty cell must read as a well
+   distinct from the table's own background, per the prototype's "—" legend swatch (Controller addendum 2). */
+tr td[data-kind='none'] .am-cube { background: var(--sr-edge-mid); }
+/* A plain `outline` on <tr> only ever painted around the first few cells in Chromium (table rows aren't a
+   normal outline box), so the selected-row frame is faked with per-cell inset box-shadows instead. */
+tr.sel td, tr.sel th { box-shadow: inset 0 2px 0 0 var(--sr-energy-accent), inset 0 -2px 0 0 var(--sr-energy-accent); }
+tr.sel td:first-child, tr.sel th:first-child { box-shadow: inset 2px 2px 0 0 var(--sr-energy-accent), inset 0 -2px 0 0 var(--sr-energy-accent); }
+tr.sel td:last-child, tr.sel th:last-child { box-shadow: inset -2px 2px 0 0 var(--sr-energy-accent), inset 0 -2px 0 0 var(--sr-energy-accent); }
+.am-left { font-family: var(--sr-font-mono); font-size:var(--type-meta); padding: 0 6px; }
+.am-use-cube { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--sr-edge-dark); background: var(--sr-energy-accent); vertical-align: -1px; }
+.am-use-cube[data-coverage='avoided'] { background: transparent; border-color: var(--sr-signal-warn); }
+.am-kind-legend { display: flex; flex-wrap: wrap; gap: 16px; min-width: 0; font-size:var(--type-meta); color: var(--sr-chart-label); align-items: center; }
+.am-kind-legend-item { display: inline-flex; gap: 6px; align-items: center; }
+.am-kind-swatch { display: inline-block; width: 8px; height: 8px; }
+.am-kind-main { background: var(--sr-signal-ok); }
+.am-kind-side { background: var(--sr-energy-accent); }
+.am-kind-none { background: var(--sr-edge-mid); }
+.am-kind-caption { margin-left: auto; flex: 0 1 auto; min-width: 0; font-family: var(--sr-font-body); text-transform: none; color: var(--sr-text-secondary); }
+
+.atlas-detail { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.atlas-detail-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.atlas-detail-head .sr-panel-title { margin: 0; text-transform: uppercase; }
+.atlas-line { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.atlas-walks, .atlas-problems { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.atlas-walk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.aw-title { font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; text-transform: uppercase; flex: 1 1 160px; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.aw-cx { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.aw-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* UAT cu-6 (narrow): cube | link | sprint in three columns, so a long title wraps inside its own column instead of
+   leaving the cube alone on a line above it and the sprint alone below it. */
+.atlas-problems li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; align-items: center; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.atlas-problems .sr-cube { width: 10px; height: 10px; }
+.ap-sprint { color: var(--sr-text-secondary); }
+
+/* BA2 tablet/phone: the matrix scrolls in its panel with the row headers pinned left. */
+.am-rowhead, .am-corner { position: sticky; left: 0; z-index: var(--sr-z-sticky); background: var(--sr-chart-well); }
+.am-label { max-width: 160px; }
+/* UAT cu-6 P2-2: once the matrix is scrolled sideways, the pinned column ends in a clean edge, so a column label sliding under
+   it (GRID, BITS) is cut at a line instead of running into PATTERN or a row name */
+.atlas-matrix-wrap[data-scrolled='true'] .am-rowhead, .atlas-matrix-wrap[data-scrolled='true'] .am-corner { box-shadow: 2px 0 0 0 var(--sr-edge-mid); }
+.atlas-matrix-wrap[data-scrolled='true'] tr.sel th:first-child { box-shadow: inset 2px 2px 0 0 var(--sr-energy-accent), inset 0 -2px 0 0 var(--sr-energy-accent), 2px 0 0 0 var(--sr-edge-mid); }
+
+/* Controller ruling 3 (6): on phone every row button is a 44 x 44 target. At the desktop 20 px pitch a
+ * 44 px hit box would cover the whole neighbouring row (each sticky row header is its own stacking
+ * context, so a later row's box would win taps on this one), so on phone the row pitch itself is 44:
+ * the cubes and labels keep their size, centred, with invisible padding between the rows. */
+@media (max-width: 767px) {
+  .atlas { --am-row: var(--sr-size-hit-touch); }
+  .am-cube { height: 18px; }
+  .am-label { min-width: var(--sr-size-hit-touch); }
+  /* A4 (settings-progress-ref): tagged-problem links are 44 px touch targets. */
+  .atlas-problems a { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); }
+}
+
+/* UAT J9: the column key under the map (abbreviation in mono, meaning in body text) */
+.am-atom-key { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; min-width: 0; font-family: var(--sr-font-body); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-text-secondary); }
+.am-atom-key-item b { font-family: var(--sr-font-mono); font-weight: 400; color: var(--sr-chart-label); }

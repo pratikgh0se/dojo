@@ -1,0 +1,53 @@
+.ev { display: grid; gap: 16px; }
+.ev-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 900px) { .ev-top { grid-template-columns: minmax(240px, 1fr) minmax(0, 2fr); } }
+.ev-title { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.ev-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ev-count, .ev-vocab, .ev-rate { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ev-radar { display: grid; gap: 6px; margin: 0; }
+/* The radar draws its 7 axis labels outside its square (svg overflow is visible for it): the well leaves
+ * room for the longest ("Consistency", 11 x 8.4 px) on both sides and a line above and below. */
+.ev-radar-well { height: 240px; padding: 24px 64px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); min-width: 0; }
+.ev-radar-well sr-chart, .ev-spark-well sr-chart { display: block; width: 100%; height: 100%; }
+/* settings-progress-ref rerun (P1/K2): the radar's right-hand label ("Consistency") overhangs further than the left
+ * ones, so the drawing is 48 px narrower than the well's content and sits 12 px in: no label is cut at any width */
+.ev-radar-well sr-chart { width: calc(100% - 48px); margin-left: 12px; }
+.ev-legend { display: flex; align-items: center; gap: 6px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ev-key { display: inline-block; width: 8px; height: 8px; }
+.ev-key-last { background: var(--sr-energy-accent); }
+.ev-key-mean { background: var(--sr-edge-mid); }
+.ev-wall { display: grid; gap: 6px; min-width: 0; }
+/* UAT J2: the wall's key (what a lit cell means) */
+.ev-wall-key { margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-family: var(--sr-font-body); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-text-secondary); }
+.ev-wall-key > span { display: inline-flex; align-items: center; gap: 6px; }
+.ev-wall-key .ev-cell { display: inline-block; flex: none; }
+.ev-wall-well { max-width: 100%; overflow-x: auto; padding: 8px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+.ev-grid { display: grid; gap: 2px; width: max-content; }
+.ev-row { display: flex; gap: 2px; }
+.ev-cell { width: 10px; height: 10px; background: var(--sr-edge-shade-panel); border: 1px solid var(--sr-edge-dark); }
+.ev-glow { background: var(--sr-energy-accent-glow); }
+.ev-ok { background: var(--sr-signal-ok); }
+.ev-open { cursor: pointer; }
+.ev-cell:focus-visible { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: var(--sr-size-focus-offset); }
+.ev-trend { display: grid; gap: 6px; }
+.ev-sparks { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ev-spark { display: grid; gap: 4px; }
+.ev-spark-name { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); font-weight:700;}
+.ev-spark-well { height: 36px; padding: 4px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+.ev-spark-well .empty { font-size:var(--type-meta); }
+.ev-shelf { display: grid; gap: 8px; }
+.ev-shelf-tier { display: grid; gap: 6px; }
+.ev-tier-name { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ev-thumbs { display: flex; flex-wrap: wrap; gap: 8px; }
+.ev-thumb { display: grid; gap: 4px; width: 180px; text-decoration: none; }
+.ev-thumb-art { display: block; height: 110px; overflow: hidden; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+.ev-thumb-cap { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+.ev-redesigns { display: grid; gap: 6px; }
+.ev-redo-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ev-redo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size:var(--type-small); }
+.ev-redo-due, .ev-redo-read { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ev-redo-due + .chip { justify-self: start; }
+/* K2 lens sparklines: 7 across on desktop, 4 + 3 on tablet, 2 per row on phone. */
+.ev-sparks { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (max-width: 1099px) { .ev-sparks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .ev-sparks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

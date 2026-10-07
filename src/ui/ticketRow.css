@@ -1,0 +1,28 @@
+.trow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 8px;
+  min-height: var(--sr-size-row-h); background: var(--sr-surface-tile);
+  border: 2px solid var(--sr-edge-dark); border-left: 6px solid var(--sr-energy-accent);
+}
+.trow.track-interview { border-left-color: var(--sr-energy-rival); }
+.trow.readonly { border-left-color: var(--sr-edge-mid); }
+.trow.done .trow-title { color: var(--sr-text-secondary-ontile); text-decoration: line-through; }
+.trow-title { flex: 1 1 200px; min-width: 0; font-size:var(--type-small); color: var(--sr-text-primary); }
+.trow-meta { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); }
+.trow-do { height: var(--sr-size-control-h-sm); padding: 0 8px; font-size:var(--type-meta); }
+.tick, .tick-slot { width: 22px; height: 22px; flex: 0 0 22px; }
+.tick {
+  display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
+  font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-onaccent);
+  background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}
+.tick.on { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+/* settings-progress-ref rerun (F3, ruling 3.6): on phone the tick and the row's links are 44 px touch targets;
+ * the tick stays drawn at 22 x 22 inside its 44 x 44 box */
+@media (max-width: 767px) {
+  .tick, .tick-slot { width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); flex-basis: var(--sr-size-hit-touch); }
+  .tick { position: relative; isolation: isolate; background: transparent; border: 0; }
+  .tick::before { content: ''; position: absolute; inset: 11px; z-index: -1; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+  .tick.on { background: transparent; }
+  .tick.on::before { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+  .trow a.ext { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); }
+}

@@ -1,0 +1,15 @@
+.ritual-days { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+@media (max-width: 767px) { .ritual-days { grid-template-columns: minmax(0, 1fr); } }
+.ritual-day {
+  display: grid; gap: 4px; align-content: start; padding: 8px; background: var(--sr-surface-tile);
+  border: 2px solid var(--sr-edge-dark); border-top: 6px solid var(--sr-surface-muted);
+}
+.ritual-day.track-ai { border-top-color: var(--sr-energy-accent); }
+.ritual-day.track-interview { border-top-color: var(--sr-energy-rival); }
+.ritual-day.rest { background: var(--sr-surface-panel); border-style: dashed; border-color: var(--sr-edge-mid); }
+.ritual-day.rest .ritual-name { color: var(--sr-text-secondary); }
+.ritual-name { margin: 0; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-primary); font-weight:700;}
+.ritual-dur { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); }
+.block-close { display: grid; gap: 8px; align-content: start; justify-items: start; }
+/* Controller ruling 8 S9: long paragraphs on Ritual read as Body 17 (the Space Mono duration line keeps its role). */
+.ritual p:not(.ritual-dur):not(.prompt) { font-size: var(--type-body); line-height: var(--type-leading); }

@@ -1,0 +1,80 @@
+import { expect, test, type Page } from '@playwright/test'
+import { IST, onboard } from './helpers'
+
+const T0 = IST('2026-10-06T21:10:00')
+async function start(page: Page, time = T0) {
+  await page.clock.install({ time })
+  await onboard(page, '2026-10-05')
+}
+async function openHint(page: Page, id: string) {
+  await page.goto(`/do/${id}`)
+  await page.getByTestId('do-timer-preset-25').click()
+  await page.getByRole('button', { name: 'Pause' }).waitFor()
+  await page.clock.fastForward('10:00')
+  await page.getByTestId('ladder-open-hint').click()
+  await expect(page.getByTestId('ladder-hint-1')).toBeVisible()
+}
+
+test('I-01/I-02/I-03 the Picture rung plays the fake picture in the labs player', async ({ page }) => {
+  await start(page)
+  await openHint(page, 'p200')
+  await page.getByTestId('ladder-open-picture').click()
+  const fig = page.getByTestId('ladder-picture-player')
+  await expect(fig).toContainText('Generated picture · 15 steps')
+  const player = fig.getByTestId('lab-player')
+  await expect(player).toHaveAttribute('data-walkthrough', 'picture')
+  await expect(player.getByTestId('lab-step-counter')).toHaveText('STEP 0 / 15')
+  await player.getByRole('button', { name: 'Step forward' }).click()
+  await expect(player.getByTestId('lab-step-counter')).toHaveText('STEP 1 / 15')
+  await expect(player.getByTestId('lab-caption')).toHaveText('Start at index 0: best is 3.')
+  const before = Number(await page.getByTestId('do-timer-elapsed').getAttribute('data-seconds'))
+  await player.getByRole('button', { name: 'Step forward' }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(player.getByTestId('lab-step-counter')).toHaveText('STEP 2 / 15')
+  await page.clock.fastForward('00:05')
+  expect(Number(await page.getByTestId('do-timer-elapsed').getAttribute('data-seconds'))).toBeGreaterThan(before)
+  await expect(page.getByTestId('ladder-spent')).toHaveAttribute('data-xp', '5')
+})
+
+test('I-06 the design Picture rung draws the reference diagram', async ({ page }) => {
+  await start(page)
+  await openHint(page, 'd-method')
+  await page.getByTestId('ladder-open-picture').click()
+  const fig = page.getByTestId('ladder-picture-player')
+  await expect(fig).toContainText('Reference architecture · 4 nodes · 3 links')
+  await expect(fig.getByTestId('ladder-picture-diagram')).toBeAttached()
+  await expect(fig.getByRole('list', { name: 'Nodes' }).getByRole('listitem')).toHaveText(['Client', 'Gateway', 'Service', 'Counters'])
+})
+
+test('I-21 the why-link lands on the honesty chart', async ({ page }) => {
+  await start(page)
+  await openHint(page, 'p200')
+  await page.getByTestId('ladder-why-hint').getByRole('link', { name: 'See the honesty chart' }).click()
+  await expect(page).toHaveURL(/\/progress#help-ladder$/)
+  const region = page.getByRole('region', { name: 'Help ladder usage' })
+  await expect(region).toBeVisible()
+  const top = await region.evaluate(el => el.getBoundingClientRect().top)
+  expect(top).toBeGreaterThanOrEqual(0)
+  expect(top).toBeLessThan(900)
+  await expect(page.getByRole('region', { name: 'Evidence' })).toBeAttached()
+})
+
+test('I-08/I-09 the paid picture replays before a redo timer, then hides', async ({ page }) => {
+  await start(page)
+  await openHint(page, 'p200')
+  await page.getByTestId('ladder-open-picture').click()
+  await expect(page.getByTestId('ladder-picture-player')).toBeVisible()
+  await page.getByTestId('do-outcome-giveup').click()
+  await expect(page.getByTestId('do-given-up')).toBeVisible()
+  await page.clock.setSystemTime(IST('2026-10-09T00:01:00'))
+  await page.goto('/')
+  await page.getByTestId('today-redo-toggle').click()
+  await page.getByTestId('today-redo-row-p200').click()
+  const replay = page.getByRole('region', { name: 'Replay before you start' })
+  await expect(replay.getByTestId('lab-player')).toHaveAttribute('data-steps', '15')
+  await expect(page.getByTestId('ladder-spent')).toHaveAttribute('data-xp', '0')
+  await page.getByTestId('do-timer-preset-25').click()
+  await expect(page.getByTestId('redo-replay')).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByTestId('redo-replay')).toHaveCount(0)
+})

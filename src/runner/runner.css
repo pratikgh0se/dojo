@@ -1,0 +1,56 @@
+/* C-RUNNER §4/§5: the code panel and the DP view on Do (dark theme tokens only). */
+.code-panel { display: grid; gap: 12px; min-width: 0; }
+/* ui-do D5: editor side 7fr | results side 5fr from 1100 px; one column below */
+.code-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+@media (min-width: 1100px) { .code-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; } }
+.code-side, .code-results { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.code-h3 { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+/* UAT J4: results of a run whose code has since changed read as stale (secondary), with a line saying so */
+.code-results[data-stale='true'] .run-case, .code-results[data-stale='true'] .run-stdout, .code-panel .code-results[data-stale='true'] p.run-diff, .code-results[data-stale='true'] .run-error, .run-status[data-stale='true'] { color: var(--sr-text-secondary); }
+.run-stale { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-label-warn); }
+.code-results[data-running='true'] .run-case, .code-results[data-running='true'] .run-stdout, .code-panel .code-results[data-running='true'] p.run-diff, .code-results[data-running='true'] .run-error { color: var(--sr-text-secondary); }
+/* Controller ruling 1: the house scrollbar is app.css's .sc; CodeMirror's own scroller (which takes no class) gets the same */
+.code-editor .cm-scroller::-webkit-scrollbar { width: 14px; height: 14px; }
+.code-editor .cm-scroller::-webkit-scrollbar-track { background: var(--sr-edge-shade-panel); border-top: 2px solid var(--sr-edge-mid); }
+.code-editor .cm-scroller::-webkit-scrollbar-thumb { background: var(--sr-edge-light-tile); border: 2px solid var(--sr-edge-shade-panel); }
+.code-editor .cm-scroller::-webkit-scrollbar-corner { background: var(--sr-edge-shade-panel); }
+@supports not selector(::-webkit-scrollbar) { .code-editor .cm-scroller { scrollbar-color: var(--sr-edge-light-tile) var(--sr-edge-shade-panel); } }
+.code-panel p.code-sig, .code-panel p.code-note, .code-sig, .code-note { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+.lang-switch { display: flex; gap: 0; width: max-content; max-width: 100%; border: 2px solid var(--sr-edge-mid); }
+.lang-option { position: relative; display: inline-flex; cursor: pointer; font-family: var(--sr-font-mono); font-size: var(--type-small); }
+.lang-option + .lang-option { border-left: 2px solid var(--sr-edge-mid); }
+.lang-option input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.lang-option span { padding: 6px 14px; color: var(--sr-text-secondary); font-family: var(--sr-font-mono); font-size: var(--type-small); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.lang-option[data-checked='true'] span { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); font-weight: 700; }
+.lang-option:focus-within { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+/* F6.11 phone: a 44 px segmented control */
+/* rerun F007 (F6.11 phone): option padding 11 14 around a 22 px line, so each option is 44 tall */
+@media (max-width: 767px) { .lang-option span { display: flex; align-items: center; box-sizing: border-box; min-height: var(--sr-size-hit-touch); padding: 11px 14px; line-height: 22px; } }
+.code-editor { border: 2px solid var(--sr-edge-mid); min-width: 0; tab-size: 4; --code-min-h: 360px; --code-max-h: 560px; }
+@media (max-width: 767px) { .code-editor { --code-min-h: 280px; --code-max-h: 440px; } }
+.run-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.run-status { font-family: var(--sr-font-mono); font-size: var(--type-small); }
+.run-status[data-tone='ok'] { color: var(--sr-label-ok); }
+.run-status[data-tone='danger'] { color: var(--sr-label-danger); }
+.run-status[data-tone='warn'] { color: var(--sr-label-warn); }
+.run-examples, .run-cases, .run-errors { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-family: var(--sr-font-mono); font-size: var(--type-meta); }
+.run-examples { color: var(--sr-text-secondary); }
+/* UAT cu-4 P3-19: the mark is its own flex item; a call too long for the line breaks inside itself, beside its mark */
+.run-case { display: flex; align-items: baseline; overflow-wrap: anywhere; }
+.run-case-mark { flex: none; width: 16px; } /* D5: the diff under a case is indented 16, which is this column */
+.run-case-body { min-width: 0; flex: 1 1 auto; }
+.run-case[data-pass='true'] .run-case-mark { color: var(--sr-signal-ok); }
+.run-case[data-pass='false'] .run-case-mark { color: var(--sr-label-danger); }
+.run-case-skipped { color: var(--sr-text-secondary); }
+.code-panel p.run-diff { margin: 4px 0 0 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-label-warn); }
+.run-error { color: var(--sr-label-warn); overflow-wrap: anywhere; }
+.run-stdout:empty { display: none; }
+.run-stdout { margin: 0; max-height: 240px; overflow: auto; padding: 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-primary); font-family: var(--sr-font-mono); font-size: var(--type-small); line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.code-panel p.run-truncated { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-label-warn); }
+
+/* F6.17 / triage A11: every line is exactly 24 px (no wrapping), so each gutter number is pinned to 24 px
+   too; CodeMirror can otherwise size them from a stale first measurement and stack two numbers per line */
+.code-editor .cm-lineNumbers .cm-gutterElement:not([style*='hidden']) { height: 24px !important; line-height: 24px; }
+
+/* perf diagnostic P2: the no-trace hint after a passing run without dojo/tk calls (Space Mono 14 secondary) */
+.do p.trace-hint { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-text-secondary); }

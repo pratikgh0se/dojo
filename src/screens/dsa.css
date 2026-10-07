@@ -1,0 +1,51 @@
+.dsa-top { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+@media (max-width: 1099px) { .dsa-top { grid-template-columns: minmax(0, 1fr); } }
+.heatmap { display: grid; gap: 4px; }
+.heat-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 2px; border: 2px solid transparent; }
+.heat-row.sel { border-color: var(--sr-energy-accent); }
+.heat-label {
+  display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; min-width: 0; padding: 2px 4px; cursor: pointer; text-align: left;
+  font-family: var(--sr-font-body); font-size:var(--type-small); color: var(--sr-text-primary); background: transparent; border: 0;
+}
+.heat-label:hover .heat-topic { text-decoration: underline; }
+.heat-sprint, .heat-count { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); white-space: nowrap; }
+.heat-topic { overflow-wrap: break-word; }
+.heat-cells { display: flex; flex-wrap: wrap; gap: 2px; max-width: 260px; }
+.heat-cell {
+  --cell: var(--sr-energy-accent);
+  position: relative; width: 14px; height: 14px; padding: 0; cursor: pointer; color: var(--cell);
+  background: transparent; border: 2px solid var(--cell);}
+/* Premium: a corner notch (no text glyph to clip); "premium" is in the accessible name. */
+.heat-cell[data-premium='true']::after { content: ''; position: absolute; top: 0; right: 0; width: 4px; height: 4px; background: currentColor; }
+.heat-cell.diff-E { --cell: var(--sr-label-ok); }
+.heat-cell.diff-H { --cell: var(--sr-label-danger); }
+.heat-cell.solved { background: var(--cell); color: var(--sr-text-onaccent); }
+.heat-cell:disabled { cursor: default; }
+.topic-meta { margin: 0 0 8px; font-size:var(--type-small); }
+.topic-meta b { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
+.topic-links { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 12px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.warmup { display: grid; gap: 8px; margin: 0 0 12px; }
+.warmup-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.warmup-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* K1 phone: heat cells are touch targets and the row wraps. */
+@media (max-width: 767px) {
+  .heat-row { grid-template-columns: minmax(0, 1fr); }
+  .heat-cells { max-width: none; }
+  /* settings-progress-ref final rerun (K1, ruling 3.6): the button IS the tap box (48 x 48, gap 2, so boxes never touch)
+     and the 20 x 20 cell is drawn centred inside it by ::before; the premium notch sits on the drawn cell */
+  .heat-cells { gap: 2px; }
+  .heat-cell { width: 48px; height: 48px; background: transparent; border: 0; }
+  .heat-cell::before { content: ''; position: absolute; left: 14px; top: 14px; width: 20px; height: 20px; box-sizing: border-box; border: 2px solid var(--cell); }
+  .heat-cell.solved { background: transparent; }
+  .heat-cell.solved::before { background: var(--cell); }
+  .heat-cell[data-premium='true']::after { top: 14px; right: 14px; width: 6px; height: 6px; }
+  .heat-label { min-height: var(--sr-size-hit-touch); }
+  /* A4 (settings-progress-ref): the Study links are 44 px touch targets. */
+  .topic-links { align-items: center; gap: 0 12px; }
+  .topic-links a { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); }
+}
+/* K1: the pick-a-topic hint reads as an F7 sentence (Chivo 15 / 400 secondary). */
+.dsa .dsa-pick-hint { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; }
+/* K1 phone: the three stat tiles stack in one column. */
+@media (max-width: 767px) { .dsa .stat-strip { grid-template-columns: minmax(0, 1fr); } }

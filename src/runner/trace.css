@@ -1,0 +1,158 @@
+/* The trace band (ui-dp-view.md, ui-visual-families.md V0): a panel of its own, dark tokens only; lazy with DpView. */
+.dp-view { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; align-content: start; } /* UAT J4: the held min-height adds space below, never between rows */
+.dp-view > .sr-panel-title { margin: 0; }
+/* closing rerun F001 (D6): the trace mounts late (lazy, after a run); without the panel's entrance slide its band under
+   the code panel is exactly the 16 px row gap from the first frame, not 16 + the slide's offset */
+.dp-view.sr-panel { animation: none; }
+.dp-view p { margin: 0; max-width: none; font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.55; }
+
+/* F6.14 step controls; F6.15 slider */
+.dp-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dp-step-counter { font-family: var(--sr-font-mono); font-size: var(--type-small); color: var(--sr-text-primary); min-width: 15ch; font-variant-numeric: tabular-nums; }
+/* UAT cu-5 P3-4: the controls never move: Play and Pause take one width (Pause is the wider), and the counter (inline, from N) is as wide as "Step N / N" */
+.dp-play { min-width: 84px; }
+/* the themed slider (track, fill from --fill, thumb) is app.css's global input[type='range'] (F6.15) */
+.dp-scrub { flex: 1 1 160px; min-width: 0; margin: 0; }
+@media (max-width: 767px) {
+  .dp-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .dp-controls .sr-btn { width: 100%; }
+  .dp-prev { order: 1; }
+  .dp-next { order: 2; }
+  .dp-play { order: 3; grid-column: 1 / -1; }
+  .dp-step-counter { order: 4; min-width: 0; }
+  .dp-scrub { order: 5; }
+}
+
+/* R1–R3: the recurrence strip */
+.dp-strip { display: grid; gap: 4px; min-height: 50px; padding: 12px 16px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+/* UAT J4: the recurrence line keeps its row on steps without one (it only appears on write steps), so stepping never
+   moves what is below it */
+.dp-view p.dp-recurrence { min-height: 1.5em; }
+.dp-view p.dp-recurrence, .dp-view .dp-cell-recurrence { font-family: var(--sr-font-mono); font-size: var(--type-body); line-height: 1.5; font-weight: 700; color: var(--sr-energy-accent); white-space: normal; overflow-wrap: normal; word-break: normal; }
+.dp-view .dp-cell-recurrence { color: var(--sr-label-warn); }
+.dp-view p.dp-selected-line { font-family: var(--sr-font-mono); }
+/* UAT cu-4 P3-16: the row the SELECTED line takes, held while nothing is pressed */
+.dp-selected-slot { min-height: calc(var(--type-body) * 1.5); }
+.dp-selected-label { font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); margin-right: 8px; }
+.dp-view p.dp-narration { font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.55; color: var(--sr-text-secondary); }
+/* UAT cu-5 P3-6: which case a family-only trace is showing */
+.dp-view p.dp-case { min-height: calc(var(--type-small) * 1.55); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+
+/* L1: panes side by side (1-D 1:1, 2-D 7:5) or stacked */
+.dp-panes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; min-width: 0; }
+.dp-panes-side { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.dp-panes-side.dp-panes-2d { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.dp-tables { display: grid; gap: 16px; min-width: 0; align-content: start; }
+
+/* F6.16 trace pane: a well; the header outside the scroller (Controller ruling 1); phone padding 8 (ruling 2) */
+/* (family panes: families.css) */
+.dp-pane { background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); padding: 12px; min-width: 0; }
+@media (max-width: 767px) { .dp-pane { padding: 8px; } }
+.dp-pane-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 8px; margin-bottom: 8px; }
+.dp-pane-label { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.dp-pane-meta { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.dp-sc { overflow: auto; min-width: 0; max-height: 440px; padding: 4px; }
+/* UAT cu-4 P3-7: a 2-D table sits in 16 px of cell spacing (12 compact) that its negative margin pulls out of the layout, but the table box still
+   reaches past the scroller's 4 px padding: a scrollbar for 12 px of nothing, on a table that fits. The scroller pays that spacing in padding. */
+.dp-sc:has(> .dp-table-wrap.dp-2d) { padding-right: 16px; padding-bottom: 16px; }
+.dp-tree-sc { max-height: 392px; padding-bottom: 2px; } /* M11: at most 16 px of well below the deepest node */
+@media (max-width: 1099px) { .dp-sc { max-height: 400px; } .dp-tree-sc { max-height: 312px; } }
+@media (max-width: 767px) { .dp-sc { max-height: 360px; } .dp-tree-sc { max-height: 272px; padding: 6px 4px; } } /* phone: room for the nodes' 44 px hit areas (S10), still ≤ 16 px of well (M11) */
+.dp-view p.dp-note, .dp-view p.fam-note { font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-secondary); }
+
+/* P2 / I: the table, its index labels and the arrow lane */
+.dp-table-wrap { position: relative; width: max-content; }
+.dp-table-wrap.dp-1d { padding-top: 44px; }
+.dp-table { border-collapse: separate; border-spacing: 4px 0; margin: 0 -4px; }
+.dp-2d .dp-table { border-spacing: 16px; margin: -16px; }
+.dp-2d.dp-compact .dp-table { border-spacing: 12px; margin: -12px; }
+.dp-table td, .dp-table th { padding: 0; vertical-align: middle; line-height: 0; }
+.dp-table .dp-col, .dp-table .dp-row, .dp-table .dp-corner { line-height: 1.45; }
+.dp-col, .dp-row, .dp-corner { font-family: var(--sr-font-mono); font-size: var(--type-meta); font-weight: 400; color: var(--sr-text-secondary); text-align: center; white-space: nowrap; }
+.dp-idx-row .dp-col { padding-top: 4px; }
+.dp-2d thead th { position: sticky; top: 0; z-index: 2; background: var(--sr-surface-well); }
+.dp-2d .dp-row, .dp-2d .dp-corner { position: sticky; left: 0; z-index: 2; background: var(--sr-surface-well); min-width: 24px; }
+.dp-2d .dp-corner { z-index: 3; }
+.dp-cell {
+  display: flex; align-items: center; justify-content: center; min-width: 48px; height: 40px; padding: 0 6px; box-sizing: border-box; line-height: 1;
+  border: 2px solid var(--sr-edge-dark); background: var(--sr-surface-tile); color: var(--sr-text-primary);
+  font-family: var(--sr-font-mono); font-size: var(--type-small); cursor: pointer; white-space: nowrap; position: relative;
+  paint-order: stroke; -webkit-text-stroke: 0;
+}
+.dp-compact .dp-cell { min-width: 36px; height: 32px; padding: 0 4px; font-size: var(--type-meta); }
+.dp-cell[data-state='empty'] { background: var(--sr-surface-well); border-color: var(--sr-edge-mid); }
+.dp-cell[data-state='current'] { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); font-weight: 700; }
+.dp-cell[data-dep='true'] { box-shadow: inset 0 0 0 3px var(--sr-signal-ok); }
+.dp-cell[data-read='true'] { outline: 2px dashed var(--sr-signal-ok); outline-offset: -2px; }
+.dp-cell[data-call='current'] { outline: 2px solid var(--sr-energy-accent); outline-offset: -2px; }
+.dp-cell[data-call='hit'] { box-shadow: inset 0 0 0 3px var(--sr-energy-rival); }
+.dp-cell[data-peer='true'], .dp-node[data-peer='true'] { outline: 1px solid var(--sr-label-warn); outline-offset: -2px; }
+.dp-cell[data-linked='true'], .dp-node[data-linked='true'] { outline: 2px dashed var(--sr-label-warn); outline-offset: -2px; }
+.dp-cell[aria-pressed='true'], .dp-node[aria-pressed='true'] { box-shadow: inset 0 0 0 3px var(--sr-label-warn); }
+.dp-cell:focus-visible, .dp-node:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; z-index: 1; }
+
+/* A2: the arrows, laid over the scroll content (sized to it: never the 300 px default) */
+.dp-arrows { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 1; }
+.dp-arrow-current polyline { stroke: var(--sr-signal-ok); }
+.dp-arrow-current polygon { fill: var(--sr-signal-ok); }
+.dp-arrow-selected polyline { stroke: var(--sr-label-warn); }
+.dp-arrow-selected polygon { fill: var(--sr-label-warn); }
+
+/* TL1–TL3 / C3–C5: the call tree */
+.dp-tree { position: relative; margin: 0; padding: 0; }
+.dp-tree-edges { position: absolute; left: 0; top: 0; overflow: visible; }
+.dp-edge { stroke-width: 2; stroke: var(--sr-edge-mid); }
+.dp-edge-stack { stroke: var(--sr-energy-accent); }
+.dp-edge-hit { stroke: var(--sr-energy-rival); stroke-dasharray: 4 3; }
+.dp-root-label { position: absolute; top: 0; text-align: center; white-space: nowrap; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.dp-node {
+  position: absolute; display: flex; align-items: center; justify-content: center; height: 32px; min-width: 72px; padding: 0 8px; box-sizing: border-box;
+  white-space: nowrap; border: 2px solid var(--sr-edge-dark); background: var(--sr-surface-tile); color: var(--sr-text-primary);
+  font-family: var(--sr-font-mono); font-size: var(--type-meta); cursor: pointer;
+}
+.dp-node[data-onstack='true'] { background: var(--sr-surface-well); border-color: var(--sr-energy-accent); }
+.dp-node[data-hit='true'] { background: var(--sr-surface-well); border: 2px dashed var(--sr-energy-rival); color: var(--sr-energy-rival-glow); }
+.dp-node[data-current='true'] { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); color: var(--sr-text-onaccent); font-weight: 700; }
+
+/* M1–M3, C6: the mapping row and the legend */
+.dp-maprow { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; }
+/* M12 / T0: mapping left, legend right from 768; the legend wraps under only on phone */
+@media (min-width: 768px) { .dp-maprow { flex-wrap: nowrap; } .dp-mapcol { flex: 1 1 auto; min-width: 0; } .dp-legend { flex: 0 1 auto; justify-content: flex-end; } }
+.dp-mapcol { display: grid; gap: 4px; }
+.dp-view p.dp-mapping, .dp-mapping-hint { font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-secondary); }
+.dp-mapping-formula { font-family: var(--sr-font-mono); font-size: var(--type-small); color: var(--sr-text-primary); }
+/* cu-4 P3-16: the row the link summary takes, held while nothing is pressed (Chivo 15 at 1.55) */
+.dp-summary-slot { min-height: calc(var(--type-small) * 1.55); }
+.dp-view p.dp-link-summary { font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-primary); }
+.dp-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; }
+.dp-legend li { display: inline-flex; align-items: center; gap: 8px; font-family: var(--sr-font-body); font-size: var(--type-small); color: var(--sr-text-secondary); }
+.dp-sw { display: block; width: 14px; height: 14px; box-sizing: border-box; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); }
+.dp-sw-current, .dp-sw-called { background: var(--sr-energy-accent); }
+.dp-sw-dep { box-shadow: inset 0 0 0 3px var(--sr-signal-ok); }
+.dp-sw-hit { background: var(--sr-surface-well); border: 2px dashed var(--sr-energy-rival); }
+.dp-sw-selected { box-shadow: inset 0 0 0 3px var(--sr-label-warn); }
+.dp-sw-linked { background: var(--sr-surface-well); border: 2px dashed var(--sr-label-warn); }
+.dp-sw-stack { background: var(--sr-surface-well); border-color: var(--sr-energy-accent); }
+
+/* V0.2: the family panes, two to a row on desktop */
+.fam-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; min-width: 0; }
+@media (min-width: 1100px) { .fam-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.fam-grid:empty { display: none; }
+
+/* ruling 7 S10 (ruling 3.6): on phone every trace cell and tree node owns a 44 x 44 hit area, through an
+   invisible extension centred on it; the visuals stay per I1 / C3. The 1-D compact row gets an 8 px gap so
+   neighbouring extensions never overlap. */
+@media (max-width: 767px) {
+  .dp-cell::before, .dp-node::before { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .dp-1d.dp-compact .dp-table { border-spacing: 8px 0; margin: 0 -8px; }
+  /* rerun F009: a 2-D compact cell (36 x 32) sits on a 48 x 48 pitch with a 48 x 48 extension, so the extensions tile
+     edge to edge: no row or column covers its neighbour's hit area; a hovered or focused cell is raised */
+  .dp-2d.dp-compact .dp-table { border-spacing: 12px 16px; margin: -16px -12px; }
+  .dp-2d.dp-compact .dp-cell::before { width: 48px; height: 48px; }
+  .dp-cell:hover, .dp-cell:focus-visible { z-index: 1; }
+  /* final rerun F003/F009 (ruling 2): the tree pane keeps its 8 px inner padding; the scroller reaches 4 px into it below
+     and 6 px at the sides, keeping the nodes' 6 px tap extension inside the scroller while a small tree leaves at most
+     12 px of well below it (P3) */
+  .dp-tree-pane { padding: 8px; }
+  .dp-tree-pane .dp-tree-sc { padding: 6px; margin: 0 -6px -4px; }
+}

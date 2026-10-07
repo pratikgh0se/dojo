@@ -1,0 +1,39 @@
+.next-design { display: grid; gap: 6px; justify-items: start; }
+.next-title { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.ladder { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; align-items: end; }
+.ladder-col {
+  display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; padding: 6px; min-height: calc(90px + var(--tier-i, 0) * 24px); cursor: pointer; text-align: left;
+  color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.ladder-col.sel { border-color: var(--sr-energy-accent); box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade), 0 0 0 var(--sr-edge-dark); }
+.ladder-name { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; overflow-wrap: break-word; font-weight:700;}
+.ladder-range { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); overflow-wrap: anywhere; }
+.ladder-cubes { display: flex; flex-wrap: wrap; gap: 2px; }
+.design-item { display: grid; gap: 4px; }
+.design-more { padding: 4px 8px 8px 30px; font-size:var(--type-small); }
+.design-more summary { cursor: pointer; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.design-refs { display: flex; flex-wrap: wrap; gap: 12px; margin: 6px 0 0; }
+.rubric-pts { width: 40px; text-align: right; font-family:var(--sr-font-body); color: var(--sr-label-accent); font-weight:700; font-size:var(--type-small);}
+/* UAT cu-7 P3-6: two across on a phone, so a tier name (FOUNDATIONS, DISTRIBUTED) fits whole on its line instead of breaking mid-word */
+/* UAT cu-r3b P3-4: the two tiles of a row are one height (the 6-across ladder keeps its bottom-aligned stagger) */
+/* cu-final row 29: the stagger's own min-heights (90/114/138 px) made the rows 80/115/150 tall; on a phone the min-height goes and the
+ * content sits at the top, so a row's two tiles are one height (the grid stretches them) */
+@media (max-width: 640px) { .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; } .ladder-col { min-height: 0; justify-content: flex-start; } }
+.dz-charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.dz-chart { display: grid; gap: 10px; align-content: start; }
+.dz-well { height: 150px; padding: 8px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+.dz-well sr-chart { display: block; width: 100%; height: 100%; }
+.dz-sub { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.dz-key { display: flex; gap: 16px; }
+.dz-key > span { display: inline-flex; align-items: center; gap: 6px; }
+.dz-swatch { display: inline-block; width: 10px; height: 10px; }
+.dz-swatch-done { background: var(--sr-energy-accent); }
+.dz-swatch-total { background: var(--sr-energy-rival); }
+.design-start { flex: 0 0 auto; }
+/* K2: the three charts are 3 across on desktop, 2 + 1 (the third spans) on tablet, one column on phone. */
+.dz-charts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1099px) { .dz-charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dz-charts > :nth-child(3) { grid-column: 1 / -1; } }
+@media (max-width: 767px) { .dz-charts { grid-template-columns: minmax(0, 1fr); } }
+/* ruling 11 Q14: designs-hint is Chivo 15 secondary, like dsa-hint */
+.designs .designs-pick-hint { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; }

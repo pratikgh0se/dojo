@@ -1,0 +1,73 @@
+{
+  "id": "p322",
+  "title": "Coin Change",
+  "fn": "coinChange",
+  "signature": "func coinChange(coins []int, amount int) int",
+  "params": [
+    {
+      "name": "coins",
+      "type": "[]int"
+    },
+    {
+      "name": "amount",
+      "type": "int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// coinChange returns the fewest coins that make up amount, or -1 if no combination of coins does.\n//\n// Optional: add import \"dojo/tk\" to watch your DP step by step, e.g.\n//   t := tk.Table(\"dp\", 1, n+1)\n//   t.Set(0, i, v, tk.Dep(0, i-1), tk.Dep(0, i-2), tk.Rule(\"{0} + {1}\"))\nfunc coinChange(coins []int, amount int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          1,
+          2,
+          5
+        ],
+        11
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        [
+          2
+        ],
+        3
+      ],
+      "expected": -1
+    },
+    {
+      "args": [
+        [
+          1
+        ],
+        0
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        [
+          186,
+          419,
+          83,
+          408
+        ],
+        6249
+      ],
+      "expected": 20
+    },
+    {
+      "args": [
+        [
+          2,
+          5,
+          10,
+          1
+        ],
+        27
+      ],
+      "expected": 4
+    }
+  ]
+}

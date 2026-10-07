@@ -1,0 +1,266 @@
+.today { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; } /* one shrinkable track: a long label ends in … instead of widening the page (K3) */
+
+/* NOW tile · README-dashboard "Today" §1 */
+.now-tile { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-end; }
+.now-tile[data-tone='off'] { background: var(--sr-surface-well); }
+.now-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 420px; }
+.now-eyebrow-row { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+/* Pre-start: "PLAN STARTS <date> · <eyebrow>" plus "in N days · <time>" is too long for one row
+   at 1280px and would wrap mid-phrase; put the time on its own row, as the prototype does. */
+.now-tile[data-phase='before'] .now-eyebrow-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+.now-eyebrow {
+  margin: 0; font-family:var(--sr-font-body); font-size:var(--type-small); line-height: 1.4; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--sr-text-secondary); font-weight:700;}
+.now-time { font-family: var(--sr-font-mono); font-size:var(--type-small); color: var(--sr-text-secondary); white-space: nowrap; }
+.now-headline {
+  margin: 0; font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-l); line-height: 1.1;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--sr-text-primary); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.now-tile[data-tone='ai'] .now-headline { color: var(--sr-label-accent); }
+.now-tile[data-tone='interview'] .now-headline { color: var(--sr-energy-rival); }
+.now-tile[data-tone='off'] .now-headline { color: var(--sr-text-secondary); }
+.now-text { margin: 0; font-size:var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); text-wrap: pretty; overflow-wrap: break-word; }
+.now-headline { overflow-wrap: break-word; }
+.now-right { display: flex; flex-direction: column; gap: 10px; align-items: flex-end; flex: 0 1 auto; min-width: 0; }
+.now-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+/* shell-today-board M10: Start ▸ is lg 40; Spar and Open are default 36 (T2 / F6.1, rerun) */
+.sr-btn.now-btn { height: var(--sr-size-control-h); }
+.sr-btn.now-btn.now-start { height: var(--sr-size-control-h-lg); }
+.now-start { padding: 0 16px; }
+/* Ruling 23 K3 (F6.1): the Open link is one line; one too long for the tile ends in "…" (its title holds the whole label). */
+.now-open { max-width: 100%; min-width: 0; }
+.now-open-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.now-timer { display: flex; gap: 12px; align-items: center; }
+.now-blocks { display: flex; gap: 4px; }
+.now-block {
+  display: block; width: 14px; height: 24px; border: 2px solid var(--sr-edge-dark);
+  background: var(--sr-energy-accent); transition: background var(--sr-motion-base) steps(4);
+}
+.now-block[data-state='draining'] { background: var(--sr-energy-accent-shade); }
+.now-block[data-state='empty'] { background: transparent; border-color: var(--sr-edge-mid); }
+.now-readout {
+  font-family: var(--sr-font-pixel); font-weight: 400; font-size:var(--type-display-l); line-height: 1.1; font-variant-numeric: tabular-nums; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+/* shell-today-board M13: Retreat is the house quiet button (.sr-btn .sr-btn-quiet), nowrap */
+.now-retreat { white-space: nowrap; flex: none; }
+.now-timer { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+.now-timer-sub { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+
+/* Vitals row · README-dashboard "Today" §2 */
+.vitals-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.vitals-row > .sr-panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* UAT cu-2 P3-15 (today-1280): the avatar well is 96 x 200 and the stats beside it run 200 tall (label on top, LV in the
+ * middle, the next form and its short 12-cube row at the bottom), whatever height the row's other panels give the panel. */
+.vitals-row > .vitals-pom { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 16px; align-items: start; }
+.pom-stage-well { position: relative; height: 200px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.pom-stage-well pom-stage { position: absolute; inset: 0; }
+.pom-stats { display: grid; gap: 8px; align-content: space-between; height: 200px; min-width: 0; }
+/* shell-today-board M7: Today labels are Chivo 15/700 upper secondary */
+.vital-label {
+  font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); font-weight:700;}
+.vital-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.vital-meta { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); white-space: nowrap; }
+.vital-meta-strong { color: var(--sr-text-primary); }
+.lv-big { font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-m); line-height: 1.2; font-variant-numeric: tabular-nums; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.pom-next-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.pom-next-row .pom-xp { color: var(--sr-text-primary); }
+.sr-meter.stretch { display: flex; gap: 2px; height: 10px; }
+.sr-meter.stretch .sr-cube { flex: 1; border: 2px solid var(--sr-edge-dark); }
+.sr-meter.stretch .sr-cube[data-on='false'] { border-color: var(--sr-edge-mid); }
+.day-strip { display: flex; gap: 2px; height: 14px; }
+.day-cell { flex: 1; border: 2px solid var(--sr-edge-dark); background: transparent; }
+.day-cell[data-state='past'] { background: var(--sr-energy-accent-shade); }
+.day-cell[data-state='past-rest'] { background: var(--sr-surface-muted); }
+.day-cell[data-state='today'] { background: var(--sr-energy-accent-glow); }
+.hp-head { margin-top: 4px; }
+.hp-bar, .hp-bar sr-chart { height: 18px; }
+.ms-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; }
+/* P3-17 (today-1280): the milestone chips are flat outlined boxes, as the mockup's chip: a 2 px edge-mid border, Space Mono 14,
+ * secondary text, no bevel (shell-today-board M11 had given them the control bevel). Earned is the accent block, flat too. */
+.ms-badge {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  font-family: var(--sr-font-mono); font-weight: 400; font-size:var(--type-meta); color: var(--sr-text-secondary);
+  background: transparent; border: 2px solid var(--sr-edge-mid); box-shadow: none;
+}
+.ms-badge.on { color: var(--sr-text-onaccent); background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.console-well { background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); padding: 8px; }
+.cal-well { flex: 1; min-height: 172px; } /* cu-2 P3-15: the mockup's well; the row is as tall as its tallest panel, not 35 px more */
+.cal-well sr-chart { height: 100%; min-height: 130px; }
+/* UAT cu-2p P3-2: the calendar is HTML and fills its well: a label column, then 8 week columns that share the width */
+.cons-cal { display: grid; grid-template-columns: 14px repeat(8, minmax(0, 1fr)); grid-template-rows: 14px repeat(7, minmax(14px, 1fr)); gap: 3px; height: 100%; min-height: 130px; }
+.cons-label { font-family: var(--sr-font-body); font-size: var(--type-meta); line-height: 14px; color: var(--sr-text-secondary); align-self: center; }
+.cons-month { white-space: nowrap; overflow: visible; }
+.cons-cell { display: block; min-width: 0; background: transparent; }
+.cons-cell[data-level='0'] { background: var(--sr-chart-grid); }
+.cons-cell[data-level='1'] { background: var(--sr-chart-seq-orange-1); }
+.cons-cell[data-level='2'] { background: var(--sr-chart-seq-orange-2); }
+.cons-cell[data-level='3'] { background: var(--sr-chart-seq-orange-3); }
+.cons-cell[data-level='4'] { background: var(--sr-chart-seq-orange-4); }
+.cons-cell[data-level='5'] { background: var(--sr-chart-seq-orange-5); }
+
+/* Sprint health · README-dashboard "Today" §3 */
+.health.sr-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.health-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.health-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.health-title {
+  margin: 0; font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.health-legend { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--sr-font-mono); font-size: var(--type-meta); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.hl-swatch { display: inline-block; width: 8px; height: 8px; margin-right: 4px; }
+.hl-done { background: var(--sr-energy-accent); }
+.hl-behind { background: var(--sr-signal-danger); }
+.hl-todo { background: var(--sr-chart-axis); }
+.health-chart { height: 220px; }
+.health-chart sr-chart { height: 100%; }
+.health-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.health-stat { padding: 8px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); min-width: 0; }
+.health-stat-value { font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; font-variant-numeric: tabular-nums; color: var(--sr-text-primary); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.health-stat-value.st-ok { color: var(--sr-label-ok); }
+.health-stat-value.st-danger { color: var(--sr-label-danger); }
+.load-verdict { font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.load-verdict.is-heavy { color: var(--sr-label-danger); }
+.load-verdict.is-fits { color: var(--sr-label-ok); }
+.load-rows { display: flex; flex-direction: column; gap: 8px; }
+.load-row { display: grid; grid-template-columns: 150px minmax(0, 1fr) 28px; gap: 8px; align-items: center; }
+.load-cells { display: flex; gap: 2px; flex-wrap: wrap; min-width: 0; }
+.load-cell { width: 14px; height: 14px; border: 2px solid var(--sr-edge-mid); background: transparent; }
+.load-cell[data-cell='done'] { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.load-cell[data-cell='behind'] { border-color: var(--sr-label-danger); }
+.load-n { font-family: var(--sr-font-mono); font-size:var(--type-meta); text-align: right; }
+.load-focus { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.load-text { margin: 0; font-size:var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); text-wrap: pretty; }
+
+/* Dig in drawers · README-dashboard "Today" §4 */
+.dig-in { display: flex; flex-direction: column; gap: 12px; }
+.drawer.sr-panel { display: flex; flex-direction: column; gap: 12px; }
+.drawer-head {
+  width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 12px; align-items: center;
+  min-height: 36px; padding: 0; font: inherit; color: inherit; text-align: left; background: none; border: 0; cursor: pointer;
+}
+.drawer-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.drawer-title { font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.dt-accent { color: var(--sr-label-accent); }
+.dt-rival { color: var(--sr-energy-rival); }
+.dt-design { color: var(--sr-signal-arcane-label); }
+.drawer-body p.drawer-empty { font-size: var(--type-small); color: var(--sr-text-secondary); margin: 0; }
+.drawer-sub { font-size:var(--type-small); color: var(--sr-text-secondary); overflow-wrap: break-word; }
+.drawer-cubes { display: flex; gap: 2px; flex-wrap: wrap; max-width: 180px; justify-content: flex-end; }
+.drawer-cube { width: 10px; height: 10px; border: 2px solid var(--sr-edge-mid); background: transparent; }
+.drawer-cube.on { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.drawer-cube.danger { border-color: var(--sr-label-danger); }
+.drawer-count { font-family: var(--sr-font-mono); font-size: var(--type-body); min-width: var(--sr-size-hit-touch); text-align: right; } /* P3-17: the mockup's "0/6" is Space Mono at the body size, 17 (F2.2 has no 20) */
+.drawer-caret {
+  width: var(--sr-size-control-h-sm); height: var(--sr-size-control-h-sm); display: grid; place-items: center; font-family:var(--sr-font-body); font-size:var(--type-small);
+  color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); font-weight:700;
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);}
+.drawer-body { display: flex; flex-direction: column; gap: 8px; animation: srin var(--sr-motion-base) steps(4); }
+.drawer-note { margin: 0; color: var(--sr-text-secondary); text-wrap: pretty; }
+.dig-group { margin-top: 6px; }
+.dig-task {
+  display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 10px 12px 10px 10px;
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.dig-box {
+  width: 36px; height: 36px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  background: var(--sr-surface-well); border: 2px solid var(--sr-edge-dark); transition: background var(--sr-motion-fast) steps(3);
+}
+.dig-box i { width: 10px; height: 10px; background: var(--sr-edge-mid); }
+.dig-box[aria-checked='true'] { background: var(--sr-signal-ok); }
+.dig-box[aria-checked='true'] i { background: var(--sr-text-onaccent); }
+.dig-task-main { min-width: 0; }
+.dig-task-p, .dig-design-title, .dig-rubric { margin: 0; }
+.dig-task-text { color: var(--sr-text-primary); text-decoration: none; text-wrap: pretty; overflow-wrap: anywhere; }
+.dig-task-text:hover { text-decoration: underline; text-decoration-thickness: 2px; }
+.dig-task.done .dig-task-text { color: var(--sr-text-secondary-ontile); text-decoration: line-through; }
+.dig-task-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; font-size:var(--type-small); }
+/* Addendum 9: the task rows are a list (role="list"); the wrapper takes no part in the layout. */
+.dig-rows { display: contents; }
+.dig-problem {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 6px 8px;
+  background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}
+.dig-problem .dig-box { width: 30px; height: 30px; border-color: var(--sr-edge-mid); }
+.dig-problem .dig-box i { width: 8px; height: 8px; }
+/* shell-today-board A6: drawer links wrap at every width, never clipped */
+.dig-problem-link { font-size:var(--type-small); min-width: 0; overflow-wrap: anywhere; }
+.dig-well a, .dig-task-meta a { overflow-wrap: anywhere; }
+.dig-problem.done .dig-problem-link { color: var(--sr-text-secondary); text-decoration: line-through; }
+.dig-problem-num { font-family: var(--sr-font-mono); color: var(--sr-text-secondary); white-space: nowrap; }
+/* ruling 24 S4: not a box above the phone width: NeetCode, the difficulty chip and Do ▸ stay the row's own grid items there */
+.dig-problem-meta { display: contents; }
+.dig-nc { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-energy-rival); white-space: nowrap; font-weight:700;}
+.dig-problem.has-do { grid-template-columns: 30px minmax(0, 1fr) auto auto auto; }
+.dig-do { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); white-space: nowrap; text-decoration: none; font-weight:700;}
+.dig-do:hover { color: var(--sr-text-primary); }
+.dig-diff { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap; font-weight:700; padding: 0 6px; color: var(--sr-text-primary); border: 2px solid var(--diff, var(--sr-edge-mid)); }
+/* shell-today-board A8 (F6.12): the difficulty colour is on the border only; the text stays primary. */
+.dig-diff.diff-E { --diff: var(--sr-label-ok); }
+.dig-diff.diff-M { --diff: var(--sr-energy-accent); }
+.dig-diff.diff-H { --diff: var(--sr-label-danger); }
+.dig-well {
+  padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+  display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: baseline; font-size:var(--type-small); color: var(--sr-text-secondary);
+}
+.dig-design { display: flex; flex-direction: column; gap: 8px; }
+.dig-design-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.dig-design-title { font-weight: 500; }
+.dig-dives { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 4px; font-size:var(--type-small); color: var(--sr-text-secondary-ontile); }
+.redo-row {
+  display: block; width: 100%; padding: 8px 0; border: 0; border-bottom: 2px solid var(--sr-edge-mid);
+  background: none; color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; overflow-wrap: anywhere;
+}
+.redo-row:focus-visible { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: var(--sr-size-focus-offset); }
+.slide-ask { display: grid; gap: 8px; min-width: 0; }
+.slide-ask > .sr-btn { justify-self: start; }
+.slide-panel { display: grid; gap: 8px; padding: 8px; border: 2px solid var(--sr-edge-dark); min-width: 0; }
+.slide-rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.slide-rows li { display: grid; gap: 2px; overflow-wrap: anywhere; }
+.slide-title { font-weight: 600; }
+.slide-reason { font-size:var(--type-small); color: var(--sr-text-secondary); }
+.slide-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Drawer paragraphs are reading text too (ux spec section 1, UX-03). */
+.drawer-body p { font-family: var(--sr-font-body); font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+
+/* ui-today T3: tablet keeps Consistency on its own full row (no half-empty row). */
+.vitals-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1099px) {
+  .vitals-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vitals-row > .consistency { grid-column: 1 / -1; }
+}
+/* F6.4: ratios like "0/6" read in Space Mono 15, not Silkscreen. */
+.health-stat-value.is-ratio { font-family: var(--sr-font-mono); font-size: var(--type-small); -webkit-font-smoothing: auto; }
+.cal-well { padding-top: 16px; }
+
+/* ui-today T3 phone: NOW is a column; Spar 50 + Spar 25 share a row, Start runs full width under them. */
+@media (max-width: 767px) {
+  .vitals-row, .health.sr-panel { grid-template-columns: minmax(0, 1fr); }
+  .now-tile { flex-direction: column; flex-wrap: nowrap; align-items: stretch; } /* one column line: a wrapping column would size its line to the widest label */
+  .now-left { flex: 0 0 auto; }
+  .now-eyebrow-row { flex-direction: column; align-items: flex-start; gap: 0; }
+  .now-right { align-items: stretch; }
+  .now-actions { justify-content: stretch; }
+  .now-actions .sr-btn.now-btn { flex: 1 1 40%; height: var(--sr-size-hit-touch); }
+  /* K3 (today-375): Spar · 50 and Spar · 25 share a row; Open and Start each take a full row under them. These need the
+   * same specificity as the rule above, or its 40% basis wins and Start sits half-width beside Open (UAT cu-1 P2-2). */
+  .now-actions .sr-btn.now-btn.now-start, .now-actions .sr-btn.now-btn.now-open { flex: 1 1 100%; }
+  .now-retreat { height: var(--sr-size-hit-touch); }
+  .load-row { grid-template-columns: 120px minmax(0, 1fr) 28px; }
+  /* F6.5 phone: cubes move under the subtitle (left), count and caret stay right; the title wraps. */
+  .drawer-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: var(--sr-size-hit-touch); }
+  .drawer-titles { flex: 1 1 100%; }
+  .drawer-cubes { justify-content: flex-start; max-width: none; }
+  .drawer-count { min-width: 0; }
+  /* S4 (cu-2 P2-5): the tick on the left over both lines; the problem on the first line (its number never wraps, its name does);
+   * NeetCode, the difficulty chip and Do ▸ on the second, wrapping whole and never overlapping, Do ▸ at the right end */
+  .dig-problem, .dig-problem.has-do { grid-template-columns: var(--sr-size-hit-touch) minmax(0, 1fr); align-items: start; }
+  .dig-problem .dig-box, .dig-box { width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); }
+  .dig-problem > .dig-box { grid-row: 1 / span 2; }
+  .dig-problem-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; grid-column: 2; }
+  .dig-problem-meta .dig-do { margin-left: auto; }
+  .dig-problem-link { display: block; padding: 10px 0; }
+  .dig-task { grid-template-columns: var(--sr-size-hit-touch) minmax(0, 1fr); }
+  /* SH2 (ruling 3.6): drawer row links ("Do: …", resources, problems) are 44 px touch targets */
+  .dig-task-text, .dig-task-meta a, .dig-nc, .dig-do, .dig-well a { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); }
+  .dig-problem-link { min-height: var(--sr-size-hit-touch); }
+  .dig-task-meta a, .dig-nc, .dig-do { min-width: var(--sr-size-hit-touch); }
+}

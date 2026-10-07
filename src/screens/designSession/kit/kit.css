@@ -1,0 +1,88 @@
+.kit { display: grid; gap: 8px; min-width: 0; }
+.kit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.kit-views { display: flex; gap: 4px; }
+.kit-bar .sr-btn[aria-pressed='true'] { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); }
+.kit-count { margin-left: auto; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.kit-palette {
+  max-width: 100%; overflow-x: auto; padding: 8px;
+  background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-dark);
+}
+.kit-palette-toolbar { display: flex; gap: 8px; }
+.kit-family { display: flex; flex: 0 0 auto; flex-direction: column; gap: 4px; padding-left: 6px; border-left: 3px solid var(--sr-edge-dark); }
+.kit-family-name { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
+/* Per-family tint, like the prototype's diagram engine FAM map (public/engines/diagram.js): each
+ * family's border-left and glyph (family name) colour matches that family's glyph role there. */
+.kit-family[data-family='client'] { border-left-color: var(--sr-text-primary); }
+.kit-family[data-family='client'] .kit-family-name { color: var(--sr-text-primary); }
+.kit-family[data-family='edge'] { border-left-color: var(--sr-energy-accent-glow); }
+.kit-family[data-family='edge'] .kit-family-name { color: var(--sr-energy-accent-glow); }
+.kit-family[data-family='compute'] { border-left-color: var(--sr-energy-accent); }
+.kit-family[data-family='compute'] .kit-family-name { color: var(--sr-energy-accent); }
+.kit-family[data-family='data'] { border-left-color: var(--sr-energy-rival); }
+.kit-family[data-family='data'] .kit-family-name { color: var(--sr-energy-rival); }
+.kit-family[data-family='messaging'] { border-left-color: var(--sr-energy-rival-glow); }
+.kit-family[data-family='messaging'] .kit-family-name { color: var(--sr-energy-rival-glow); }
+.kit-family[data-family='cache'] { border-left-color: var(--sr-energy-accent-glow); }
+.kit-family[data-family='cache'] .kit-family-name { color: var(--sr-energy-accent-glow); }
+.kit-family[data-family='security'] { border-left-color: var(--sr-signal-warn); }
+.kit-family[data-family='security'] .kit-family-name { color: var(--sr-signal-warn); }
+.kit-family[data-family='observe'] { border-left-color: var(--sr-signal-ok); }
+.kit-family[data-family='observe'] .kit-family-name { color: var(--sr-signal-ok); }
+.kit-family[data-family='ai'] { border-left-color: var(--sr-signal-arcane); }
+/* --sr-signal-arcane fails WCAG's 4.5:1 text minimum on the palette's --sr-surface-panel
+ * background (D-59, axe color-contrast). The border-left keeps the saturated family colour to
+ * match the prototype; the label uses --sr-signal-arcane-label, a lightened tint of the same hue
+ * that clears 4.5:1, so it stays legible. Every other family's label already clears 4.5:1 at its
+ * saturated colour — see tests/unit/kit-palette-contrast.test.ts. */
+.kit-family[data-family='ai'] .kit-family-name { color: var(--sr-signal-arcane-label); }
+.kit-family[data-family='external'] { border-left-color: var(--sr-text-secondary); }
+.kit-family[data-family='external'] .kit-family-name { color: var(--sr-text-secondary); }
+.kit-family[data-family='flow'] { border-left-color: var(--sr-energy-accent); }
+.kit-family[data-family='flow'] .kit-family-name { color: var(--sr-energy-accent); }
+.kit-kind {
+  padding: 2px 6px; text-align: left; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-primary);
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); cursor: grab;
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile);
+}
+.kit-kind:disabled { opacity: 0.5; cursor: not-allowed; }
+.kit-kind:focus-visible, .kit-node:focus-visible, .kit-link:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+.kit-inspect { display: flex; flex-wrap: wrap; gap: 8px 16px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.kit-field { display: flex; align-items: center; gap: 6px; }
+.kit-status { min-height: 18px; margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-accent); }
+.kit-canvas {
+  position: relative; max-width: 100%; height: min(70vh, 640px); overflow: auto;
+  background-color: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid);
+  background-image: linear-gradient(to right, var(--sr-chart-grid) 2px, transparent 2px), linear-gradient(to bottom, var(--sr-chart-grid) 2px, transparent 2px);
+  background-size: 24px 24px;
+}
+.kit-canvas[data-locked='true'] { border-color: var(--sr-label-warn); }
+.kit-stage { position: relative; }
+.kit-stage sr-diagram { max-width: none !important; overflow: visible !important; }
+.kit-stage-2d > sr-diagram { position: absolute; left: 0; top: 0; }
+.kit-overlay-2d { position: absolute; inset: 0; pointer-events: none; }
+.kit-overlay-2d .kit-node, .kit-overlay-2d .kit-port, .kit-overlay-2d .kit-link { position: absolute; pointer-events: auto; }
+.kit-node { padding: 0; font: inherit; color: var(--sr-text-primary); background: transparent; border: 2px solid transparent; cursor: move; touch-action: none; }
+.kit-node[aria-pressed='true'] { border-color: var(--sr-energy-accent); }
+.kit-canvas[data-locked='true'] .kit-node { cursor: default; }
+.kit-port { width: 12px; height: 12px; background: var(--sr-energy-accent); border: 2px solid var(--sr-edge-dark); cursor: crosshair; touch-action: none; }
+.kit-canvas[data-locked='true'] .kit-port { display: none; }
+.kit-link { width: 16px; height: 16px; padding: 0; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); cursor: pointer; }
+.kit-link[aria-pressed='true'] { background: var(--sr-energy-accent); }
+.kit-overlay-iso { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
+.kit-overlay-iso .kit-node, .kit-overlay-iso .kit-link {
+  width: auto; height: auto; padding: 2px 6px; font-family: var(--sr-font-mono); font-size:var(--type-meta);
+  background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid);
+}
+.kit-empty { position: absolute; left: 24px; top: 24px; margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.kit-stage-iso .kit-empty { position: static; padding: 24px; }
+.kit-json {
+  max-height: 200px; margin: 0; padding: 8px; overflow: auto; font-family: var(--sr-font-mono); font-size:var(--type-meta);
+  white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}
+.kit-ghost {
+  position: fixed; z-index: var(--sr-z-popover); pointer-events: none; padding: 2px 6px; font-family: var(--sr-font-mono);
+  font-size:var(--type-meta); color: var(--sr-text-onaccent); background: var(--sr-energy-accent);
+}
+@media (max-width: 640px) { .kit-canvas { height: 420px; } }
+/* A4 (settings-progress-ref): the palette's "Add <kind>" buttons are 44 px touch targets on phone. */
+@media (max-width: 767px) { .kit-kind { min-height: var(--sr-size-hit-touch); } }

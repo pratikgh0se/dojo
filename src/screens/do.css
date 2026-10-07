@@ -1,0 +1,100 @@
+.do { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.do-rail {
+  min-height: 44px; box-sizing: border-box;
+  position: sticky; top: 0; top: env(safe-area-inset-top, 0px); z-index: var(--sr-z-sticky); /* sim-align F5: below the status bar */ display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+  padding: 8px 24px; background: var(--sr-surface-panel); border-bottom: 3px solid var(--sr-edge-dark);
+  font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; font-weight:700;}
+.do-back { padding: 0; border: 0; background: none; color: var(--sr-link); font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+.do-back:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+.do-rail-meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+@media (max-width: 767px) {
+  .do-rail { padding: 8px 16px; }
+  .do-rail-title { flex: 1 1 calc(100% - 96px); }
+  .do-rail-meta { flex: 1 1 100%; justify-content: space-between; }
+}
+.do-rail-title { flex: 1 1 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* UAT r4 (open since r3): on phone the title wraps onto two lines before it is cut (a long word or URL breaks) */
+@media (max-width: 767px) {
+  .do-rail-title {
+    white-space: normal; overflow-wrap: anywhere; line-height: 1.3;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  }
+}
+.do-rail-sprint, .do-rail-timer { font-family: var(--sr-font-mono); }
+.do-rail-xp { font-family: var(--sr-font-mono); }
+.redo-banner {
+  margin: 0; padding: 8px 12px; border: 2px solid var(--sr-label-warn); color: var(--sr-label-warn);
+  font-family: var(--sr-font-mono); font-size:var(--type-meta); overflow-wrap: anywhere;
+}
+/* ui-do D1: the workbench. Row A (3fr / 2fr from 1100 px), then full-width rows B code, C trace, D outcomes. */
+.do-work { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 16px; padding: 0 24px 24px; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.do-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1100px) { .do-cols { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+@media (max-width: 767px) { .do-work { padding: 0 16px 16px; } }
+.do-left, .do-right { display: grid; gap: 16px; align-content: start; }
+.st-title { margin: 0 0 8px; font-family: var(--sr-font-body); font-size:var(--type-title); line-height: 1.3; }
+/* F7 / G1: titles, URLs and ids wrap anywhere rather than widen the page (the rail title alone ellipsises) */
+.do-work h1, .do-work h3, .do-work p, .do-work li, .do-work .chip, .do-work a { overflow-wrap: anywhere; }
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.st-text { white-space: pre-wrap; }
+.chip.diff-E { border-color: var(--sr-signal-ok); }
+.chip.diff-M { border-color: var(--sr-energy-accent); }
+.chip.diff-H { border-color: var(--sr-signal-danger); }
+.open-row { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.open-row .open-link {
+  white-space: normal; overflow-wrap: anywhere; text-align: center;
+  height: auto; min-height: var(--sr-size-control-h); line-height: 1.3;
+  max-width: 100%; padding: 8px 14px;
+}
+/* ui-do D3.5 / F6.18: the button, then the blocks beside the readout on their own row (never under the button) */
+.timer { display: grid; gap: 12px; justify-items: start; }
+.timer > .sr-panel-title { margin: 0; }
+.timer-row { display: flex; align-items: center; gap: 12px; width: fit-content; max-width: 100%; }
+.blocks { display: flex; gap: 4px; }
+.block { width: 14px; height: 24px; border: 2px solid var(--sr-edge-mid); }
+.block[data-on='true'] { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.timer-big { font-family: var(--sr-font-pixel); font-size:var(--type-display-l); line-height: 1.1; font-variant-numeric: tabular-nums; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.timer-state { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.timer-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.timer-controls label { display: grid; gap: 4px; }
+.timer-controls input { width: 96px; height: var(--sr-size-control-h); box-sizing: border-box; }
+@media (max-width: 767px) {
+  .timer-controls { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+  .timer-controls .sr-btn { width: 100%; }
+  .timer-controls input { width: 100%; height: var(--sr-size-hit-touch); }
+  .timer { justify-items: stretch; }
+  .timer > .sr-btn { justify-self: start; }
+}
+.attempt-log { display: grid; gap: 12px; }
+.outcomes { display: flex; flex-wrap: wrap; gap: 8px; }
+.do-outcome-row { display: grid; gap: 12px; min-width: 0; }
+@media (max-width: 767px) {
+  .outcomes { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .outcomes .sr-btn { width: 100%; }
+}
+.do-missing-screen { display: grid; gap: 12px; justify-items: start; padding: 24px; }
+.do-missing { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-small); }
+.timer-elapsed { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.do-given-up { margin: 0; font-family: var(--sr-font-mono); color: var(--sr-label-warn); }
+.do-left, .do-right { min-width: 0; }
+.outcomes .sr-btn[aria-pressed='true'] { outline: 2px solid var(--sr-text-secondary); outline-offset: 2px; }
+.do .do-run-gate-hint { margin: 0; color: var(--sr-text-secondary); font-size: var(--type-small); }
+/* UAT cu-4 P3-11: while a study session runs, the outcome buttons say they end it too (reading text: Body 17) */
+.do p.do-session-note { margin: 0; color: var(--sr-text-secondary); }
+.redo-replay { display: grid; gap: 8px; min-width: 0; }
+
+/* Reading text (ux spec section 1, UX-03): every paragraph on Do is Chivo 17 px at 1.55. */
+.do p { font-family: var(--sr-font-body); font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+
+/* triage A13 (F3, ruling 3.6): every Do control is a 44 x 44 touch target on phone */
+@media (max-width: 767px) {
+  .do-back { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); min-width: var(--sr-size-hit-touch); }
+  .open-row .open-link { min-height: var(--sr-size-hit-touch); }
+  .do .approach-chip { min-height: var(--sr-size-hit-touch); }
+}
+
+/* triage M1: the F2.2 roles of D7, F6.8 (these p are not body text) */
+.do p.do-given-up { font-family: var(--sr-font-mono); font-size: var(--type-small); line-height: 1.6; color: var(--sr-label-warn); }
+/* rerun F001 (D4): the rung notes ("The timer, the links and your log. Always open.") are Chivo 15 secondary, not Body */
+.do p.rung-note, .do p.rung-why { font-size: var(--type-small); line-height: 1.55; color: var(--sr-text-secondary); }
+.do p.redo-banner { font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; }

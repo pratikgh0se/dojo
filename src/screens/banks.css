@@ -1,0 +1,123 @@
+/* Banks · PLATFORM "Banks (new)", C-BANKS §3. Tokens only, radius 0, stepped motion. */
+.banks { display: flex; flex-direction: column; gap: var(--sr-space-4); min-width: 0; }
+.banks-title { order: 0; }
+.banks-tabs { order: 1; display: flex; flex-wrap: wrap; gap: var(--sr-space-2); }
+.banks-header { order: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sr-space-2) var(--sr-space-6); padding: var(--sr-space-3) var(--sr-space-4); }
+.banks-panel { order: 3; display: flex; flex-direction: column; gap: var(--sr-space-4); min-width: 0; }
+
+.banks-tab {
+  min-height: var(--sr-size-hit-touch); padding: 0 var(--sr-space-3); cursor: pointer;
+  font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; color: var(--sr-text-primary);
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-mid); border-radius:0;
+}
+.banks-tab.sel { border-color: var(--sr-energy-accent); color: var(--sr-label-accent); }
+.banks-tab-count { font-family: var(--sr-font-mono); font-size: var(--type-meta); font-weight: 400; color: var(--sr-text-secondary); }
+
+.banks-bank-title { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.banks-progress { display: inline-flex; align-items: center; gap: var(--sr-space-2); font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.banks-progress-bar { display: inline-block; width: 120px; height: 8px; background: var(--sr-chart-well); border: 1px solid var(--sr-edge-mid); }
+.banks-progress-bar > i { display: block; height: 100%; background: var(--sr-energy-accent); }
+.banks-meta { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.banks-source { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-link); }
+/* closing rerun (F3, ruling 3.6): the Source link is a 44 x 44 tap target on phone */
+@media (max-width: 767px) { .banks-source { display: inline-flex; align-items: center; justify-content: center; min-height: var(--sr-size-hit-touch); min-width: var(--sr-size-hit-touch); } }
+
+.banks-controls-wrap { display: grid; gap: var(--sr-space-3); min-width: 0; }
+.banks-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sr-space-2); min-width: 0; }
+@media (min-width: 900px) { .banks-controls { flex-wrap: nowrap; } }
+.banks-search { flex: 1 1 200px; min-width: 0; height: var(--sr-size-control-h); }
+.banks-select { min-height: var(--sr-size-input-h); max-width: 100%; }
+
+.bank-group { display: grid; gap: var(--sr-space-2); min-width: 0; }
+.bank-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sr-space-2); border-bottom: 2px solid var(--sr-edge-mid); }
+.bank-group-head h3 { margin: 0; font-size:var(--type-small); overflow-wrap: anywhere; }
+.bank-group-count { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+
+.bank-heat { display: flex; flex-wrap: wrap; gap: 2px; min-width: 0; }
+.bank-cell {
+  --cell: var(--sr-energy-accent);
+  display: inline-block; width: 18px; height: 18px; padding: 0; cursor: pointer;
+  background: transparent; border: 2px solid var(--cell); border-radius:0;
+}
+.bank-cell.diff-E { --cell: var(--sr-label-ok); }
+.bank-cell.diff-H { --cell: var(--sr-label-danger); }
+.bank-cell.diff-none { --cell: var(--sr-text-secondary); }
+.bank-cell.band-1200 { --cell: var(--sr-chart-cat-1); }
+.bank-cell.band-1300 { --cell: var(--sr-chart-cat-2); }
+.bank-cell.band-1400 { --cell: var(--sr-chart-cat-3); }
+.bank-cell.band-1500 { --cell: var(--sr-chart-cat-4); }
+.bank-cell.band-1600 { --cell: var(--sr-chart-cat-5); }
+.bank-cell.band-other { --cell: var(--sr-chart-cat-6); }
+.bank-cell.done { background: var(--cell); }
+.bank-cell.cube { box-shadow: inset 0 0 0 2px var(--sr-surface-panel); }
+.bank-cell:disabled { cursor: default; }
+
+.bank-rows { list-style: none; margin: 0; padding: 0; display: grid; min-width: 0; }
+.bank-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sr-space-2); min-width: 0;
+  min-height: var(--sr-size-hit-touch); border-bottom: 1px solid var(--sr-edge-mid);
+}
+.bank-name { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+a.bank-name { color: var(--sr-link); }
+.bank-inplan { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-link); }
+
+/* 44×44 hit box (C-BANKS §3.1) around the shared 20 x 20 house checkbox (.sr-choice, F6.10). */
+label.sr-choice.bank-tick-box { flex: none; width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); justify-content: center; gap: 0; }
+/* on phone the item links are 44 px touch targets too */
+@media (max-width: 767px) { .bank-row a.bank-name, .bank-row a.bank-inplan { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); } }
+
+.banks :focus-visible { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: var(--sr-size-focus-offset); }
+
+.banks-empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sr-space-3); color: var(--sr-text-secondary); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; }
+.banks-empty p { margin: 0; font-size: var(--type-small); } /* rerun BA1: Chivo 15 / 400 secondary */
+.banks-field { display: grid; gap: var(--sr-space-1); min-width: 0; }
+.banks-field textarea, .banks-field input, .banks-field select { width: 100%; max-width: 100%; box-sizing: border-box; }
+.mine-add, .banks-import { display: grid; gap: var(--sr-space-2); min-width: 0; }
+.mine-suggestion { display: grid; gap: var(--sr-space-2); padding: var(--sr-space-3); min-width: 0; }
+.mine-note, .mine-error code { font-family: var(--sr-font-mono); font-size:var(--type-meta); overflow-wrap: anywhere; }
+.mine-error { display: flex; flex-wrap: wrap; gap: var(--sr-space-2); align-items: center; color: var(--sr-label-danger); }
+.mine-actions { display: inline-flex; gap: var(--sr-space-1); }
+.mine-buttons { display: flex; flex-wrap: wrap; gap: var(--sr-space-2); }
+
+.mine-loader { display: inline-flex; gap: 4px; }
+.mine-loader i { width: 8px; height: 8px; background: var(--sr-energy-accent); animation: mine-loader-step 0.6s steps(3) infinite; }
+.mine-loader i:nth-child(2) { animation-delay: 0.2s; }
+.mine-loader i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes mine-loader-step { 0% { opacity: 0.2; } 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .mine-loader i { animation: none; } }
+
+/* BA1 rows: a 5-column grid on desktop and tablet (tick, title, difficulty, pattern, in-plan);
+   on phone two lines (tick + title, then the chips). */
+@media (min-width: 768px) {
+  .bank-row { display: grid; grid-template-columns: var(--sr-size-hit-touch) minmax(0, 1fr) auto auto minmax(72px, auto); column-gap: var(--sr-space-2); }
+  .bank-row > .bank-name { grid-column: 2; }
+  .bank-row > .mine-actions { grid-column: 2 / -1; justify-self: start; }
+}
+@media (max-width: 767px) {
+  .bank-row { padding-bottom: var(--sr-space-1); }
+  .bank-row > .bank-name { flex: 1 1 calc(100% - 52px); }
+  .bank-row > .chip:first-of-type { margin-left: 52px; }
+}
+/* BA1 filters: inline on desktop, 2 per row on tablet, stacked full width on phone. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .banks-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .banks-controls > * { min-width: 0; }
+}
+@media (min-width: 900px) and (max-width: 1099px) { .banks-controls { flex-wrap: wrap; } }
+@media (max-width: 767px) {
+  .banks-controls { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .banks-search, .banks-select { min-height: var(--sr-size-hit-touch); }
+}
+/* settings-progress-ref rerun (F3, ruling 3.6): on phone each heat-cell link is a 44 x 44 box with the 18 px cell drawn
+ * centred inside it, so the hit area never overlaps a neighbour */
+@media (max-width: 767px) {
+  .bank-heat { gap: 2px; }
+  .bank-cell { position: relative; width: 48px; height: 48px; border: 0; background: transparent; }
+  .bank-cell::before { content: ''; position: absolute; inset: 15px; border: 2px solid var(--cell); }
+  .bank-cell.done { background: transparent; }
+  .bank-cell.done::before { background: var(--cell); }
+  .bank-cell.cube { box-shadow: none; }
+  .bank-cell.cube::before { box-shadow: inset 0 0 0 2px var(--sr-surface-panel); }
+}
+/* UAT cu-6 P3-14: an empty difficulty / pattern value (`—`) takes no box; the room it holds is kept so the columns line up */
+.chip[data-empty='true'][data-testid^='bank-item-'] { border-color: transparent; }

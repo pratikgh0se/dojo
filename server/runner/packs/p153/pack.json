@@ -1,0 +1,78 @@
+{
+  "id": "p153",
+  "title": "Find Minimum in Rotated Sorted Array",
+  "fn": "findMin",
+  "signature": "func findMin(nums []int) int",
+  "params": [
+    {
+      "name": "nums",
+      "type": "[]int"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// findMin returns the smallest value of a sorted array of distinct values that was rotated.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   s := tk.Search(\"i\", 0, len(nums)-1); s.Mid(mid, nums[mid] <= nums[hi]); s.Hi(mid); s.Lo(mid + 1)\nfunc findMin(nums []int) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          3,
+          4,
+          5,
+          1,
+          2
+        ]
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        [
+          4,
+          5,
+          6,
+          7,
+          0,
+          1,
+          2
+        ]
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        [
+          11,
+          13,
+          15,
+          17
+        ]
+      ],
+      "expected": 11
+    },
+    {
+      "args": [
+        [
+          2,
+          1
+        ]
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        [
+          7,
+          8,
+          9,
+          10,
+          2,
+          3,
+          4,
+          5,
+          6
+        ]
+      ],
+      "expected": 2
+    }
+  ]
+}

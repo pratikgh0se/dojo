@@ -1,0 +1,78 @@
+{
+  "id": "p206",
+  "title": "Reverse Linked List",
+  "fn": "reverseList",
+  "signature": "func reverseList(head *ListNode) *ListNode",
+  "params": [
+    {
+      "name": "head",
+      "type": "*ListNode"
+    }
+  ],
+  "returns": "*ListNode",
+  "starter": "package main\n\n// reverseList returns the list reversed. ListNode is declared for you: type ListNode struct { Val int; Next *ListNode }.\n//\n// Optional: add import \"dojo/tk\" to watch it step by step, e.g.\n//   l := tk.List(\"l\"); l.Node(id, val); l.Next(id, next); l.Pointer(\"curr\", id) (-1 = nil)\nfunc reverseList(head *ListNode) *ListNode {\n\treturn head\n}\n",
+  "cases": [
+    {
+      "args": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      ],
+      "expected": [
+        5,
+        4,
+        3,
+        2,
+        1
+      ]
+    },
+    {
+      "args": [
+        [
+          1,
+          2
+        ]
+      ],
+      "expected": [
+        2,
+        1
+      ]
+    },
+    {
+      "args": [
+        []
+      ],
+      "expected": []
+    },
+    {
+      "args": [
+        [
+          7
+        ]
+      ],
+      "expected": [
+        7
+      ]
+    },
+    {
+      "args": [
+        [
+          1,
+          1,
+          2,
+          3
+        ]
+      ],
+      "expected": [
+        3,
+        2,
+        1,
+        1
+      ]
+    }
+  ]
+}

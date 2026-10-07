@@ -1,0 +1,104 @@
+/* Card briefs (v2 part 3): the brief panel on the Do screen, its dialogs, the Board's draft/rebalance controls.
+ * Type comes from the ux scale tokens only: nothing under 14 px, Silkscreen only at the display sizes, never on p. */
+.brief { display: grid; gap: 10px; min-width: 0; }
+.brief-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.brief-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.brief-head .sr-panel-title { margin: 0; }
+.brief-chip {
+  display: inline-block; padding: 0 6px; font-family: var(--sr-font-mono); font-size: var(--type-meta);
+  color: var(--sr-text-secondary); border: 2px solid var(--sr-edge-mid);
+}
+.brief-chip[data-status='approved'] { color: var(--sr-text-onaccent); background: var(--sr-signal-ok); border-color: var(--sr-edge-dark); }
+.brief-goal { margin: 0; font-size: var(--type-body); line-height: var(--type-leading); }
+.brief-sub { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); line-height: 1.25; letter-spacing: 1px; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; text-transform: uppercase; color: var(--sr-text-secondary); }
+.brief-steps { margin: 0; padding-left: 24px; display: grid; gap: 6px; }
+.brief-steps li { line-height: var(--type-leading); overflow-wrap: anywhere; }
+.brief-steps a { color: var(--sr-link); }
+.brief-link-ok, .brief-link-broken, .brief-link-unverified { margin-left: 8px; font-family: var(--sr-font-mono); font-size: var(--type-meta); }
+.brief-link-ok { color: var(--sr-signal-ok); }
+.brief-link-broken { color: var(--sr-label-danger); }
+.brief-link-unverified { color: var(--sr-label-warn); }
+.brief-meta, .do .brief p.brief-meta { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-text-secondary); }
+.brief-list { margin: 0; padding-left: 20px; display: grid; gap: 2px; }
+.brief-text { margin: 0; line-height: var(--type-leading); overflow-wrap: anywhere; white-space: pre-wrap; }
+.brief-attempts { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.brief-attempt { padding: 6px 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); }
+.brief-attempt dl { margin: 4px 0 0; display: grid; gap: 2px; }
+.brief-attempt dt { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.brief-attempt dd { margin: 0 0 4px; overflow-wrap: anywhere; }
+.brief-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.brief-note { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+/* ruling 20 S3: a part's place in its parent's brief */
+.brief-part { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.brief-err { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-label-danger); }
+
+/* dialogs */
+.bf-steps { display: grid; gap: 8px; }
+.bf-step { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; align-items: end; }
+/* shell-today-board M27: step rows stack on phone */
+@media (max-width: 767px) { .bf-step { grid-template-columns: minmax(0, 1fr); align-items: stretch; } }
+.bf-question { display: grid; gap: 6px; padding: 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.bf-radio-group { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
+.bf-radio-group legend { padding: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+/* UAT cu-2 P3-10: a check question reads the same whether it is answered in words or by choice: Chivo 15/700, sentence
+ * case, primary text (the open question's label had been the upper-case field label, the choice's legend small mono) */
+.ck-question .p-field > label, .ck-question .bf-radio-group legend {
+  font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; line-height: 1.4; letter-spacing: 0;
+  text-transform: none; color: var(--sr-text-primary);
+}
+.bf-verdict { margin: 0; font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-body); line-height: var(--type-leading); }
+.bf-verdict[data-passed='true'] { color: var(--sr-signal-ok); }
+.bf-verdict[data-passed='false'] { color: var(--sr-label-danger); }
+.bf-fix-was { font-weight: 700; }
+.bf-fix { margin: 0; font-size: var(--type-small); line-height: var(--type-leading); color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+.bf-moves { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+
+/* Board: draft, rebalance, card tools */
+.bd-draft { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bd-draft > .sr-btn { flex: none; }
+/* M17 (rerun): the progress line always shares the button's row (it shrinks and wraps its own text instead) */
+.bd-draft > div { flex-basis: 100%; }
+.bd-progress { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.bd-rebalance { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; background: var(--sr-surface-panel); border: 2px solid var(--sr-signal-danger); }
+.bd-rebalance p { margin: 0; font-size: var(--type-small); }
+.bd-tools { display: flex; flex-wrap: wrap; gap: 8px; position: relative; }
+.bd-tools .sr-btn { height: var(--sr-size-control-h-sm); padding: 0 8px; font-size: var(--type-meta); }
+/* DL8 / F6.9: panel-bevel menu, 44 px items, 6 visible then scroll; left-aligned under its button. */
+.bd-menu {
+  position: absolute; left: 0; top: calc(100% + 8px); z-index: var(--sr-z-dropdown); display: grid; gap: 2px;
+  min-width: 220px; max-width: calc(100vw - 32px); max-height: 264px; overflow-y: auto; padding: 6px;
+  background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+  animation: srin var(--sr-motion-base) steps(4);
+}
+.bd-tools .bd-menu .sr-btn {
+  justify-content: flex-start; height: var(--sr-size-hit-touch); flex: none; padding: 0 12px; font-size: var(--type-small);
+  background: transparent; box-shadow: none; border: 2px solid transparent;
+}
+.bd-tools .bd-menu .sr-btn:hover, .bd-tools .bd-menu .sr-btn:focus-visible { border-color: var(--sr-energy-accent); }
+.bd-badge { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary-ontile); }
+
+/* Today: workload */
+.wl { display: grid; gap: 8px; min-width: 0; }
+.wl-line { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.wl-load { margin: 0; font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-title); line-height: 1.3; color: var(--sr-label-accent); }
+.wl-load[data-over='true'] { color: var(--sr-label-danger); }
+.wl-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.wl-list a { color: var(--sr-link); }
+.wl-rolled { margin: 0; font-size: var(--type-small); }
+
+/* Progress: reviews */
+.rvw { display: grid; gap: 12px; min-width: 0; }
+.rvw > .sr-panel-title { margin: 0; } /* F6.3: 12 px below the title (the grid gap), not 24 */
+.rvw-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.rvw-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 0; }
+.rvw-stat { padding: 6px 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.rvw-stat dt { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.rvw-stat dd { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); line-height: 1.25; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.rvw-prose { margin: 0; font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 767px) { .rvw-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rvw-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+@media (max-width: 767px) { .brief-chip { padding: 2px 6px; } }
+/* P1 #9 "Do better next sprint" (ruling 8 S4): only when the review has items; ol in Body 17. */
+.rvw-better-title { margin: 12px 0 4px; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-text-secondary); }
+.rvw-better { margin: 0; padding-left: 24px; display: grid; gap: 4px; font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); overflow-wrap: anywhere; }

@@ -1,0 +1,359 @@
+*, *::before, *::after { box-sizing: border-box; border-radius:0; }
+html, body { margin: 0; }
+html {
+  min-height: 100%;
+  min-height: 100dvh;
+  background-color: var(--sr-surface-well);
+  background-image:
+    linear-gradient(var(--sr-edge-shade-panel) 2px, transparent 2px),
+    linear-gradient(90deg, var(--sr-edge-shade-panel) 2px, transparent 2px);
+  background-size: 24px 24px;
+}
+/* UAT J2: with classic scrollbars (lib/scrollbarGutter) the centred header must not jump 7 px between short and long screens */
+html.classic-scrollbars { scrollbar-gutter: stable; }
+body {
+  min-height: 100%;
+  min-height: 100dvh;
+  color: var(--sr-text-primary);
+  font-family: var(--sr-font-body);
+  font-size: var(--type-body);
+  line-height: var(--type-leading);
+  background-color: var(--sr-surface-well);
+  background-image:
+    linear-gradient(var(--sr-edge-shade-panel) 2px, transparent 2px),
+    linear-gradient(90deg, var(--sr-edge-shade-panel) 2px, transparent 2px);
+  background-size: 24px 24px;
+}
+a { color: var(--sr-link); }
+code { font-family: var(--sr-font-mono); }
+/* UAT r3 J3: a file in the learner's capstone repo, named inside a statement */
+code.file-ref { cursor: copy; font-size: inherit; padding: 0 4px; border: 2px solid var(--sr-edge-mid); background: var(--sr-chart-well); overflow-wrap: anywhere; white-space: normal; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; gap: 16px; }
+.topbar { max-width: 1200px; margin: 0 auto; padding: 16px 24px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.logo-cube {
+  width: 22px; height: 22px; background: var(--sr-energy-accent); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade);
+  flex-shrink: 0;
+}
+.wordmark { font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; flex-shrink: 0; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.wordmark-sep { font-family: var(--sr-font-mono); }
+/*
+ * ui-shell S1: desktop (>= 1100) is one row that never wraps; tablet (768-1099) puts cube, wordmark
+ * and save-status on row 1 and the nav on its own left-aligned row 2; phone (< 768) drops the
+ * wordmark, keeps Today/Board/DSA/More on a full-width row and moves Designs and AI into More.
+ */
+@media (min-width: 1100px) {
+  .topbar { flex-wrap: nowrap; }
+}
+@media (max-width: 1099px) {
+  .topbar .tabs { order: 3; flex-basis: 100%; margin-left: 0; }
+  .topbar .save-slot { margin-left: auto; }
+}
+.tabs { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.screen-title { font-family: var(--sr-font-pixel); font-size: var(--type-display-m); line-height: 1.2; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed; }
+.eyebrow { font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; }
+
+.tab, .sr-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: var(--sr-size-control-h); padding: 0 14px;
+  font-family:var(--sr-font-body); font-weight: 700; font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase;
+  text-decoration: none; white-space: nowrap; cursor: pointer;
+  color: var(--sr-text-primary); background: var(--sr-surface-tile);
+  border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+  transition: transform var(--sr-motion-fast) steps(3), box-shadow var(--sr-motion-fast) steps(3);
+}
+.tab:active, .sr-btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 0 0 var(--sr-edge-dark);
+}
+.sr-btn-accent, .tab-on {
+  background: var(--sr-energy-accent); color: var(--sr-text-onaccent);
+  box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade), 0 4px 0 var(--sr-edge-dark);
+}
+.tab-on {
+  transform: translateY(4px);
+  box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade), 0 0 0 var(--sr-edge-dark);
+}
+.sr-btn-quiet { background: transparent; box-shadow: none; border-color: var(--sr-edge-mid); height: var(--sr-size-control-h-quiet); }
+.sr-btn-danger { border-color: var(--sr-signal-danger); }
+.sr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* F6.1 / F3.1 (UAT cu-6 P3-1, P3-4): a toggled button (aria-pressed=true) keeps the pressed look: down 4, no drop. */
+.sr-btn[aria-pressed='true']:not(.sr-btn-quiet) {
+  transform: translateY(4px);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 0 0 var(--sr-edge-dark);
+}
+.sr-btn-accent[aria-pressed='true'] { box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade), 0 0 0 var(--sr-edge-dark); }
+/* a quiet button has no bevel to press: it takes the tile fill and a lit border instead */
+.sr-btn-quiet[aria-pressed='true'] { background: var(--sr-surface-tile); border-color: var(--sr-text-secondary); }
+
+.sr-panel {
+  background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark); padding: 16px;
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+  animation: srin var(--sr-motion-base) steps(4);
+}
+.sr-panel-title {
+  margin: 0 0 12px; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.sr-tile {
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); padding: 12px;
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.sr-hero {
+  background: var(--sr-surface-panel); border: 4px solid var(--sr-edge-dark); padding: 20px;
+  box-shadow: inset 4px 4px 0 var(--sr-energy-accent-glow), inset -4px -4px 0 var(--sr-energy-accent-shade), 0 12px 0 var(--sr-edge-dark);
+}
+.sr-cube { display: inline-block; border: 2px solid var(--sr-edge-mid); background: transparent; }
+.sr-cube[data-on='true'] { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.sr-meter { display: flex; gap: 2px; }
+
+.sr-toasts { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 8px; z-index: var(--sr-z-toast); }
+/* shell-today-board M1: phone toasts are inset 16 on both sides */
+@media (max-width: 767px) { .sr-toasts { left: 16px; } }
+.sr-toast {
+  display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+  font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--sr-text-primary); background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+  animation: srin var(--sr-motion-base) steps(4); font-weight:700;}
+.sr-toast::before { content: ''; width: 10px; height: 10px; flex: none; background: currentColor; }
+.sr-toast.tone-ok { color: var(--sr-label-ok); }
+.sr-toast.tone-warn { color: var(--sr-label-warn); }
+.sr-toast.tone-danger { color: var(--sr-label-danger); }
+.sr-toast.tone-help { color: var(--sr-text-secondary); }
+/* UAT cu-3 P2-1 / P3-4: the bubble ui/Tip draws for a control with `data-tip`: under the control, never over it. */
+.tip {
+  position: fixed; pointer-events: none; z-index: var(--sr-z-tooltip); max-width: min(360px, calc(100vw - 16px)); padding: 4px 8px;
+  font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.4; color: var(--sr-text-primary);
+  background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); box-shadow: 0 4px 0 var(--sr-edge-dark); overflow-wrap: anywhere;
+}
+/* UAT J7: the "Draft briefs" indicator, global while the Board is not showing the run (bottom-left; toasts are bottom-right). */
+.draft-pill {
+  position: fixed; left: 16px; bottom: 16px; z-index: var(--sr-z-toast);
+  display: flex; align-items: center; gap: 8px; max-width: min(480px, calc(100vw - 32px)); padding: 6px 14px;
+  background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+}
+.draft-pill-text {
+  margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; color: var(--sr-text-primary);
+}
+.draft-pill[data-busy='true'] .draft-pill-text { color: var(--sr-label-warn); }
+.draft-pill-close { flex: none; padding: 0 10px; margin-right: -8px; }
+.sr-flash {
+  position: fixed; inset: 0; background: var(--sr-flash); z-index: var(--sr-z-flash); pointer-events: none;
+  animation: srflash 120ms steps(2);
+}
+
+label {
+  display: grid; gap: 4px; font-family:var(--sr-font-body); font-size:var(--type-small); line-height: 1.4; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--sr-text-secondary); font-weight:700;}
+/* F6.10 choice row (settings A6, shell A7 — one component): a 20 x 20 accent radio or checkbox, its label on the
+ * right (gap 10, Chivo 17/400 sentence case); disabled is opacity .5 for the whole row; 44 tall on phone. */
+label.sr-choice {
+  display: flex; flex-direction: row; align-items: center; gap: 10px; font-family: var(--sr-font-body); font-size: var(--type-body);
+  font-weight: 400; line-height: 1.4; letter-spacing: 0; text-transform: none; color: var(--sr-text-primary); cursor: pointer;
+}
+.sr-choice > input[type='radio'], .sr-choice > input[type='checkbox'] {
+  width: 20px; height: 20px; margin: 0; padding: 0; flex: none; accent-color: var(--sr-energy-accent); cursor: inherit;
+}
+.sr-choice:has(> input:disabled) { opacity: 0.5; cursor: default; }
+@media (max-width: 767px) { label.sr-choice { min-height: var(--sr-size-hit-touch); } }
+input, textarea {
+  font-family: var(--sr-font-body); font-size:var(--type-small); color: var(--sr-text-primary);
+  background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); padding: 6px 8px;
+}
+textarea { min-height: 120px; resize: vertical; }
+input::placeholder, textarea::placeholder { color: var(--sr-text-secondary); }
+/* F6.10 select: the input box (36 tall, 2 px edge-mid border, well fill) with the native arrow. */
+select {
+  height: var(--sr-size-control-h); padding: 6px 8px; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400;
+  letter-spacing: 0; text-transform: none; color: var(--sr-text-primary); background-color: var(--sr-surface-well);
+  border: 2px solid var(--sr-edge-mid); border-radius:0;
+  /* M9 (settings-progress-ref): WebKit draws its own rounded select; the native look is removed and the arrow drawn. */
+  -webkit-appearance: none; appearance: none; padding-right: 24px; /* rerun F003: on the F3 scale */
+  background-image: linear-gradient(45deg, transparent 50%, var(--sr-text-secondary) 50%), linear-gradient(135deg, var(--sr-text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+}
+select[multiple] { background-image: none; padding-right: 8px; height: auto; }
+@media (max-width: 767px) { select { height: var(--sr-size-hit-touch); } }
+
+/* F6.15 slider: the native look is removed on track and thumb (WebKit and Moz); no UA blue. The
+ * progress fill left of the thumb is painted from --fill (0-100%), which the owner sets inline. */
+input[type='range'] {
+  -webkit-appearance: none; appearance: none; accent-color: var(--sr-energy-accent);
+  height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 8px; border: 2px solid var(--sr-edge-mid);
+  background: linear-gradient(90deg, var(--sr-energy-accent) var(--fill, 0%), var(--sr-surface-well) var(--fill, 0%));
+}
+input[type='range']::-moz-range-track { height: 4px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); }
+input[type='range']::-moz-range-progress { height: 4px; background: var(--sr-energy-accent); }
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 24px; margin-top: -10px;
+  background: var(--sr-energy-accent); border: 2px solid var(--sr-edge-dark); border-radius:0; box-shadow: none;
+}
+input[type='range']::-moz-range-thumb { width: 12px; height: 20px; background: var(--sr-energy-accent); border: 2px solid var(--sr-edge-dark); border-radius:0; box-shadow: none; }
+@media (max-width: 767px) { input[type='range'] { height: var(--sr-size-hit-touch); } }
+
+/* House scrollbar for regions that scroll inside themselves (Controller rulings 1 and 2: 14 px; track
+ * shade-panel with a 2 px edge-mid top edge; thumb edge-light-tile). Every in-pane scroller carries .sc. */
+.sc::-webkit-scrollbar { width: 14px; height: 14px; }
+.sc::-webkit-scrollbar-track { background: var(--sr-edge-shade-panel); border-top: 2px solid var(--sr-edge-mid); }
+.sc::-webkit-scrollbar-thumb { background: var(--sr-edge-light-tile); border: 2px solid var(--sr-edge-shade-panel); }
+.sc::-webkit-scrollbar-corner { background: var(--sr-edge-shade-panel); }
+@supports not selector(::-webkit-scrollbar) { .sc { scrollbar-color: var(--sr-edge-light-tile) var(--sr-edge-shade-panel); scrollbar-width: auto; } }
+
+.fatal { max-width: 720px; margin: 48px auto; padding: 24px; background: var(--sr-surface-panel); border: 3px solid var(--sr-signal-danger); }
+/* ruling 15 Q28: on phone the error card keeps the standard 16 px side gutter */
+@media (max-width: 767px) { .fatal { margin: 16px; } }
+.fatal h1 { font-family: var(--sr-font-pixel); font-size:var(--type-display-m); line-height: 1.2; color: var(--sr-label-danger); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.fatal-msg { font-family: var(--sr-font-mono); font-size: var(--type-small); line-height: 1.6; } /* F7: Space Mono 15 */
+.boot, .loading { font-family: var(--sr-font-mono); font-size: var(--type-small); line-height: 1.6; color: var(--sr-text-secondary); padding: 24px; }
+/* R7 recovery steps */
+.fatal-steps { margin: 0; padding-left: 24px; display: grid; gap: 4px; }
+
+/*
+ * D-59: srin used to fade opacity 0 -> 1 (steps(4)) on entrance. Any element with opacity < 1 is
+ * rendered as a group composited over whatever sits behind it (--sr-surface-well in the
+ * Console/dark theme), so a `.sr-panel`/`.sr-toast`/`.more-menu` mid-fade pulled every descendant's
+ * text and background toward that well colour together. At the animation's 50% step that took
+ * --sr-text-primary on --sr-surface-tile - a steady-state ratio well above 4.5:1, see
+ * tests/unit/contrast.test.ts - down under 4.5:1: exactly the axe scan's intermittent
+ * `.sr-btn-control` "Add trade-off" flag (D-59; the composited numbers are reproduced in
+ * tests/unit/control-button-contrast.test.ts), caught only when the scan sampled a frame before the
+ * fade finished. The fix drops opacity from the entrance keyframes entirely - the slide-in
+ * (translateY) still plays, but nothing dips below full contrast at any point during it.
+ */
+@keyframes srin { from { transform: translateY(4px); } to { transform: none; } }
+@keyframes srflash { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+
+.onboarding { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.onboarding-card { width: 100%; max-width: 520px; display: grid; gap: 16px; }
+.onboarding-card .eyebrow { margin: 0; font-size:var(--type-meta); color: var(--sr-label-accent); }
+.onboarding-card .screen-title { margin: 0; font-weight: 700; line-height: 1.2; }
+.onboarding-card p { margin: 0; max-width: var(--type-measure); }
+.onboarding-card input { height: var(--sr-size-control-h); }
+.onboarding-card > .sr-btn { justify-self: start; }
+.sr-btn-lg { height: var(--sr-size-control-h-lg); }
+@media (max-width: 767px) { .onboarding { padding: 16px; } .onboarding-card { max-width: none; } .onboarding-card > .sr-btn { justify-self: stretch; } }
+/* shell-today-board M6: Safari never matches :focus-visible on a date input, so its ring hangs on :focus */
+input[type='date']:focus { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: var(--sr-size-focus-offset); }
+/* P3-7: the calendar icon in a date field takes focus on its own (Tab), and Chrome then draws a white box. `:focus` and
+ * `:focus-visible` never match after the icon's pseudo-element, and the field itself is not `:focus` while the icon is
+ * (it is while a day, month or year is), so `:focus-within:not(:focus)` is exactly "the icon has focus": the house ring. */
+input[type='date']:focus-within:not(:focus)::-webkit-calendar-picker-indicator { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: var(--sr-size-focus-offset); }
+.form-error { margin: 0; color: var(--sr-label-danger); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; }
+/* ruling 21: an inline warn note under a field (a non-Monday start date); it never blocks saving */
+.form-warn { margin: 0; color: var(--sr-label-warn); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; }
+.form-note { margin: 0; color: var(--sr-text-secondary); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; }
+/* shell-today-board M4: an invalid field gets a 2 px danger border (the app's own error, never the browser bubble) */
+input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='true'] { border: 2px solid var(--sr-signal-danger); }
+
+.chip { justify-self: start; font-family: var(--sr-font-mono); font-size:var(--type-meta); padding: 0 6px; border: 2px solid var(--sr-edge-mid); color: var(--sr-text-secondary-ontile); }
+/* UAT r3 J7: a source chip shows the whole name; one too long for its row ends in "…" (the full label is its title). */
+.chip.chip-src { display: inline-block; max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+/* settings-progress-ref M10: chips are padded 2 6 on phone */
+@media (max-width: 767px) { .chip { padding: 2px 6px; } }
+
+.keys-legend {
+  max-width: 1200px; margin: 0 auto; padding: 0 24px 24px;
+  font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary);
+}
+.keys-legend-text { margin: 0; line-height: 1.45; }
+
+/* M5: pages never widen past the viewport; wide children scroll inside themselves */
+.page { grid-template-columns: minmax(0, 1fr); }
+
+/* More ▾ menu */
+.more { display: inline-grid; }
+.more > * { grid-area: 1 / 1; }
+.more-anchor { position: relative; justify-self: start; display: flex; }
+/* A sizer has the button's box metrics (.tab: font, padding 0 14, border 2, gap 6 between "More", "· Tab"
+ * and "▾") but no height, so it sets only the width. Its text is CSS content, never DOM text. */
+.more-sizer {
+  display: none; visibility: hidden; pointer-events: none; height: 0; overflow: hidden; align-self: start;
+  gap: 6px; padding: 0 14px; border: 2px solid transparent; border-block-width: 0; white-space: nowrap;
+  font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase;
+}
+.more-sizer::before { content: 'More'; }
+.more-sizer::after { content: '\25BE'; }
+.more-sizer-label::before { content: attr(data-label); }
+@media (min-width: 1100px) { .topbar .more-sizer { display: inline-flex; } }
+.more-menu {
+  position: absolute; right: 0; width: 240px; top: calc(100% + 8px); z-index: var(--sr-z-dropdown);
+  min-width: 220px; display: grid; gap: 2px; padding: 6px;
+  background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+  animation: srin var(--sr-motion-base) steps(4);
+}
+.more-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  height: var(--sr-size-hit-touch); padding: 0 12px;
+  font-family:var(--sr-font-body); font-weight: 700; font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--sr-text-primary); text-decoration: none; background: transparent; border: 2px solid transparent;
+}
+.more-item:hover, .more-item:focus-visible { border-color: var(--sr-energy-accent); }
+.more-item.on { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); }
+.more-key { font-family: var(--sr-font-mono); font-size:var(--type-meta); font-weight: 400; line-height: 1.45; letter-spacing: 0; text-transform: none; color: var(--sr-text-secondary); } /* P3-8: the hint is the key itself: a, b (the legend's), never A, B */
+.more-item.on .more-key { color: var(--sr-text-onaccent); }
+
+/* Phone (< 768, ui-foundation F4/F5): cube + save-status, then Today/Board/DSA/More on a full row. */
+@media (max-width: 767px) {
+  .topbar { padding: 12px 16px 0; gap: 12px; }
+  .wordmark { display: none; }
+  .topbar .tabs { justify-content: space-between; gap: 4px; }
+  .tabs .tab { height: var(--sr-size-hit-touch); padding: 0 12px; }
+  .tabs .tab-wide { display: none; }
+  /* P3-14: "More · <Tab> ▾" shows where it fits the row; where it does not (375 with a long tab name) MoreMenu marks the
+   * nav and the label is "More ▾", accent while a More route is open, the tab name in the button's aria-label. */
+  .tabs[data-more-short] .more-current { display: none; }
+  .more-menu { width: 240px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 120px); overflow-y: auto; }
+  .page { padding: 16px; }
+  .keys-legend { display: none; }
+  /* F3/F6.1: every button, tab and link-styled control is a 44 px touch target on phone. */
+  .sr-btn, .sr-btn-quiet { height: var(--sr-size-hit-touch); }
+}
+
+/* UAT r2 J3 (ui/Sized): a changing label keeps the box of its widest form; the other forms are CSS-drawn and hidden */
+.sized { display: inline-grid; }
+.sized > * { grid-area: 1 / 1; }
+.sized-alt { visibility: hidden; pointer-events: none; }
+.sized-alt::before { content: attr(data-label); }
+
+/* Visually hidden, still read by assistive tech and by getByTestId/text queries. */
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Shell's full-screen main (Do, and the design session screen) — kept here, not in a lazy screen's
+ * own stylesheet, since Shell applies this class before either screen's chunk has loaded. */
+.do-main { min-height: 100vh; }
+
+/* Disk-storage indicator (Dojo v2): small and quiet; only the offline state asks for attention. */
+/* UAT J2: the status and its refused-changes link share one slot (the header's gap between them). On the
+ * one-row desktop header the slot holds the width of the longest label, "Not saved to disk" (17 mono
+ * characters), so a label change never moves the nav to its left. */
+.save-slot { display: inline-flex; align-items: center; gap: 16px; flex-shrink: 0; }
+/* UAT r3 J1: the status sits at the header's right edge, as in the mockups (today-1280, board-1280); its reserve
+ * opens to its left. The nav keeps its place: More grows to the right inside its own reserve. */
+@media (min-width: 1100px) { .topbar .save-slot { min-width: 17ch; justify-content: flex-end; font-family: var(--sr-font-mono); font-size: var(--type-meta); } }
+.save-status { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); white-space: nowrap; text-decoration: none; }
+.save-status-saving { color: var(--sr-label-warn); }
+.save-status-offline { color: var(--sr-label-danger); text-decoration: underline; }
+/* ruling 11 Q15: in a read-only browser "Not saved to disk" is the warn tone, like the Read-only toast */
+.save-status.save-status-readonly { color: var(--sr-label-warn); }
+/* SH2: the "Not saved to disk" link is a 44 px touch target on phone (Do's rail had its own rule). */
+@media (max-width: 767px) { a.save-status { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); } }
+.readonly-banner { margin: 0; padding: 6px 16px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); border-bottom: 1px solid currentColor; text-align: center; }
+
+/* Screen root (contract UX addendum 1, Q1): takes over the page grid so the screen lays out as before. */
+.page > .screen-root { display: grid; gap: 16px; min-width: 0; }
+.do-main > .screen-root { min-height: 100vh; }
+
+/* FitDiagram (src/ui/engines/FitDiagram.tsx, UAT cu-7 P3-5): the drawing keeps its natural size inside, scaled down to fit */
+.fit-diagram { width: 100%; min-width: 0; }
+.fit-diagram.fit-box { height: 100%; display: grid; place-items: center; overflow: hidden; }
+.fit-sizer { max-width: none; overflow: hidden; }
+.fit-inner { width: max-content; transform-origin: 0 0; }
+.fit-inner sr-diagram { display: block !important; overflow: visible !important; max-width: none !important; }

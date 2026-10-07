@@ -1,0 +1,89 @@
+.ds { display: grid; gap: 16px; min-height: 100vh; align-content: start; }
+.ds-rail {
+  position: sticky; top: 0; z-index: var(--sr-z-sticky); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  padding: 8px 24px; background: var(--sr-surface-panel); border-bottom: 3px solid var(--sr-edge-dark);
+}
+.ds-back { font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; text-decoration: none; font-weight:700;}
+.ds-title {
+  flex: 1 1 240px; min-width: 0; margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px;
+  text-transform: uppercase; overflow-wrap: anywhere; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.ds-timer { font-family: var(--sr-font-pixel); font-size:var(--type-display-m); line-height: 1.2; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.ds-setup, .ds-body, .ds-done { margin: 0 24px 24px; }
+.ds-setup { display: grid; gap: 12px; justify-items: start; max-width: 760px; }
+.ds-dives { margin: 0; padding-left: 24px; display: grid; gap: 6px; font-size:var(--type-small); }
+.ds-dive[aria-current='step'] { color: var(--sr-label-accent); outline: 2px solid var(--sr-energy-accent); outline-offset: 2px; }
+.ds-refs { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; }
+.ds-mode { display: flex; flex-wrap: wrap; gap: 16px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ds-redo { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); }
+.ds-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+/* K3 (UAT cu-7 P2-2): canvas 2fr + panel 1fr from 1100 up; stacked below it, tablet included */
+@media (min-width: 1100px) { .ds-body { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.ds-left, .ds-right, .ds-done { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.ds-locked { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-warn); }
+.ds-missing { display: grid; gap: 12px; padding: 24px; justify-items: start; }
+/* UAT cu-r3b P3-5: on a phone the rail scrolls away with the page (it was ~190 px of a 780 px window, always) and its two actions share one row */
+@media (max-width: 640px) { .ds-rail { padding: 8px 16px; position: static; } .ds-rail > .sr-btn { flex: 1 1 0; } .ds-setup, .ds-body, .ds-done { margin: 0 16px 16px; } }
+
+.ds-close, .ds-score { display: grid; gap: 12px; counter-reset: q; }
+.ds-q { display: grid; gap: 8px; margin: 0; padding: 8px; border: 2px solid var(--sr-edge-mid); }
+.ds-q legend { font-family: var(--sr-font-body); font-size:var(--type-small); }
+.ds-close .ds-q legend::before { counter-increment: q; content: counter(q) '. '; font-family:var(--sr-font-body); color: var(--sr-label-accent); font-weight:700; font-size:var(--type-small);}
+.ds-q textarea, .ds-q input[type='text'], .ds-field input { width: 100%; min-width: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ds-trade { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.ds-field { display: grid; gap: 2px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ds-q4 { display: grid; gap: 6px; font-size:var(--type-small); }
+.ds-sub { margin: 4px 0 0; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
+.ds-score-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.ds-score-name { flex: 1 1 220px; min-width: 0; font-size:var(--type-small); }
+.ds-score-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+/* a deep dive's choices carry a word each (blank, hand-wave, full): one under another, so the group reads as a column */
+.ds-score-opts[data-described] { flex-direction: column; align-items: flex-start; gap: 4px; }
+.ds-radio { display: inline-flex; align-items: center; gap: 4px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ds-radio-desc { font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ds-rubric { display: flex; align-items: center; gap: 8px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ds-rubric input { width: 72px; }
+.ds-rubric input[aria-invalid='true'] { outline: 2px solid var(--sr-label-danger); }
+.ds-breakdown { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ds-grade-items { margin: 0; padding-left: 20px; font-size:var(--type-small); }
+.ds-note, .ds-study { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.ds-ai-error { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-danger); }
+.ds-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size:var(--type-small); }
+.ds-dl dt { font-family: var(--sr-font-mono); color: var(--sr-text-secondary); }
+.ds-dl dd { margin: 0; overflow-wrap: anywhere; }
+.ds-summary { display: grid; gap: 6px; }
+.ds-summary p { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ds-summary-line { font-family:var(--sr-font-body); font-size:var(--type-small); color: var(--sr-label-accent); font-weight:700;}
+.ds-trades { margin: 0; padding-left: 20px; font-size:var(--type-small); }
+.ds-redesign { color: var(--sr-label-warn); }
+.ds-loader { display: inline-flex; gap: 4px; }
+.ds-loader i { width: 12px; height: 12px; background: var(--sr-energy-accent); animation: ds-step 900ms steps(3, end) infinite; }
+.ds-loader i:nth-child(2) { animation-delay: 300ms; }
+.ds-loader i:nth-child(3) { animation-delay: 600ms; }
+@keyframes ds-step { 0% { opacity: 1; } 33% { opacity: 0.35; } 66% { opacity: 0.65; } 100% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ds-loader i { animation: none; } }
+.ds-interviewer { display: grid; gap: 8px; }
+.ds-istatus { margin: 0; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
+.ds-log { display: grid; gap: 6px; max-height: 360px; overflow-y: auto; padding: 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.ds-msg { margin: 0; padding: 6px 8px; font-size:var(--type-small); overflow-wrap: anywhere; border-left: 4px solid var(--sr-energy-boss); background: var(--sr-surface-panel); }
+.ds-msg-you { border-left-color: var(--sr-energy-accent); justify-self: end; }
+.ds-answer { width: 100%; min-width: 0; font-family: var(--sr-font-body); font-size:var(--type-small); }
+.ds-compare { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1100px) { .ds-compare { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.ds-yours, .ds-reference { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.ds-well { max-width: 100%; overflow: auto; padding: 8px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); }
+/* <sr-diagram> sets its own inline overflow: auto (see public/engines/diagram.js); undo it here
+   so there's exactly one scrollable region (`.ds-well`, already focusable via tabIndex=0) instead
+   of two nested ones — axe's scrollable-region-focusable otherwise also flags the inner element. */
+.ds-well sr-diagram { display: block !important; overflow: visible !important; max-width: none !important; }
+.ds-ref-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-json {
+  max-height: 240px; margin: 0; padding: 8px; overflow: auto; font-family: var(--sr-font-mono); font-size:var(--type-meta);
+  white-space: pre-wrap; overflow-wrap: anywhere; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid);
+}
+.ds-diff-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.ds-diff-list { margin: 0; padding-left: 18px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.ds-transcript summary { cursor: pointer; font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; font-weight:700;}
+/* A4 (settings-progress-ref): "‹ Back" is a 44 px touch target on phone. (Q4 rows use the shared .sr-choice.) */
+@media (max-width: 767px) {
+  .ds-back { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); min-width: var(--sr-size-hit-touch); }
+}

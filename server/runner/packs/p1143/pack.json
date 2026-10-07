@@ -1,0 +1,55 @@
+{
+  "id": "p1143",
+  "title": "Longest Common Subsequence",
+  "fn": "longestCommonSubsequence",
+  "signature": "func longestCommonSubsequence(text1 string, text2 string) int",
+  "params": [
+    {
+      "name": "text1",
+      "type": "string"
+    },
+    {
+      "name": "text2",
+      "type": "string"
+    }
+  ],
+  "returns": "int",
+  "starter": "package main\n\n// longestCommonSubsequence returns the length of the longest subsequence common to text1 and text2.\n//\n// Optional: add import \"dojo/tk\" to watch your DP step by step, e.g.\n//   t := tk.Table(\"dp\", 1, n+1)\n//   t.Set(0, i, v, tk.Dep(0, i-1), tk.Dep(0, i-2), tk.Rule(\"{0} + {1}\"))\nfunc longestCommonSubsequence(text1 string, text2 string) int {\n\treturn 0\n}\n",
+  "cases": [
+    {
+      "args": [
+        "abcde",
+        "ace"
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        "abc",
+        "abc"
+      ],
+      "expected": 3
+    },
+    {
+      "args": [
+        "abc",
+        "def"
+      ],
+      "expected": 0
+    },
+    {
+      "args": [
+        "bsbininm",
+        "jmjkbkjkv"
+      ],
+      "expected": 1
+    },
+    {
+      "args": [
+        "oxcpqrsvwf",
+        "shmtulqrypy"
+      ],
+      "expected": 2
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+.timeline-scroll { overflow-x: auto; min-width: 0; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); padding: 8px; }
+.timeline { display: block; max-width: none; }
+.tl-row { font-family:var(--sr-font-body); font-size:var(--type-meta); fill: var(--sr-chart-label); text-transform: uppercase; font-weight:700;}
+.tl-band { stroke: var(--sr-edge-dark); stroke-width: 1; }
+.tl-phase.tl-alt-0 { fill: var(--sr-energy-rival-shade); }
+.tl-phase.tl-alt-1 { fill: var(--sr-energy-rival); }
+.tl-stage.tl-alt-0 { fill: var(--sr-energy-accent-shade); }
+.tl-stage.tl-alt-1 { fill: var(--sr-energy-accent); }
+.tl-design { fill: var(--sr-energy-boss-shade); }
+.tl-label { font-family: var(--sr-font-body); font-size:var(--type-meta); fill: var(--sr-text-primary); pointer-events: none; }
+.tl-checkpoint { stroke: var(--sr-energy-boss); stroke-width: 2; stroke-dasharray: 4 2; }
+.tl-now { stroke: var(--sr-chart-marker); stroke-width: 2; }
+.tl-tick, .tl-date { font-family: var(--sr-font-mono); font-size:var(--type-meta); fill: var(--sr-chart-label); }
+/* R3: the two text panels sit side by side on desktop, stacked otherwise. */
+.overview .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1099px) { .overview .two-col { grid-template-columns: minmax(0, 1fr); } }

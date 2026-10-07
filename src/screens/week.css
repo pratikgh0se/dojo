@@ -1,0 +1,45 @@
+.week-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.week-tile {
+  display: grid; gap: 4px; align-content: start; padding: 12px; min-width: 0; min-height: 180px;
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark);
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.week-tile.is-today { border: 3px solid var(--sr-energy-accent); }
+.week-tile.rest { background: var(--sr-surface-panel); border: 2px dashed var(--sr-edge-mid); box-shadow: none; }
+.week-tile.rest .week-day, .week-tile.rest .week-role, .week-tile.rest .week-picks { color: var(--sr-text-secondary); }
+.week-head { display: flex; justify-content: space-between; align-items: baseline; }
+.week-day { font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; font-weight:700;}
+.week-date, .week-meta { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary-ontile); }
+.week-role { margin: 0; font-size:var(--type-small); color: var(--sr-label-accent); }
+.week-picks { margin: 0; padding-left: 16px; display: grid; gap: 2px; font-size:var(--type-small); }
+.week-meta { margin: 0; }
+/* ruling 24 S3: the focus count never breaks inside "75 min focus" when the tile is narrow: it moves down whole */
+.week-focus, .week-done { white-space: nowrap; }
+/* UAT cu-3p P3-12: "0 done ·" with the dot left at the end of the line. When the two do not fit on one line, each takes its own
+ * line and the dot (a separator, only worth having between two things on one line) goes. The line is the container asked. */
+.week-meta { container-type: inline-size; }
+@container (max-width: 199px) {
+  .week-done, .week-focus { display: block; }
+  .week-sep { display: none; }
+}
+.week-picks .week-again { display: inline-block; white-space: nowrap; color: var(--sr-label-accent); }
+.sprint-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.cal-day { display: grid; justify-items: center; gap: 2px; padding: 4px 0; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.cal-day.is-today { border-color: var(--sr-energy-accent); }
+.cal-day.past { border-style: dashed; }
+.cal-dow { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.cal-date { font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); }
+.cal-day.is-today .cal-date { color: var(--sr-label-accent); }
+.dot { display: inline-block; width: 6px; height: 6px; }
+.dot-ai { background: var(--sr-energy-accent); }
+.dot-interview { background: var(--sr-energy-rival); }
+.dot-off { background: transparent; border: 1px solid var(--sr-edge-mid); }
+.dot-none { background: transparent; }
+
+/* R2 phone: each day tile is a row (day name left, items right), min-height auto. */
+@media (max-width: 767px) {
+  .week-tiles { grid-template-columns: minmax(0, 1fr); }
+  .week-tile { min-height: 0; grid-template-columns: 96px minmax(0, 1fr); column-gap: 12px; }
+  .week-tile > .week-head { grid-row: 1 / span 4; flex-direction: column; justify-content: flex-start; }
+  .week-tile > :not(.week-head) { grid-column: 2; }
+}

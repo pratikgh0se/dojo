@@ -1,0 +1,39 @@
+.chart-well { margin: 0; padding: 8px; display: grid; gap: 6px; background: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid); min-width: 0; }
+.chart { display: block; width: 100%; height: auto; }
+/* A chart drawn at its intrinsic size (SteppedLine `size`): centred in its well; a narrower well scrolls (.sc).
+ * Auto margins (not justify-self: center) so an overflowing chart starts at the well's left edge, all reachable. */
+.chart-well-fixed { overflow-x: auto; justify-items: start; }
+.chart.chart-fixed { flex: none; max-width: none; margin: 0 auto; }
+.chart-axis { stroke: var(--sr-chart-axis); stroke-width: 1; }
+.chart-grid { stroke: var(--sr-chart-grid); stroke-width: 1; }
+/* font-size is set per-element (labelFontSize in labelScale.ts) so text renders at a
+   fixed CSS pixel size no matter how wide the SVG's viewBox is stretched — see
+   useChartScale.ts. Do not set it here: a stylesheet rule would win over the
+   inline SVG attribute and undo that compensation. */
+.chart-label, .chart-value { font-family: var(--sr-font-mono); fill: var(--sr-chart-label); }
+@media (max-width: 639px) { .chart-label-alt { display: none; } }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 12px; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-chart-label); }
+.legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.legend-swatch { display: inline-block; width: 8px; height: 8px; }
+.ct-accent { fill: var(--sr-energy-accent); stroke: var(--sr-energy-accent); background: var(--sr-energy-accent); }
+.ct-rival { fill: var(--sr-energy-rival); stroke: var(--sr-energy-rival); background: var(--sr-energy-rival); }
+.ct-ok { fill: var(--sr-signal-ok); stroke: var(--sr-signal-ok); background: var(--sr-signal-ok); }
+.ct-warn { fill: var(--sr-signal-warn); stroke: var(--sr-signal-warn); background: var(--sr-signal-warn); }
+.ct-danger { fill: var(--sr-signal-danger); stroke: var(--sr-signal-danger); background: var(--sr-signal-danger); }
+.ct-boss { fill: var(--sr-energy-boss); stroke: var(--sr-energy-boss); background: var(--sr-energy-boss); }
+.ct-muted { fill: var(--sr-chart-axis); stroke: var(--sr-chart-axis); background: var(--sr-chart-axis); }
+
+.chart .line { fill: none; stroke-width: 2; }
+.chart-mark { stroke-width: 1.5; }
+.mk-now { stroke: var(--sr-chart-marker); }
+.mk-slide { stroke: var(--sr-signal-danger); }
+.mk-shift { stroke: var(--sr-energy-boss); }
+.mk-now-swatch { background: var(--sr-chart-marker); }
+.chart-threshold { stroke: var(--sr-chart-threshold); stroke-width: 1; stroke-dasharray: 3 2; }
+.ring { justify-items: center; text-align: center; }
+.ring-svg { display: block; width: 100%; max-width: 88px; height: auto; }
+.ring-cell { fill: var(--sr-chart-grid); }
+.ring-cell.on { fill: var(--sr-energy-accent); }
+.ring-pct { font-family: var(--sr-font-mono); fill: var(--sr-chart-label); }
+.ring-cap { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-chart-label); }
+.ring-label { font-family:var(--sr-font-body); font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; font-weight:700;}
