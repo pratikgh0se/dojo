@@ -1,9 +1,13 @@
+import { Link as RouterLink } from 'react-router-dom'
 import type { Link } from '../data/types'
+import { appRoute } from '../lib/appLinks'
 import type { PromptTemplate, ProseItem, ProseSection, ProseTable } from '../content/types'
 import { Panel } from './primitives'
 import './prose.css'
 
 export function ExtLink({ link, className = 'ext' }: { link: Link; className?: string }) {
+  const route = appRoute(link.url)
+  if (route) return <RouterLink className={className} to={route}>{link.label}</RouterLink>
   return <a className={className} href={link.url} target="_blank" rel="noopener noreferrer">{link.label} ↗</a>
 }
 

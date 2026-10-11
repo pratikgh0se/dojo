@@ -9,6 +9,7 @@ import { DIFFICULTY_LABELS } from '../../rules/dsa'
 import { designRedoRows, redoRows } from '../../rules/redoQueue'
 import { todayDrawers, type DesignDrawer } from '../../rules/todayDrawers'
 import { Drawer } from '../../ui/Drawer'
+import { PlanAnchor } from '../../ui/PlanAnchor'
 import { useTick } from '../../ui/useTick'
 import { shownText } from '../../rules/ticketText'
 
@@ -50,7 +51,7 @@ function TaskRow({ ticket, tag }: { ticket: Ticket; tag: string }) {
         </p>
         <div className="dig-task-meta">
           {tag && <span className="vital-label">{tag}</span>}
-          {links.map(l => <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer">{l.label} ↗</a>)}
+          {links.map(l => <PlanAnchor key={l.url} href={l.url}>{l.label} ↗</PlanAnchor>)}
         </div>
       </div>
     </div>

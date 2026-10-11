@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { moveTicket } from '../../src/data/boardActions'
 import { ensureSeedArtifacts } from '../../src/data/projectActions'
 import type { PlanJson } from '../../src/data/types'
@@ -43,6 +43,22 @@ describe('AI screen', () => {
     expect(within(screen.getByTestId('stage-detail')).getByRole('heading', { name: 'Stage 06 · Beta' })).toBeInTheDocument()
     expect(screen.getByTestId('stage-row-3')).toBeInTheDocument()
     expect(screen.queryByTestId('stage-row-1')).toBeNull()
+  })
+
+  it('picking a stage scrolls the stage detail panel into view', async () => {
+    await setup()
+    const original = Element.prototype.scrollIntoView
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    try {
+      fireEvent.click(screen.getByTestId('stage-6'))
+      await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1))
+      expect(scroll.mock.contexts[0]).toBe(screen.getByTestId('stage-detail'))
+      expect(scroll).toHaveBeenCalledWith({ block: 'start' })
+    } finally {
+      if (original) Element.prototype.scrollIntoView = original
+      else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
+    }
   })
 
   it('shows a single-sprint stage as "S3", not "S3–S3", in the ladder and the stage panel', async () => {

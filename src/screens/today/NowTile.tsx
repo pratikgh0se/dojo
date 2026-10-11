@@ -7,6 +7,7 @@ import { useNow } from '../../lib/useNow'
 import type { NowTileModel } from '../../rules/nowTile'
 import { phaseEnd, phaseLabel, remainingMs, type Study } from '../../rules/studySession'
 import { pauseSession, requestEndSession, resumeSession } from '../../study/controls'
+import { PlanAnchor } from '../../ui/PlanAnchor'
 import { Sized } from '../../ui/Sized'
 import type { SparTimer } from '../../ui/useSparTimer'
 
@@ -86,12 +87,12 @@ export function NowTile({ model, spar, session = null, sessionCard = null }: {
               </>
             )}
             {model.link && (
-              <a
-                href={model.link.url} target="_blank" rel="noopener noreferrer" title={model.link.label}
+              <PlanAnchor
+                href={model.link.url} title={model.link.label}
                 className="sr-btn now-btn now-open" data-testid="open-link"
               >
                 <span className="now-open-label">Open · {model.link.short} ↗</span>
-              </a>
+              </PlanAnchor>
             )}
             {/* Ruling Q1 (spec D4): PLATFORM's Start ▸ is the accent primary, in the prototype's accent slot. */}
             <Link to={`/do/${id}`} className="sr-btn sr-btn-accent now-btn now-start" data-testid="start-button">Start ▸</Link>

@@ -60,6 +60,11 @@ export function Ai() {
   const openSprint = intParam(params, 'sprint')
   const after = checkpointAfterStage(bands, CHECKPOINT_SPRINT)
   const balance = sessionBalance(tickets)
+  // The detail panel sits below the cube board, so a pick must bring it into view or the click looks dead.
+  const pickStage = (n: number) => {
+    set({ stage: n, sprint: null })
+    requestAnimationFrame(() => document.querySelector('[data-testid="stage-detail"]')?.scrollIntoView?.({ block: 'start' }))
+  }
   return (
     <div className="content-screen ai">
       <h1 className="screen-title">AI · capstone</h1>
@@ -71,7 +76,7 @@ export function Ai() {
           startDate={settings.startDate}
           nowMs={t}
           lastSprint={lastSprint}
-          onStage={n => set({ stage: n, sprint: null })}
+          onStage={pickStage}
         />
       </Suspense>
       <Panel title="Stage ladder">
@@ -86,7 +91,7 @@ export function Ai() {
                     className={`stage-band state-${p.state}${b.stage === band.stage ? ' sel' : ''}`}
                     aria-pressed={b.stage === band.stage}
                     data-testid={`stage-${b.stage}`}
-                    onClick={() => set({ stage: b.stage, sprint: null })}
+                    onClick={() => pickStage(b.stage)}
                   >
                     <span className="stage-name">{stageLabel(b.stage)} · {b.title}</span>
                     <span className="stage-range">{sprintRangeLabel(b.from, b.to)}</span>

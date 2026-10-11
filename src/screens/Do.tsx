@@ -13,6 +13,7 @@ import { startDoing } from '../data/sessionActions'
 import type { EndLog, HelpRung, Kind, Outcome, Redo, RungUse, Ticket } from '../data/types'
 import { playChime, primeChime } from '../lib/chime'
 import { now } from '../lib/clock'
+import { appRoute } from '../lib/appLinks'
 import { openCheck } from '../lib/checkGate'
 import {
   bankRun, clearCycle, cycleElapsedMs, gaveUpFor, isStaleEmpty, loadCycle, newCycle, saveCycle, saveGaveUp,
@@ -675,14 +676,19 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
           {ticket.childOf && <p className="brief-note">Part of <Link to={`/do/${ticket.childOf}`}>the split card</Link></p>}
 
           <div className="open-row">
-            {ticket.links.map(l => (
-              <a
-                key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="sr-btn sr-btn-accent open-link" title={l.label}
-                onClick={() => { if (!mine?.running && !container) void start(mine?.min ?? 25, { silent: true }) }}
-              >
-                Open ▸ {l.label}
-              </a>
-            ))}
+            {ticket.links.map(l => {
+              const route = appRoute(l.url)
+              // An in-app link (#bank, #mentors, ...) opens that screen and never starts the timer.
+              if (route) return <Link key={l.url} to={route} className="sr-btn sr-btn-accent open-link" title={l.label}>Open ▸ {l.label}</Link>
+              return (
+                <a
+                  key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="sr-btn sr-btn-accent open-link" title={l.label}
+                  onClick={() => { if (!mine?.running && !container) void start(mine?.min ?? 25, { silent: true }) }}
+                >
+                  Open ▸ {l.label}
+                </a>
+              )
+            })}
           </div>
 
           {/* UAT r5 P3 #3: a split card has no timer or outcomes of its own; it points to its sessions instead */}
