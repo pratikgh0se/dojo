@@ -12,9 +12,8 @@ export function Onboarding() {
   const toast = useToast()
   const [value, setValue] = useState(() => defaultStartDate(now()))
   const [error, setError] = useState<string | null>(null)
-  // ruling 21: a non-Monday start gets a warn note, live as the date changes; it never blocks Start the plan
+  // SHELL-27: the warn and mid-week notes show "when they apply"; with no weekday roles they never do (rules/onboarding.ts)
   const warning = startDateWarning(value)
-  // ruling 22 D3: the Tue/Wed default is the Monday just gone, and says why
   const note = startDateNote(value, now())
   const describedBy = [note && 'onboarding-note', warning && 'onboarding-warn', error && 'onboarding-error'].filter(Boolean).join(' ') || undefined
 
@@ -39,15 +38,15 @@ export function Onboarding() {
       <form className="sr-hero onboarding-card" onSubmit={submit} noValidate>
         <p className="eyebrow">Dojo · first launch</p>
         <h1 className="screen-title">Pick your start date</h1>
-        <p>Sprint 1 of 72 begins on this date at local midnight. Each sprint is 14 days. You can change it later in Settings.</p>
+        <p>Your plan begins on this date at local midnight. You can change it later in Settings.</p>
         <label>
           Start date
-          <input type="date" value={value} aria-invalid={error ? true : undefined} aria-describedby={describedBy} onChange={e => pick(e.target.value)} />
+          <input type="date" data-testid="onboarding-start-date" value={value} aria-invalid={error ? true : undefined} aria-describedby={describedBy} onChange={e => pick(e.target.value)} />
         </label>
         {note && <p className="form-note" id="onboarding-note" data-testid="start-date-note">{note}</p>}
         {warning && <p className="form-warn" id="onboarding-warn" data-testid="start-date-warn">{warning}</p>}
         {error && <p role="alert" className="form-error" id="onboarding-error" data-testid="form-error">{error}</p>}
-        <Button type="submit" variant="accent" className="sr-btn-lg">Start the plan ▸</Button>
+        <Button type="submit" variant="accent" className="sr-btn-lg" data-testid="onboarding-submit" data-accent="primary">START · PLAN</Button>
       </form>
     </main>
   )

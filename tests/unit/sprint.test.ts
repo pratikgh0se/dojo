@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { attributeSession, currentSprint, planPosition, sprintOf, sprintRangeLabel, sprintStart } from '../../src/rules/sprint'
+import { currentSprint, planPosition, sprintOf } from '../../src/rules/sprint'
 
 const START = '2026-09-07'
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -30,24 +30,5 @@ describe('sprint helpers', () => {
     expect(currentSprint(ist('2026-09-01T09:00:00'), START)).toBe(1)
     expect(currentSprint(ist('2030-01-01T09:00:00'), START)).toBe(72)
     expect(sprintOf(ist('2026-09-01T09:00:00'), START)).toBe(0)
-  })
-  it('gives each sprint a local-midnight start', () => {
-    expect(sprintStart(2, START)).toBe(ist('2026-09-21T00:00:00'))
-  })
-  it('attributes a session that crosses midnight and a sprint boundary to its start (Review Focus #3)', () => {
-    const start = ist('2026-09-20T23:40:00')
-    expect(attributeSession(start, START)).toEqual({ dayKey: '2026-09-20', sprint: 1 })
-    expect(attributeSession(Date.parse('2026-09-20T18:30:00Z'), START)).toEqual({ dayKey: '2026-09-21', sprint: 2 })
-  })
-})
-
-describe('sprintRangeLabel', () => {
-  it('shows a single sprint without a dash', () => {
-    expect(sprintRangeLabel(1, 1)).toBe('S1')
-    expect(sprintRangeLabel(7, 7)).toBe('S7')
-  })
-  it('shows a dashed range when the span covers more than one sprint', () => {
-    expect(sprintRangeLabel(2, 4)).toBe('S2–S4')
-    expect(sprintRangeLabel(31, 38)).toBe('S31–S38')
   })
 })

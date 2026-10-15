@@ -261,19 +261,6 @@ test.describe('cu-6 (design alignment) · Atlas on a phone: pinned row headers a
   })
 })
 
-test.describe('P3-11 · Overview timeline on a phone: ticks are sprint numbers, not dates', () => {
-  test('393: S1, S13, ... with no printed date; the date is in the tick title', async ({ page }) => {
-    await page.setViewportSize({ width: 393, height: 852 })
-    await onboard(page, '2026-10-05')
-    await page.goto('/overview')
-    const ticks = page.locator('[data-testid^="tick-"]')
-    await expect(ticks.first()).toBeAttached()
-    expect(await page.locator('.tl-tick').allTextContents()).toEqual(['S1', 'S13', 'S25', 'S37', 'S49', 'S61'])
-    await expect(page.locator('.tl-date')).toHaveCount(0)
-    await expect(ticks.first().locator('title')).toHaveText(/^S1 starts 2026-10-05$/)
-  })
-})
-
 test.describe('P3-14 · Hello Interview rows: an empty difficulty or pattern reads `—` without a box', () => {
   test('the chips still read `—` (S-12) and have no visible border', async ({ page }) => {
     await onboard(page, '2026-10-05')

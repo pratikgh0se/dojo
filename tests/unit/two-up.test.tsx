@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { TwoUp } from '../../src/ui/algo/TwoUp'
 import { seededDb } from '../helpers/db'
 import { installAlgoEngines } from '../helpers/engines'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 function Harness({ left, right }: { left: string; right: string }) {
@@ -17,7 +17,7 @@ const shared = () => screen.getByTestId('lab-two-up-counter').textContent
 
 async function mount(left: string, right: string) {
   const d = await seededDb()
-  renderWithApp(<Harness left={left} right={right} />, { db: d, plan: smallPlan })
+  renderWithApp(<Harness left={left} right={right} />, { db: d, plan: flatPlanV2 })
   await waitFor(() => expect(screen.getAllByTestId('lab-player')).toHaveLength(2))
   return d
 }
@@ -57,6 +57,6 @@ describe('Two-up (labs contract §4.5, D-9)', () => {
     expect(two().getByRole('button', { name: 'Own input' })).toBeDisabled()
     fireEvent.change(two().getByRole('combobox', { name: 'Compare with' }), { target: { value: 'heapPush' } })
     expect(screen.getByTestId('lab-two-up-note')).toHaveTextContent('Different inputs: these walkthroughs take different input shapes.')
-    expect(within(two().getByRole('combobox', { name: 'Compare with' })).getAllByRole('option')).toHaveLength(45)
+    expect(within(two().getByRole('combobox', { name: 'Compare with' })).getAllByRole('option')).toHaveLength(54)
   })
 })

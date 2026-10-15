@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { baseXp, levelOf, possibleXp, totalXp } from '../../src/rules/xp'
-import { planToTickets, newTicket } from '../../src/rules/planTickets'
 import { mkTicket, smallTickets } from '../helpers/tickets'
-import { legacyPlan, realPlan } from '../helpers/plan'
 
 describe('xp', () => {
   it('pays base XP by kind and difficulty', () => {
@@ -24,10 +22,18 @@ describe('xp', () => {
     expect(totalXp(ts)).toBe(25)
   })
   it('computes possible plan XP over non-archived plan tickets', () => {
-    expect(possibleXp(smallTickets())).toBe(120)
+    expect(possibleXp(smallTickets())).toBe(130)
     const archived = smallTickets().map(t => (t.kind === 'design' ? { ...t, archived: true } : t))
-    expect(possibleXp(archived)).toBe(80)
-    expect(possibleXp(planToTickets(legacyPlan()).map(newTicket))).toBe(6015)
-    expect(possibleXp(planToTickets(realPlan()).map(newTicket))).toBe(7185)
+    expect(possibleXp(archived)).toBe(90)
+  })
+})
+
+describe('R1 kinds', () => {
+  it('pay the spec defaults', () => {
+    expect(baseXp('watch')).toBe(10)
+    expect(baseXp('read')).toBe(10)
+    expect(baseXp('build')).toBe(20)
+    expect(baseXp('writeup')).toBe(20)
+    expect(baseXp('ritual')).toBe(5)
   })
 })

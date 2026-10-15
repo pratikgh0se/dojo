@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
-import type { PomPose } from '../../rules/vitals'
 import { loadEngine } from '../../lib/engines'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { useReadableEngine } from './useReadableEngine'
 import { throttleStage } from './stageThrottle'
+import type { PomPose } from '../../rules/forms'
 
 interface Disposable { dispose?: () => void }
 interface StageObject {
@@ -47,7 +47,13 @@ function disposeStage(el: PomStageElement | null): void {
 }
 
 /** One <pom-stage> (three.js voxel Pom). The engine loads three.js itself, lazily, from /engines/vendor/three. */
-export function PomStage({ form, pose, label }: { form: number; pose: PomPose; label: string }) {
+/** TEMPEST grows its hair 3.6 times, so it is framed a little wider than the rest: every form shows whole, hair to feet (150 x 210 well). */
+const TEMPEST = 3
+
+type DataAttrs = { [k: `data-${string}`]: string | number | undefined }
+
+/** `data-*` props (a test id, the form and pose a test reads) go on the element as they are. */
+export function PomStage({ form, pose, label, ...data }: { form: number; pose: PomPose; label: string } & DataAttrs) {
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)')
   const reducedRef = useRef(reduced)
   reducedRef.current = reduced
@@ -69,7 +75,8 @@ export function PomStage({ form, pose, label }: { form: number; pose: PomPose; l
       who="pom"
       form={String(form)}
       pose={pose}
-      zoom="1.05"
+      {...data}
+      zoom={form === TEMPEST ? '0.85' : '0.9'}
       background="transparent"
       autorotate={reduced ? undefined : ''}
       role="img"

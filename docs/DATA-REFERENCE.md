@@ -34,7 +34,7 @@ Dojo is a local-first Mac study app (Electron + a Node server on `127.0.0.1`). I
 - **Where:** one SQLite file, `~/Dojo/dojo.db` by default (see [2.1](#21-find-the-data-home) for custom homes).
 - **Shape:** a generic document store. `dojo_docs` holds the *current* JSON document of every record, keyed by
   `(tbl, id)`. `dojo_ops` is an append-only log of every change. `dojo_meta` and `dojo_schema_migrations` are bookkeeping.
-- **Plan text** (the schedule, sprint themes, rotation) is **not** in the database. It is `plan.json` in the app bundle
+- **Plan text** (nodes, areas, phases, weekday budgets) is **not** in the database. It is `plan.json` in the app bundle
   ([2.4](#24-the-plan-planjson-and-how-it-joins-to-the-database)). Each card already carries a copy of its own title, text and links.
 - **The one rule: read-only from outside.** Never write to `dojo.db`, never use `writer.token`. The app keeps a working
   copy in the browser and syncs it to the file; a write from outside bypasses the rules (XP ledger, undo, history),
@@ -114,21 +114,44 @@ new file. Use the file's mtime (or `GET /db/backups` `at`) to decide whether a s
   (default app location `~/Applications/Dojo.app`). It is **not** in the data home. The running app serves it at
   `http://127.0.0.1:<port>/data/plan.json`, with the `plan.schedule` and `plan.learner` keys of `<home>/profile.json` laid over
   it (top-level keys only; `PLAN_OVERLAY_KEYS`). Fetching that URL gives you the effective plan; reading the file gives the shipped one.
-- **Top-level keys:** `planVersion` (string), `generated`, `sprint_days` (14), `total_sprints` (72), `rotation`
-  (`{"Mon": "AI · watch", "Tue": "Interview · code", ..., "Fri": "Off", ...}`), `schedule`, `phases`, `skills`, `sprints[]`,
-  `ai_shelf[]`, `dsa_bank[]`, `design_bank[]`, `communities[]`, `idMap` (old id -> new id after a re-plan).
+- **Top-level keys (plan v2, `planFormat: 2`):** `planVersion` (`ai-infra-v1-<date>`), `areas[]` (12: the 10 AI areas, then the tree areas `dsa` and `design`, each with `pre: []`; `id`, `name`, two-letter `tag`, `why`,
+  prerequisite areas `pre[]`), `phases[]` (6: `p`, `name`, `months`, `idea`, `authored`), `nodes[]` (113 in the shipped plan: 74 AI nodes, 17 DSA nodes `DA01`..`DA17` and 22 design nodes `SD01`..`SD22`, whose bank problems and items carry `node` (`dsa_bank[].problems[].node`, `design_bank[].items[].node`); `id`, `area`, `phase`, `kind`
+  `topic|real|lit|build|band`, `title`, `short`, `oneLiner`, `why`, `pre[]`, `explain[]`, optional `demandPct` and `hours`), `builds[]` (B1 to B7:
+  `id`, `name`, `lang`, `repo`, `lab`, `gpu`), `tickets[]` (the AI-infra lane, flat), `dsa_bank[]` and `design_bank[]` (unchanged except that every
+  problem and design item carries an `order`), `tasks[]` (the kept tasks: `lane` `dsa|design|career`, `skill`), `mix` (`shares` path 58, dsa 25,
+  design 17; `budgets` weekday minutes, Sunday first), `rituals[]` (`id`, `title`, `cadence`, `minutes`), `idMap`, and an optional `learner`. `sprints`,
+  `rotation`, `schedule`, `skills`, `ai_shelf`, `communities` and `proof` no longer exist (a v1 plan is no longer read: `loadPlan` refuses it; only the frozen legacy-forge fixtures in `tests/fixtures/` keep that shape). A profile may still lay `schedule` and `learner` over the
+  served plan. `phases[].authored` is false for a phase whose tickets are not written yet; its nodes exist and have no tickets.
+- **Band nodes are not emitted.** The plan's source has 77 nodes; three of them (kind `band`, phase 0: the weekly and daily ritual bands and the DSA
+  band) are drawn by the app itself and are not in `nodes[]`, so every emitted node has an `area` in `areas[]` and a `phase` of 1 or more. The `band`
+  kind stays in the type for older files.
+- **Shipped content today.** Phase 1 is the only authored phase: 51 tickets in `tickets[]`, 2220 minutes in all (every `phase` 1; `estMin` 25 to 60).
+  Each node of an authored phase has at least one ticket. A `watch` or `read` ticket has at least one link whose `url` starts with `http`; **the first such
+  link is the ticket's resource link** (the main thing to watch or read); links after it are supporting. A `build` ticket always has a `lab`.
+- **Serving a different plan.** `DOJO_PLAN_FILE=/absolute/path/plan.json` makes the dev server (`npm run dev`) and the built-app server (`--dist`) serve that file as
+  `/data/plan.json` instead of the build's own plan (for tests and fixtures). The path must be absolute; the file must be a plan with a non-empty `planVersion`
+  (a v2 plan; the server still lets a v1 file with `sprints` through, but the app then shows the plan error card). It is re-read on every request, so an edit shows on reload, and `<home>/profile.json`'s overlay is still laid on top.
+  A missing or invalid file stops the launch with exit code 1 and a one-line reason; if it goes bad while the server runs, `/data/plan.json` answers 500 with the reason.
+  Unset means the build's plan. The installed app (`--real`) ignores the variable (one stderr line says so): it never serves a tester plan.
+  The implementation is `server/plan-file.mjs`, shared by `scripts/dev.mjs`, `vite.config.ts` and `server/dojo-server.mjs`.
 - **Plan id -> ticket id.** A ticket's `id` *is* the plan id:
-  - `sprints[].ai[].id` and `sprints[].interview[].id` (tasks and stage cards, e.g. `stage-1-sample-w1-watch`);
-  - DSA problems: `p<num>` for `dsa_bank[].problems[].num`;
-  - designs: `design_bank[].items[].id` (e.g. `d-cache`).
-  Split sessions get `<parent id>~<n>` (`childOf` = parent). Bank and "mine" cards have bank item ids (`mine:<key>`, `bank:...`).
+  - AI-infra tickets: `tickets[].id`, always `ai.<node>.<role>[.<n>]` in lowercase (`ai.t01.learn`, `ai.b1.build.3`), never renamed or reused;
+  - kept tasks: `tasks[].id` (`m<block>w<week><t|i><n>`, unchanged from the earlier plan);
+  - DSA problems: `p<num>` for `dsa_bank[].problems[].num`; designs: `design_bank[].items[].id` (e.g. `d-cache`).
+  Stage ids (`stage-*`) no longer exist in the plan; those tickets are archived on reconcile.
+  Split sessions (`<parent id>~<n>`) exist only in documents written before the flat migration. Bank and "mine" cards have bank item ids (`mine:<key>`, `bank:...`).
 - **Cards already carry the plan's content.** Each ticket doc copies `title`, `text`, `links`, `skill`, `pattern`, `difficulty`,
-  `estMin`, `plannedSprint`, `order`, `stage`, `session`. The app refreshes those at launch when the plan changes
-  (`settings.planVersion` records which plan version the database was reconciled to). So **titles and due sprints need no
-  join**: `title`, `plannedSprint` (the plan's sprint), `sprint` (where the card sits now) are on the ticket.
-- **What needs `plan.json`:** the weekday rotation (`rotation[weekday]`), the per-sprint `block_title`, `block_theme`,
-  `focus_ai`, `focus_interview`, `proof`; the daily `schedule`; phases, skills, shelf. Join: `plan.sprints[]` is keyed by
-  its `sprint` field = ticket `plannedSprint` (see the snippet in [8.2](#82-plan-side-context-for-a-card)).
+  `estMin`, `plannedSprint`, `order`, `lane`, `node`, `area`, `phase`, `explain`, `explainAnswers`, `lab`, `asOf` (and `stage`, `session` on old cards).
+  The app refreshes those at launch when the plan changes (`settings.planVersion` records which plan version the database was reconciled to).
+  So **titles and order need no join**: `title`, `order` and (for legacy readers) `plannedSprint` are on the ticket. `sprint` is where the card sits now.
+- **Learner-owned fields are not plan content.** `orderOverride`, `learnerNotes`, `explainResponses` and `selfMark` are defined on the ticket type
+  (`src/data/types.ts`; `selfMark` is `done`, `partial` or `skipped`) but are never in the list of fields copied from the plan, so a plan refresh
+  does not touch them. They are the learner's, not the plan's: do not look for them in `plan.json`. The effective-order rule (`orderOverride` if
+  present, else `order`) reads the first; the app's learner data actions write `learnerNotes`, `explainResponses` and `selfMark` (plus `learnerUpdatedAt`).
+  Treat all of them as optional and usually absent.
+- **What needs `plan.json`:** the node list (`ticket.node` -> `nodes[].id`, with its title, why and prerequisites), the areas (`ticket.area` -> `areas[].id`),
+  which phases are authored, the builds, the lane `mix` and weekday `budgets`, and the rituals. `plannedSprint` is kept only for legacy readers: it is
+  the 14-day window (twice the weekly budget total) a ticket starts in when the plan is worked in `order`, capped at 72, and nothing new should read it.
 - **Drift.** If `plan.json`'s `planVersion` differs from `settings.planVersion`, the app was updated but not launched since.
   Ticket user-state (status, sprint, xp) is still authoritative; ticket content may be older than the plan.
 - Ids are stable across re-plans: old ids map through `idMap`. Cards whose id vanished from the plan become `archived: true`.
@@ -240,9 +263,9 @@ Tested against a server started on an invented home:
 
 | Route | Returns |
 | --- | --- |
-| `GET /db/health` | `{ok, dbPath, dbId, docs, ops, lastBackup, home, userHome, projectRepo}`. `docs` counts every row including tombstones. |
+| `GET /db/health` | `{ok, dbPath, dbId, docs, ops, lastBackup, home, userHome, projectRepo}`. `docs` counts every row including tombstones. `ops` is the persistent count of rows in `dojo_ops` (it survives a restart; an unchanged `ops` means nothing was written). `lastBackup` is epoch milliseconds (number) of the newest dated backup, or `null`. |
 | `GET /db/state` | `{tables: {"<tbl>": [doc, ...]}}`: every **non-deleted** doc of every table (documents only, no `updated_at`, no ids except those inside docs), ordered by `tbl, id`. The whole database on every call. |
-| `GET /db/backups` | `{backups: [{file, bytes, at}]}`, newest first, includes `pre-restore-*`. |
+| `GET /db/backups` | `{backups: [{file, bytes, at}]}`, newest first, includes `pre-restore-*`. `at` is milliseconds since the epoch (a number, not an ISO string). |
 
 This is the app's sync protocol, not a public API ([9](#9-stability-contract)). It is only there while the app is running and
 has no ops feed. Every `POST` route needs the writer token: do not use them.
@@ -320,10 +343,12 @@ That is the only key the code writes (`ensureDbId` in `server/db/adapter.mjs`).
 ### 4.4 Schema versions and how a reader should gate on them
 
 The only schema version in the file is the set of rows in `dojo_schema_migrations`. There is no per-document version and no
-`PRAGMA user_version`. (The browser-side Dexie schema number, currently 7, is **not** stored in `dojo.db`.)
+`PRAGMA user_version`. (The browser-side Dexie schema number, currently 9, is **not** stored in `dojo.db`.)
 
 Gate like this: keep the set of migration versions you were written for; if the database has any version you do not know,
 stop and re-read this document. A database with only a subset of yours is older: its tables still match what you know.
+
+**Document model version.** `settings.main.modelVersion` is absent or `1` for the pre-R1 model (split containers with `children` and `childOf`, sprint buckets, `stage` tickets) and `2` after the flat migration (one `replan` event holds its report, see events). A reader that understands only model 1 should stop at `2`; a reader written for model 2 must also accept documents that still carry `children`/`childOf`, because a restored pre-migration backup or a stale tab can bring them back until the next app start migrates again (the migration is idempotent). A build that finds a `modelVersion` above the one it knows opens read-only with a banner. Archived split sessions that were folded into their container carry `mergedInto` and `xp: 0`.
 
 ```sql
 -- Which migrations are applied, and which database is this (identity changes on restore).
@@ -341,7 +366,7 @@ ORDER BY 1, 2;
 
 | Thing | Rule |
 | --- | --- |
-| Document timestamps | JSON **numbers**: milliseconds since the Unix epoch (JavaScript `Date.now()`), an absolute instant. Fields named `at`, `start`, `end`, `doneAt`, `createdAt`, `closedAt`, `endedAt`, `lockedAt`, `due` (redos), `redesignDue`, `updatedAt`, `statusAt.*`. |
+| Document timestamps | JSON **numbers**: milliseconds since the Unix epoch (JavaScript `Date.now()`), an absolute instant. Fields named `at`, `start`, `end`, `doneAt`, `createdAt`, `closedAt`, `endedAt`, `lockedAt`, `pausedAt`, `due` (redos), `redesignDue`, `updatedAt`, `statusAt.*`. |
 | Local-date strings | `'YYYY-MM-DD'` in the user's **local** time zone: `settings.startDate` and, for a redo scheduled by a failed learning check, `redos.due`. |
 | Row timestamps | `dojo_docs.updated_at`, `dojo_ops.at`, `applied_at`: ISO-8601 UTC text with milliseconds and a `Z`. |
 | Time zone | **Not stored anywhere.** Dojo works in the time zone of the Mac it runs on. "Day" always means a local calendar day, midnight to midnight. Bind the local date from the caller ([8.1](#81-today-and-the-sprint-math)). |
@@ -354,7 +379,7 @@ ORDER BY 1, 2;
 
 ## 6. Document kinds
 
-`dojo_docs.tbl` has these values (18 kinds; the names are the browser's table names). **Field details are internal and may
+`dojo_docs.tbl` has these values (20 kinds; the names are the browser's table names). **Field details are internal and may
 change** ([9](#9-stability-contract)); the fields below are what the current code writes (`src/data/types.ts` plus the
 actions that write them). Optional fields are absent when unset.
 
@@ -371,6 +396,10 @@ actions that write them). Optional fields are absent when unset.
 | [`blankTests`](#blanktests) | a blank-editor rebuild test | `blank-...` | no | yes |
 | [`grades`](#grades) | an AI grade result | `grade-...` | no | yes |
 | [`checkAttempts`](#checkattempts) | one try at a card's learning check | `ca-...` | no | yes |
+| [`pulses`](#pulses) | the daily AI pulse: one line per local day | `pulse-YYYY-MM-DD` | no | yes |
+| [`journal`](#journal) | the daily journal: one entry per local day | `journal-YYYY-MM-DD` | no | yes |
+| [`bankGrades`](#bankgrades) | the last self-grade of one Design or AI bank question | the question's id | no | yes |
+| [`bankExtra`](#bankextra) | an AI-made bank question ("More questions") | `x-<node>-<time>-<n>` | no (Delete removes the doc) | yes |
 | [`reviews`](#reviews) | a sprint review | `rv-...` | no | yes |
 | [`bankItems`](#bankitems) | one problem in one bank (incl. "mine") | `<bank>:<key>` | yes | yes |
 | [`code`](#code) | the learner's code for a card, per language | `<ticketId>:<lang>` | no | yes |
@@ -395,8 +424,15 @@ One doc, id `main`. Holds the plan start date.
 | `planVersion` | string | The plan version the tickets were reconciled to. |
 | `aiProviders` | object | Reserved, read nowhere. |
 | `possibleXp` | number | Cached sum of base XP over non-archived plan tickets. |
-| `coreMinutes` | number? | "Core minutes per sprint" budget; absent means 1440 (24 h). Minimum 30. |
-| `trackedFrom` | number? | The sprint tracking began in; sprints before it never roll over. |
+| `coreMinutes` | number? | Core minutes per 14-day window; absent means twice the weekly total of the budgets (960 by default). The flat migration replaces only the old default 1440 (or a missing value) with 960 and keeps any other stored value. |
+| `modelVersion` | `1` \| `2`? | 2 once the flat migration has run. Absent means 1. A build that only knows an older version opens a newer database read-only. |
+| `flatMigratedAt` | number? | ms epoch of the migration. |
+| `laneBudgets` | number[7]? | Weekday study minutes, Sunday first, 0 to 600 each; overrides the plan's `mix.budgets` (default 90, 60, 60, 60, 30, 30, 150). |
+| `careerLane` | boolean? | Career tickets join Today and Path when true (default false). |
+| `sessionMinutes` | number? | Remembered session length, 5 to 180 (default 25). |
+| `navLabels` | `intro` \| `always` \| `hover`? | Whether the icon rail shows text labels (default `intro`). |
+| `pomFormMax` | integer 0 to 8? | The highest Pom form (index, BASE 0 to SOVEREIGN 8) ever shown. Absent means 0. Written only by a user action that grants XP and makes the form for the new level larger than the stored value, never on page load and never by the Settings debug panel; no migration. The form shown is the larger of the form for the current level and this value, so it never goes down. Level thresholds per form: 0, 10, 40, 100, 180, 300, 450, 650, 900. |
+| `trackedFrom` | number? | Written when the start date is saved: the sprint tracking began in. Legacy: the roll-over and automatic reviews that read it are gone, so nothing in the app reads it now. |
 
 ```json
 {"id": "main", "startDate": "2026-09-21", "planVersion": "sample-v1", "aiProviders": {}, "possibleXp": 7000, "trackedFrom": 1}
@@ -409,9 +445,9 @@ The central kind: one card. Plan cards are seeded at first launch (id = plan id)
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `id` | string | Plan id, `<parent>~<n>` for a split session, or a bank item id. |
-| `origin` | string | `plan`, `mine`, `bank:<bankId>`, or (split session) the parent's id. |
+| `origin` | string | `plan`, `mine`, `bank:<bankId>`, `ritual:<ritualId>:<period>` (a weekly ritual ticket, for example `ritual:try-new-model:2026-W45`, ISO week), or (split session) the parent's id (legacy). A plan refresh keeps `ritual:` tickets as they are. |
 | `track` | `ai` \| `interview` | The two study tracks. |
-| `kind` | `task` \| `problem` \| `design` \| `stage` \| `watch` \| `read` | `stage` = capstone stage card; `watch`/`read` = learning cards (plans only emit the first four). |
+| `kind` | `task` \| `problem` \| `design` \| `stage` \| `watch` \| `read` \| `build` \| `writeup` \| `ritual` | `stage` = legacy (the forge capstone): archived by the flat migration and never emitted again. `watch`/`read`/`build`/`writeup` are the AI-infra kinds; `ritual` is reserved for ritual cards the app creates (the plan's `tickets[]` has none; the plan lists the rituals in `rituals[]`). |
 | `title` | string | Plan title. Problems are `"<num> · <name>"`. |
 | `text` | string? | Plan task text; for problems the DSA topic; for designs the deep-dive bullets (`• ...` lines). |
 | `links` | `[{label, url}]` | Plan links. |
@@ -420,29 +456,40 @@ The central kind: one card. Plan cards are seeded at first launch (id = plan id)
 | `difficulty` | `E` \| `M` \| `H`? | Problems and designs. |
 | `rating` | number? | Codeforces rating (bank cards). |
 | `stage` | number? | Capstone stage number, `kind: stage` only. |
-| `session` | `watch` \| `rebuild` \| `build` \| `teachback`? | Weekly rotation slot of a stage card. |
-| `estMin` | number | Default minutes by kind: task 50, problem 30, design 45, stage 50, watch/read 50. |
+| `session` | `watch` \| `rebuild` \| `build` \| `teachback`? | Legacy (stage cards, archived by the flat migration): the weekly rotation slot of a stage card. |
+| `estMin` | number | Plan value, 15 to 120 minutes (one sitting). Defaults by kind when a plan omits it (`EST_MIN` in `src/rules/planTickets.ts`): task 50, problem 30, design 45, stage 50, watch 45, read 40, build 75, writeup 60, ritual 60. |
 | `plannedSprint` | number | The plan's sprint for this card. Never changes after seeding (except a re-plan). |
-| `sprint` | number | The sprint the card sits in **now** (changes on slide, shift, move, roll-over). |
-| `status` | `todo` \| `doing` \| `done` \| `slid` | In practice `todo`, `doing`, `done` (a slid card is `todo` with `slidFrom` non-empty). |
-| `slidFrom` | number[] | Sprints the card was slid out of, oldest first. Non-empty = shown in the Board's "Slid in" column. |
+| `sprint` | number | Legacy: the sprint the card sat in when the pre-flat app last moved it (slide, shift, move, roll-over). The flat queue never changes it and does not read it. |
+| `status` | `todo` \| `doing` \| `blocked` \| `help` \| `done` \| `slid` | `todo`, `doing`, `blocked`, `help`, `done`. `blocked` and `help` ("Need help") are set only by the learner on the Board (drag or the card's "Move to" menu); a card in either is open but not queued: Today and Path's Up next skip it and it keeps its `order`. The status order where one is needed is `todo < doing < blocked = help < done`. Legacy `slid` (a `todo` card with `slidFrom` non-empty) may remain on archived cards. |
+| `blockedNote` | string? | The learner's one-line reason for a `blocked` or `help` card (trimmed, at most 140 characters). Absent when there is none; removed when the card becomes `todo`, `doing` or `done`. Learner-owned: a plan refresh keeps it. |
+| `slidFrom` | number[] | Sprints the card was slid out of, oldest first. Legacy (the Board's "Slid in" column is gone); nothing writes it now. |
 | `doneAt` | number? | ms epoch when done. Removed again if the card is un-done. |
 | `doneAtApprox` | boolean? | Reserved; never true. |
 | `xp` | number | Net XP earned: `max(0, base once done - help costs applied + redo refunds)`. 0 until done. |
 | `archived` | boolean | `true` = the card vanished from the plan in a re-plan. Hide it. |
-| `order` | number | Plan file order; sort key. Bank cards use the creation time. |
+| `order` | number | Plan sort key: a unique whole number, the ideal-pace rank across all lanes (path, dsa, design) in the 58/25/17 mix. Effective order is `orderOverride ?? order`. Bank cards use the creation time. |
+| `orderOverride` | number? | The user's local reorder inside a lane (learner-owned, see 2.4). Absent unless they moved the card. A plan refresh never touches it. |
+| `lane` | `path` \| `dsa` \| `design` \| `career` \| `ritual` \| `bank`? | The queue the ticket belongs to (flat model). `path` = AI-infra (shown as AI). Tasks carry `dsa`, `design` or `career`. Absent on pre-migration documents; the app derives it from `kind`, `track` and `origin`. Bank and Mine tickets are `bank` (done-only). |
+| `node` | string? | The skill-tree node id (`T01`, `B1`). AI-infra tickets, and since scope 2 every plan DSA problem ticket (`p<num>`, node `DA01` to `DA17`) and every plan design-item ticket (`SD01` to `SD22`); stamped from the bank entry's `node`. Bank tickets (lane `bank`) carry none. |
+| `area` | string? | The area id (`llm`, `measure`, ...); `dsa` on a DSA problem ticket and `design` on a design-item ticket (the area of its node). |
+| `phase` | number? | Plan phase 1 to 6. |
+| `explain` | string[]? | One or two "explain it simply" questions; on the last ticket of a node. |
+| `explainAnswers` | string[]? | One reference answer per `explain` question (2 to 4 sentences, plain words), parallel to `explain`; shown after the learner answers. Plan content: a plan refresh rewrites it. |
+| `lab` | `{id, gpu: none\|free\|rented, costUsd?}`? | The lab a build ticket runs; `rented` tickets carry a cost. |
+| `asOf` | `YYYY-MM-DD`? | The day the ticket's external facts were last checked. |
+| `learnerNotes` | string? | The learner's own notes on the ticket (at most 20,000 characters). Learner-owned: written only by the app's data actions, never by a plan refresh; synced and backed up like any ticket field. |
+| `explainResponses` | string[]? | The learner's answers to `explain`, same index (at most 4,000 characters each, `''` for an unanswered one). Learner-owned like `learnerNotes`. |
+| `selfMark` | `done` \| `partial` \| `skipped`? | The learner's own verdict on a build before automatic checks exist. Learner-owned. |
+| `learnerUpdatedAt` | number? | ms epoch of the last edit of `learnerNotes`, `explainResponses` or `selfMark`. |
+| `mergedInto` | string? | Set on an archived split session that the flat migration folded into the container with this id. |
 | `deepestRung` | 0-5? | Deepest help rung ever opened. |
 | `approaches` | object[]? | Known solution approaches (problems). |
 | `ai` | object? | Stored AI outputs: `hints[]`, `picture`, `solution`, `interview` (transcript, final), `grade`, `diagram`. |
 | `brief` | object? | AI-written card brief: `goal`, `steps[]`, `minutes`, `dayType` (`focus`\|`light`\|`long`), `learn[]`, `outcome`, `deliverable {kind, prompt}`, `questions[]`, `status` (`draft`\|`approved`), `source` (`ai`\|`edited`), `splitSuggestion?`, `linkCheck?`. `brief.minutes` overrides `estMin`. |
 | `deliverable` | `{kind, text, at, feedback?}`? | What the learner handed in (`kind`: `answers`\|`code`\|`artifact`\|`note`\|`explanation`). |
-| `pinned` | boolean? | Rebalancing leaves a pinned card alone. |
-| `rolledFrom` | number[]? | Sprints it rolled over from, oldest first. |
-| `carry` | `{home, into}`? | A rolled-over card still counts in its home sprint in Today/Load views while `sprint == carry.into`. |
-| `children` | string[]? | Split container: ids of its sessions. A container is not a card to do; its parts are. |
-| `childOf` | string? | A split session: its container's id. |
-| `checkPassedAt`, `xpBase` | number? | Split bookkeeping. |
 | `proof` | object? | `{repo?, commit?, note?, built?, proven?, understood?}` (the last three `{at, evidence}`). |
+
+Documents written before the flat migration may still carry `pinned`, `rolledFrom`, `carry`, `children`, `childOf`, `checkPassedAt`, `xpBase`; nothing reads them, and the migration clears the split fields.
 
 ```json
 {"id": "p3", "origin": "plan", "track": "interview", "kind": "problem", "title": "3 · Sample Problem C",
@@ -485,19 +532,20 @@ not in the database ([10](#10-gotchas)).
 
 Append-only activity log, **its own table, distinct from `dojo_ops`**. Id `<clientId>:<n>`; the doc also carries `_diskId`
 (the same string). Never updated or deleted in normal use. Common fields: `t` (type), `at` (ms epoch), `id` (a ticket id,
-for most types), `appSession` (stamp on undoable events).
+for most types). Old rows may carry an `appSession` stamp (legacy, no longer written).
 
 | `t` | Extra fields | Meaning |
 | --- | --- | --- |
 | `tick` | `id`, `xp` | Card became done with net `xp`. |
 | `untick` | `id` | Card un-done (XP returned). |
-| `slide` | `id`, `from`, `to`, `reason` (`manual`\|`sprint`\|`plan`) | One card slid to a later sprint. |
-| `slide_sprint` | `sprint`, `count`, `to`, `ids[]` | Everything unfinished in a sprint slid. |
-| `shift_plan` | `fromSprint`, `ids[]`, `to {id: sprint}` | The plan shifted one sprint later. |
-| `moved` | `id`, `from`, `to`, `why` (`manual`\|`rebalance`) | Card moved to another sprint by hand. |
-| `rolled` | `to`, `ids[]` | Roll-over moved unfinished cards to the current sprint (no XP). |
-| `column` | `id`, `from`, `to` | Board column move. |
-| `split` | `id`, `parts[]` | A card split into sessions. |
+| `slide` | `id`, `from`, `to`, `reason` (`manual`\|`sprint`\|`plan`) | One card slid to a later sprint (legacy, no longer written; no longer in the `DojoEvent` type, old stored rows are only remapped). |
+| `slide_sprint` | `sprint`, `count`, `to`, `ids[]` | Everything unfinished in a sprint slid (legacy, no longer written). |
+| `shift_plan` | `fromSprint`, `ids[]`, `to {id: sprint}` | The plan shifted one sprint later (legacy, no longer written). |
+| `moved` | `id`, `from`, `to`, `why` (`manual`\|`rebalance`) | Card moved to another sprint by hand (legacy, no longer written; gone from the `DojoEvent` type). |
+| `rolled` | `to`, `ids[]` | Roll-over moved unfinished cards to the current sprint (no XP) (legacy, no longer written; gone from the `DojoEvent` type). |
+| `column` | `id`, `from`, `to` | Board column move. Legacy, no longer written (the Board is gone); old rows are kept and remapped on rename. |
+| `split` | `id`, `parts[]` | Legacy: a card split into sessions (no longer written). |
+| `replan` | `report {backupFile, archived, doneAndDropped[], xpBefore, xpAfter, designSessionsRewritten, coreMinutesBefore, coreMinutesAfter, codeMerged}` | The flat migration ran once. Total XP is unchanged (`xpBefore == xpAfter`). `codeMerged` = `code` rows folded into another row of the same container and language (the `code` row count dropped by this much; see [code](#code)); 0 when nothing collided. Reports written before this field existed lack it. |
 | `undo` | `of`, `_ofDiskId` | Undid the event with that id. On disk `of` is meaningless (browser-local); use `_ofDiskId`. |
 | `rung` | `id`, `rung` (2-5), `cost`, `applied?` | A help rung opened; `applied` = the part actually taken from XP (floor 0). |
 | `redo_pass` | `id`, `stage` (0-2), `refund` | A redo passed; XP refunded. |
@@ -536,16 +584,16 @@ The spaced-redo queue: stages `0` -> `1` -> `2` are due 3, 10 and 30 local days 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `id`, `ticketId` | string | |
-| `source` | `gave_up` \| `solved_help` \| `design_rubric` \| `blank_test` \| `stage_built` \| `check_failed` | What created it. |
+| `source` | `gave_up` \| `solved_help` \| `design_rubric` \| `design_missed` \| `journal_hard` \| `blank_test` \| `stage_built` \| `check_failed` \| `bank_q` | What created it. `journal_hard` is written by "Add to Review" in the journal's "Came up hard this week" list (never on load): id `jh-<ticketId>-<YYYY-MM-DD of the clock day>`, `stage` 0, `due` the same local day as `'YYYY-MM-DD'` (due at once, unlike a question bank's card), `piece` as below or absent; a ticket with an open `journal_hard` redo gets no second one. `bank_q` is written by a question bank's "Add to Review" (never on load): one open redo per question, `ticketId` holds the **question id** (it is not a ticket, so the redo counts as not archived), `stage` 0, `due` = three local days after creation as `'YYYY-MM-DD'`, `piece` `{topic, question, answer, qid}` (`topic` the node title). A deleted AI-made question leaves its redo in place. `design_rubric` is written when a design session is completed with a redesign due: one open redo on the design ticket, `stage` 0, `due` = the session's `redesignDue`, `passed` empty (none if the ticket already has an open redo). Completing a redesign (`redesignOf` set) closes it (`closedAt`, `passed` gains `true`) when no new redesign is due, else keeps it open with `due` = the new `redesignDue` and `passed` gaining `false`. Sessions finished before R1 get no redo; there is no back-fill. `design_missed` is written by the done view's "Keep what you missed" Add button (never on load): one redo per `interview.final.missed` entry, ids `keep-<sessionId>-1` to `-3` (so adding twice writes nothing), `ticketId` the session's design ticket, `stage` 0, `due` = the next local day as `'YYYY-MM-DD'`, `piece` the weak spot. The "one open redo per ticket" rule above counts `design_rubric` rows only. |
 | `createdAt` | number | ms epoch. |
 | `stage` | 0 \| 1 \| 2 | Current stage. |
-| `due` | number **or** string | ms epoch of local midnight, **or** `'YYYY-MM-DD'` for a `check_failed` redo. Normalise both ([8.4](#85-redos-due-today-and-overdue)). |
+| `due` | number **or** string | ms epoch of local midnight, **or** `'YYYY-MM-DD'` for a `check_failed` redo. Normalise both ([8.5](#85-redos-due-today-and-overdue)). |
 | `passed` | boolean[] | One entry per redo attempt so far. |
 | `helpCost`, `refunded` | number | Help cost of the session that created/reset it; XP refunded so far. |
 | `closedAt` | number? | Set when finished (a stage-2 pass, or a passed learning check). **Open redo = `closedAt` absent.** |
-| `piece` | string? | Blank tests: what is rebuilt. |
+| `piece` | string \| object? | `bank_q` redos: `{topic, question, answer, qid}`. Blank tests: what is rebuilt (a string). `design_missed` redos: `{topic, question, answer, sessionId}`, copied from the grade's `missed` entry; Review shows it as a check card (question, then the stored answer, kind label Design). `journal_hard` redos on a ticket with an explain question: `{topic, question, answer}` (`topic` the ticket's title, `question` its `explain[0]`, `answer` its `explainAnswers[0]`; no `sessionId`), shown as a check card with the ticket's own kind label; on a ticket with no explain question there is no `piece` and Review shows a replay card on any ticket kind. |
 
-One live (open) redo per card.
+One live (open) redo per card for the ladder sources. `design_missed` and `journal_hard` redos are Review cards, not ladder redos: a ticket can hold one open `journal_hard` redo next to its others.
 
 ```json
 {"id": "r-lq1abe-d4e5f6", "ticketId": "p3", "source": "gave_up", "createdAt": 1791229500000, "stage": 0,
@@ -554,7 +602,7 @@ One live (open) redo per card.
 
 ### designSessions
 
-One system-design session on a `kind: design` card. Phases: `drawing` -> `close` -> `score` -> `done` (the type also lists `setup`, but new sessions start at `drawing`).
+One system-design session on a `kind: design` or `kind: writeup` card (a write-up uses four generic deep-dive questions). A new session always stores `notes` (seven empty texts, no tables); `ai-partner` also gets `interview: {messages: []}` and `human-partner` gets `partner: {}`; a legacy `interviewer` start input is stored as `ai-partner`. Phases: `drawing` -> `close` -> `score` -> `done` (the type also lists `setup`, but new sessions start at `drawing`).
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -562,16 +610,22 @@ One system-design session on a `kind: design` card. Phases: `drawing` -> `close`
 | `at` | number | Start, ms epoch. |
 | `phase` | `setup` \| `drawing` \| `close` \| `score` \| `done` | Only `done` sessions count. At most one non-done session per design. |
 | `endedAt`, `lockedAt` | number? | Finish time; when the canvas locked (45:00 or "End drawing"). |
-| `minutes` | number | Timed minutes. |
-| `mode`, `view` | `solo`\|`interviewer`, `2d`\|`iso` | |
-| `canvas` | object | The learner's diagram (`nodes`, `links`, ...). Bulky. |
+| `pausedAt` | number? | Set only while a drawing session is paused (when Pause was pressed); removed on Resume and at the lock. `phase` stays `drawing`. While set, the 45-minute clock is stopped, the canvas, notes and chat are read-only and auto-lock cannot fire. |
+| `pausedMs` | number? | The sum of the pauses that ended, in ms (absent or 0 before the first pause). The lock folds an open pause into it. Time left = 45 min - (now - `at` - `pausedMs` - (now - `pausedAt` if paused)), never below 0. |
+| `minutes` | number | Timed minutes: the drawing time excluding pauses, floored, at most 45. |
+| `mode`, `view` | `solo`\|`ai-partner`\|`human-partner` (legacy `interviewer` reads as `ai-partner`; the migration rewrites it), `2d`\|`iso` | |
+| `canvas` | object | The learner's diagram: `nodes[]` `{id, kind, label, x, y}` plus, per kind: `custom` boxes carry `sub` (at most 80 chars) and `glyph` (a kit kind, default `process`); `table` blocks may carry `schemaId` (a `notes.schema[].id`; the block then shows that table's name and columns). `links[]` `{from, to, kind}`. `notes[]` `{id, x, y, text}` are canvas stickies (at most 20, text at most 280; never drawn by the engine). `zones[]` `{id, label, kind, nodes[]}` are frames (at most 8; kind `system`/`region`/`az`/`vpc`/`trust`/`tenant`/`team`; a node is in at most one frame; a frame may be empty). A canvas without `notes` or `zones` (older sessions) reads as none. Bulky. |
 | `close` | object | The 5-question close answers (`tradeoff`, `breaksAt10x`, `dataOwnership`, `couldNotAnswer`, `readNext`). |
 | `deepDives` | `{q, answered: 0\|1\|2\|null, answer?, by?}[]` | 0 blank, 1 hand-wave, 2 trade-off with a number or failure mode. |
 | `tradeoffs` | `{chose, over, because}[]` | |
-| `rubric` | 0-20 or `null` | `null` until scored. |
-| `rubricBy`, `lenses`, `reference`, `interview` | | Scored by `self`\|`model`; per-lens 0-2 scores (`load`,`data`,`consistency`,`failure`,`latency`,`cost`,`evolution`); AI reference diagram; interviewer transcript. |
+| `rubric` | 0-20 or `null` | `null` until scored. For an AI-partner session the prefill is the sum of the five graded `interview.final.perItem` points (never the model's own `score`), and the grade page shows the same total. |
+| `rubricBy`, `lenses`, `reference`, `interview` | | Scored by `self`\|`model`; per-lens 0-2 scores (`load`,`data`,`consistency`,`failure`,`latency`,`cost`,`evolution`); AI reference diagram; AI-partner chat transcript (`interview.messages[]`, stored name kept; a message may carry `hint: true`). `rubricBy` and `deepDives[].by` may also be `partner`: in a `human-partner` session `rubricBy` is `partner` only when the rubric was prefilled from a complete partner sheet (all five rows scored) and the host changed neither the rubric nor a partner-scored dive; any other rubric (typed by hand, partial sheet, or edited) is `self`. A dive keeps `by: 'partner'` until the host changes it. `reference` is drawn lazily: the first time a finished `solo`/`ai-partner` session (including a legacy `interviewer` row, whose mode is left as stored; readers treat it as `ai-partner`) is opened in the writer browser without one, the done view stores it (one `reference` field and one `aiLog` row `diagram`); a read-only browser draws and stores none. The rubric prefilled from an AI grade is the sum of the five `perItem` points, each rounded and held to its maximum (4, 3, 4, 6, 3), so it is a whole number from 0 to 20 even when the model's items are not. |
+| `interview.final` | object? | The AI grade of an `ai-partner` session, stored when the Score phase opens: `done`, `score` (the model's own number, ignored), `perItem[5]` `{item, points, note, feedback?, evidence?}` (maxima 4, 3, 4, 6, 3; `feedback` a paragraph of at most 60 words; `evidence` at most 3 `{source: 'notes' | 'diagram', target}`, a notes target being a section id (`requirements`, `assumptions`, `api`, `data-model`, `tradeoffs`, `open`) and a diagram target the label of a canvas node, table, frame or sticky note as the AI read it; the done view shows a diagram target without the Diagram kind when no current canvas label matches), `oneThingToStudy`, `deepDives[4]`, `lenses`, and two optional lists: `inconsistencies` (at most 5 sentences, each naming the two places that disagree; shown as "Checks to review", information only, never a score) and `stronger` (at most 4 sentences on what a stronger version does), and `missed` (at most 3 weak spots `{topic (at most 5 words), question (at most 25), answer (at most 60)}` that "Keep what you missed" can turn into review cards). Rows written before these fields existed have none of them (an item then shows its `note` and no chips, and there is no Keep panel); readers treat them as empty. The total shown is the sum of the five `perItem` points. A `human-partner` session has no `interview`, no `reference` and adds no `aiLog` row. |
+| `notes` | object? | Design notes: seven texts (`reqFn`, `reqNfr`, `assumptions`, `api`, `dataModel`, `tradeoffs`, `open`; shown as six sections, Requirements holds two) of at most 2,000 chars, and `schema`: up to 12 tables `{id, name, cols[{name, type, key?, note?}]}`; table `id`s are `s<n>` (`s1`, `s2`, ...), unique within the session; a column has `name` (40 chars), `type` (30), `note` (80) and `key` one of `PK`/`FK`/`unique`/`index` (omitted for none), at most 16 columns. A session without `notes` reads as seven empty texts and no tables. Written only while `drawing`. |
+| `partner` | object? | Human-partner sheet: `name`, `at` (ms epoch), `scores {perItem: 5 x 0-4 or null, deepDives: 4 x 0-2 or null}`, `notes` (the friend's free text, at most 2000 characters, optional; absent until the friend saves a note, `''` after a stored note is cleared; the host reads it read-only in the score phase and the done view). `at` is set once, on the first write; writes are accepted in `drawing`, `close` and `score`, for `human-partner` only. |
 | `redesignDue` | number? | ms epoch (local midnight, 30 days out) set at completion when `rubric < 14` or a deep dive scored 0. |
 | `redesignOf` | string? | The earlier session this one redesigns. |
+| `keptAt` | number? | ms epoch, set when the done view's Keep panel added this session's `missed` entries as `design_missed` redos; absent until then, and its presence hides the Add button. |
 
 ```json
 {"id": "ds-lq1abf-g7h8i9", "designId": "d-cache", "at": 1791108000000, "phase": "done", "endedAt": 1791110700000,
@@ -581,7 +635,7 @@ One system-design session on a `kind: design` card. Phases: `drawing` -> `close`
 
 ### artifacts
 
-Project artifacts (the capstone's pieces and the user's own). Status board: `not started` -> `building` -> `runs` ->
+Project artifacts (the capstone's pieces and the user's own). Legacy: no screen reads or writes this table any more and boot no longer seeds it; stored rows are kept. Status board: `not started` -> `building` -> `runs` ->
 `measured` -> `written up` (exact strings, spaces included).
 
 | Field | Type | Meaning |
@@ -591,7 +645,7 @@ Project artifacts (the capstone's pieces and the user's own). Status board: `not
 | `stage` | number? | Capstone stage 0-11. |
 | `status` | string | One of the five above. |
 | `statusAt` | object | First time each status was reached, ms epoch. |
-| `statusLog` | `[{status, at}]` | Every status change. (Not in `types.ts`; written by `rules/artifacts.ts`.) |
+| `statusLog` | `[{status, at}]` | Every status change. (Not in `types.ts`; legacy, no longer written.) |
 | `createdAt` | number | (Same note.) |
 | `measures` | `{name, value, unit, at, sprint}[]` | |
 | `repo`, `commit`, `note`, `writeup` | string? | `writeup` = a vault link. |
@@ -647,7 +701,49 @@ One try at a card's learning check (the questions in `ticket.brief.questions`).
 {"id": "ca-lq1abj-s1t2u3", "ticketId": "m2w1i1", "at": 1791250000000, "answers": [{"id": "q1", "answer": "x"}], "feedback": [], "passed": false}
 ```
 
+### pulses
+
+The daily AI pulse log shown on Today (R1): one short line about what the learner asked an AI tool that day. Not a ticket: it earns no XP, keeps no streak and has no skip. Written only by the Log and Edit controls on Today, never on page load. A day without a row is simply a day without a log.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `pulse-YYYY-MM-DD` of the local day. One row per day: saving again the same day overwrites it. |
+| `day` | string | The local day, `YYYY-MM-DD`. Indexed. |
+| `at` | number | Epoch ms of the last save of that day's line (an edit moves it). |
+| `text` | string | The line, trimmed, at most 140 characters. |
+
+```json
+{"id": "pulse-2026-11-04", "day": "2026-11-04", "at": 1793763000000, "text": "Asked Claude to explain attention without maths"}
+```
+
+The weekly "Try a model" ritual is a ticket, created only when the learner presses Open on Today: `id` `ritual-try-new-model-<YYYY>-W<ww>`, `kind` `ritual`, `lane` `ritual`, `origin` `ritual:try-new-model:<YYYY>-W<ww>`, `estMin` 30, `xp` 0 until Done (then 5). A week the learner never opens has no ticket.
+
+### journal
+
+The daily journal (R1 scope 2, `/journal`): a two-minute end-of-day entry, one row per local day. It earns no XP, keeps no streak and has no skip. Written only by Save on `/journal`, never on page load; saving again the same day replaces the row. A day without a row is simply a day without an entry.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `journal-YYYY-MM-DD` of the entry's day. |
+| `day` | string | The local day the entry is about, `YYYY-MM-DD`. Indexed. Never after the day of the save. |
+| `at` | number | Epoch ms of the last save (not the entry's day: an earlier day saved today carries today's time). |
+| `mode` | `studied` \| `none` | `none` is the "No study today" path. |
+| `items` | `{ticketId, rating, explain}[]` | One per ticket listed when saved, in `doneAt` order: tickets not archived, `done`, whose `doneAt` falls on that local day. `rating` is `again` \| `hard` \| `good` \| `easy` or `null`; `explain` is `no` \| `partly` \| `yes` or `null` ("Could you explain it without notes?"). `[]` when `mode` is `none`, and on a studied day with no finished tickets. |
+| `hardest`, `next`, `notes` | string? | Trimmed, at most 1000 characters each; absent when blank. Only on a `studied` row. |
+| `obstacle` | `time` \| `energy` \| `job` \| `tools` \| `other`? | Present only when `mode` is `none` (required there). |
+| `line` | string? | The one line of a `none` row ("What did you want to do?"), trimmed, at most 200 characters; absent when blank. |
+
+An item carries a **hard signal** when `rating` is `again` or `hard`, or `explain` is `no` (both on one item are one signal). "Came up hard this week" lists a live ticket with at least two such items in rows whose `day` is among the 14 local days ending on the clock day, whatever the ticket's current `doneAt`. A row never changes a ticket, a session, an event or a redo; the only thing the journal writes besides its own row is the `journal_hard` redo that "Add to Review" creates (see `redos`).
+
+```json
+{"id": "journal-2026-11-03", "day": "2026-11-03", "at": 1793712000000, "mode": "studied",
+ "items": [{"ticketId": "ai.l1.learn", "rating": "hard", "explain": "partly"}, {"ticketId": "p417", "rating": "again", "explain": null}],
+ "hardest": "Attention masks", "next": "Re-read the mask section"}
+```
+
 ### reviews
+
+Legacy: the table is kept for stored rows only. The `review_sprint` AI job, the automatic review and the Reviews tab are deleted, so nothing reads or writes it.
 
 A sprint review (computed numbers plus AI prose).
 
@@ -689,6 +785,8 @@ The learner's code for a card, one row per `(ticketId, lang)`. Contains the sour
 | `ticketId`, `lang`, `source`, `updatedAt` | | `lang` = `go` or `py`. id = `<ticketId>:<lang>`. |
 | `lastLang` | boolean? | The language the panel reopens on. |
 
+Migration note (R1 flat migration, MIG-08): when two or more split sessions of one card held code in the same language, the migration folds them into the single row of the card. Its `source` is the newest source (by `updatedAt`), then a blank line, then a marker line `<comment token> earlier code kept by the R1 migration`, then the next older source with every line commented out (an empty line becomes the bare token); with more than two, each older source follows in turn, newest first, each with its own marker. `updatedAt` is the newest row's; `lastLang` is `true` when any of the merged rows had it. Ties on `updatedAt` resolve by the original ticket id ascending (the card's own row before its parts). The same rule applies when a plan id rename (`idMap`) lands two rows on one card and language. The comment token is `#` for `py` (and ruby, shell, yaml), `--` for sql and haskell, `//` otherwise (`go`). Rows in different languages stay separate. A second migration run adds nothing. Re-promotion by a stale tab (a tab that still holds the split sessions writes them back and the next start migrates again) can append the older text again: the row grows, nothing is lost.
+
 ```json
 {"ticketId": "p3", "lang": "py", "source": "def solve():\n    pass\n", "updatedAt": 1791300000000, "lastLang": true}
 ```
@@ -711,18 +809,51 @@ Append-only (id `<clientId>:<n>`, doc has `_diskId`). `{key, kind, at, asked?, c
 {"key": "binary-search", "kind": "predict", "at": 1791300000000, "asked": 5, "correct": 4, "_diskId": "c0ffee00:7"}
 ```
 
+### bankGrades
+
+One row per graded Design or AI bank question (R1 W6): the last self-grade. Written only by a grade button in /banks (never on load); the row is removed with its AI-made question. A question has a row exactly when it is "seen".
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | The question's id, verbatim (a shipped `qbank[]` id or a `bankExtra` id). One row per question. |
+| `area`, `node` | string | `design` or `ai`; the plan node id. Indexed. |
+| `grade` | `again` \| `hard` \| `good` \| `easy` | The last grade. |
+| `at` | number | Epoch ms of the last grade. |
+| `tries` | number | How many times it was graded, at least 1. A regrade keeps the row and adds one. |
+
+```json
+{"id": "design-SD01-4", "area": "design", "node": "SD01", "grade": "hard", "at": 1793763000000, "tries": 1}
+```
+
+### bankExtra
+
+AI-made bank questions (R1 W6), added five at a time by "More questions" (the `bank_more` job) and removed only by Delete. Same shape as a shipped `qbank[]` question, without `source`.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `x-<node>-<time base 36>-<n>`; unique across `qbank[]` and `bankExtra`. |
+| `area`, `node` | string | `design` or `ai`; the plan node id. Indexed. |
+| `type` | `concept` \| `estimate` \| `tradeoff` \| `design` | |
+| `difficulty` | integer 1 to 5 | |
+| `question`, `answer` | string | `answer` at most 120 words. |
+| `checklist` | string[] | 1 to 6 items. |
+| `aiMade` | `true` | Always. |
+| `at` | number | When it was made. |
+
 ### aiLog
 
 Append-only (id `<clientId>:<n>`, `_diskId`). One row per AI job call.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `job` | `hint` \| `picture` \| `diagram` \| `interview` \| `grade` \| `solution` \| `suggest_slide` \| `classify` \| `brief` \| `check` \| `review_sprint` | |
+| `job` | `hint` \| `picture` \| `diagram` \| `interview` \| `grade` \| `solution` \| `classify` \| `brief` \| `check` \| `bank_more` ("More questions"; it has no `ticketId`) (older stored rows may also say `review_sprint`; that job is gone) | |
 | `at`, `ms` | number | Call time (ms epoch) and duration (ms). |
 | `provider` | `fake` \| `helper` | `fake` = the in-browser fake AI; `helper` = a real `claude` run. |
 | `ok` | boolean | |
 | `code` | string? | Error code when `ok` is false (`timeout`, `claude_failed`, `invalid_output`, `busy`, `claude_missing`, `claude_signed_out`, `guardrail`, `bad_request`, ...). |
 | `ticketId`, `error` | string? | |
+
+Design sessions log one `interview` row per AI-partner turn or Hint (the chat), one `grade` row for the final grade of an `ai-partner` session when the Score phase opens, and one `diagram` row for the lazily drawn reference. A `human-partner` session logs none. (`interview` is the stored job name; the screen calls it the AI partner.)
 
 ```json
 {"job": "hint", "at": 1791300000000, "ms": 4200, "provider": "helper", "ok": true, "ticketId": "p3", "_diskId": "c0ffee00:12"}
@@ -862,12 +993,12 @@ In the CLI, replace `:name` binds with `.parameter set`, or inline literals.
 
 Facts (`src/rules/sprint.ts`, `src/lib/dates.ts`):
 
-- `settings.startDate` is a local date. Sprint length is **14 days**; the nominal plan is **72 sprints** (`total_sprints`).
+- `settings.startDate` is a local date. Sprint length is **14 days**; the nominal plan is **72 sprints**.
 - `day_index = local days between startDate and today` (0 on the start date). `sprint = floor(day_index / 14) + 1`,
   `day_in_sprint = day_index % 14 + 1`. Sprint boundaries are **local midnight**.
 - `day_index < 0`: the plan has not started (phase `before`). `day_index >= 14 * 72`: phase `after` (the app extends the end
   while unfinished cards sit past sprint 72; this query does not). The app clamps the current sprint to `1..72`.
-- Weekday names are `Mon`..`Sun`; `plan.rotation[weekday]` is today's role (e.g. `AI · watch`, `Interview · code`, `Off`).
+- Weekday names are `Mon`..`Sun`; in a v1 plan `plan.rotation[weekday]` was that day's role (e.g. `AI · watch`, `Interview · code`, `Off`); the app no longer reads it.
 
 ```sql
 -- :today is the LOCAL calendar date 'YYYY-MM-DD' (bind it from the caller; do not use date('now')).
@@ -904,151 +1035,82 @@ import json, sqlite3
 
 PLAN = "/path/to/Dojo.app/Contents/Resources/app/dist/data/plan.json"   # or fetch http://127.0.0.1:<port>/data/plan.json
 plan = json.load(open(PLAN))
-sprint_info = {s["sprint"]: s for s in plan["sprints"]}            # block, block_title, block_theme, focus_ai, focus_interview, proof
-role_of = plan["rotation"]                                         # {"Mon": "AI · watch", ..., "Fri": "Off", ...}
+node_info = {n["id"]: n for n in plan["nodes"]}                    # title, why, pre (prerequisite node ids), explain, hours
+area_info = {a["id"]: a for a in plan["areas"]}                    # name, tag, why
 
 def plan_context(ticket):
-    """Plan-side facts for one ticket doc. Everything on the ticket itself (title, text, links, skill, estMin)
-    is already a copy of the plan's and needs no join."""
-    s = sprint_info.get(ticket["plannedSprint"], {})
-    return {"block_title": s.get("block_title"), "focus": s.get("focus_ai" if ticket["track"] == "ai" else "focus_interview")}
+    """Plan-side facts for one ticket doc. Everything on the ticket itself (title, text, links, estMin, order)
+    is already a copy of the plan's and needs no join. AI-infra tickets, plan DSA problems and plan design items have a node and an area (the last two in the tree areas `dsa` and `design`)."""
+    n = node_info.get(ticket.get("node"), {})
+    a = area_info.get(ticket.get("area"), {})
+    return {"node_title": n.get("title"), "node_why": n.get("why"), "area": a.get("name")}
 
 con = sqlite3.connect("file:/path/to/dojo.db?mode=ro", uri=True)
 for (doc,) in con.execute("SELECT doc FROM dojo_docs WHERE tbl = 'tickets' AND deleted = 0 LIMIT 3"):
     print(plan_context(json.loads(doc)))
 ```
 
-### 8.3 Today's planned work
+### 8.3 The queue: open cards by lane
 
-Two steps. (a) The pool: open cards counted in the current sprint, in plan order. (b) The rotation role of today's weekday
-picks a slice of the pool, exactly as the Today screen does.
+The app has no sprints to count in, no weekday rotation and no roll-over. The Path screen shows every live card as **Doing**,
+**Up next** (per lane, in queue order) or **Done**, and Today picks from that queue with the flat daily mix
+(`src/rules/dayMix.ts`, `src/rules/queue.ts`). That mix depends on the learner's pace and settings, so there is no single SQL
+that reproduces Today; this recipe gives the queue Today draws from.
+
+- **Lane.** `$.lane` (`path`, `dsa`, `design`, `career`). Bank and Mine cards (`origin` = `mine` or `bank:...`) form a done-only
+  `bank` lane that the app shows as DSA. A document without `lane` (written before the flat migration) falls back to `track`,
+  `kind` and `skill` in `src/rules/lanes.ts`; read `$.lane` and treat NULL as unknown.
+- **Queue order.** `COALESCE($.orderOverride, $.order)` ascending. `order` is the plan's; `orderOverride` is set by a drag on the
+  Path screen and wins when present.
+- **Open.** Not archived and `status <> 'done'` (so `todo`, `doing`, `blocked` and `help`). A card with `status = 'doing'` was started and is listed first.
+- **Queued.** Not archived and `status = 'todo'`: what Today's quest and pick list, Path's Up next and the Board's To do and Backlog draw from. A `blocked` or `help` card (`$.blockedNote` holds the learner's reason) is open but not queued.
 
 ```sql
--- Candidate cards for today: open cards counted in the current sprint, in plan order.
--- Bind :sprint from current-sprint.sql. The rotation role of today's weekday (plan.json) then picks a slice.
+-- Open cards in queue order, started cards first. No parameters.
 SELECT id,
-       json_extract(doc, '$.title')                 AS title,
-       json_extract(doc, '$.kind')                  AS kind,
-       json_extract(doc, '$.track')                 AS track,
-       json_extract(doc, '$.session')               AS stage_session,   -- watch|rebuild|build|teachback, stage cards only
-       json_extract(doc, '$.estMin')                AS est_min,
-       json_extract(doc, '$.status')                AS status,
-       json_extract(doc, '$.sprint')                AS sprint,
-       json_extract(doc, '$.plannedSprint')         AS planned_sprint,
-       json_extract(doc, '$.order')               AS plan_order,
-       json_extract(doc, '$.childOf')               AS child_of
+       json_extract(doc, '$.title')                                   AS title,
+       json_extract(doc, '$.lane')                                    AS lane,
+       json_extract(doc, '$.kind')                                    AS kind,
+       json_extract(doc, '$.estMin')                                  AS est_min,
+       json_extract(doc, '$.status')                                  AS status,
+       COALESCE(json_extract(doc, '$.orderOverride'),
+                json_extract(doc, '$.order'))                         AS queue_order
 FROM dojo_docs
 WHERE tbl = 'tickets' AND deleted = 0
   AND COALESCE(json_extract(doc, '$.archived'), 0) = 0
   AND json_extract(doc, '$.status') <> 'done'
-  AND COALESCE(json_array_length(doc, '$.children'), 0) = 0          -- a split container is not a card; its parts are
-  AND CASE WHEN json_extract(doc, '$.carry.into') = json_extract(doc, '$.sprint')
-           THEN json_extract(doc, '$.carry.home')                   -- rolled-over card: counts in its home sprint
-           ELSE json_extract(doc, '$.sprint') END = :sprint
-ORDER BY json_extract(doc, '$.order');
+ORDER BY (json_extract(doc, '$.status') = 'doing') DESC, lane, queue_order;
 ```
 
-Counting rule: a card counts in `carry.home` while it is a rolled-over card (`sprint == carry.into`), else in `sprint`. Archived
-cards, done cards and split containers (cards with `children`) are excluded; split sessions are separate cards.
+The app never marks a card late: an unfinished card simply stays next in its lane. There is no "behind" query; do not derive one
+from `sprint` or `plannedSprint`, which the flat queue does not use.
 
-```python
-"""Today's cards: Dojo's rotation rule (src/rules/today.ts pickItems) over the pool from today-pool.sql."""
-import json, re, sqlite3, sys
+### 8.4 Cards by group (Doing, Blocked and need help, Up next, Done)
 
-def pick_today(role, pool):
-    """pool: dicts from today-pool.sql, already in plan order. Returns the cards Dojo's Today screen would list."""
-    if re.search(r'\boff\b', role, re.I):
-        return []                                                  # rest day
-    # A split card is ONE item (its first open part's place); once picked, its open parts stand in its place.
-    runs, items = {}, []
-    for t in pool:
-        p = t['child_of']
-        if p is None:
-            items.append(t)
-        elif p in runs:
-            runs[p].append(t)
-        else:
-            runs[p] = [t]; items.append(t)
-    ai = [t for t in items if t['track'] == 'ai']
-    iv = [t for t in items if t['track'] == 'interview']
-    if re.match(r'ai\b', role, re.I):
-        sess = 'rebuild' if re.search('rebuild', role, re.I) else 'watch' if re.search('watch', role, re.I) else 'build' if re.search('build', role, re.I) else None
-        picked = [t for t in ai if t['kind'] == 'stage' and t['stage_session'] == sess][:1] if sess else []
-        picked = picked or ai[:1]
-    elif re.search('design', role, re.I):
-        picked = [t for t in iv if t['kind'] == 'design'][:1] or iv[:1]
-    elif re.search('code', role, re.I):
-        picked = [t for t in iv if t['kind'] == 'problem'][:2] or [t for t in iv if t['kind'] == 'task'][:1]
-    elif re.search('interview', role, re.I):
-        tb = [t for t in ai if t['kind'] == 'stage' and t['stage_session'] == 'teachback'][:1]
-        picked = tb + iv[:2] if tb else iv[:3]
-    else:
-        picked = []
-    picked = picked or items[:1]
-    return [x for t in picked for x in (runs.get(t['child_of'], [t]) if t['child_of'] else [t])]
-```
-
-The role matching is the app's (`rules/today.ts`): rest day if the role matches `\boff\b`; roles starting with `AI` pick the stage card of
-the matching session (`rebuild`, then `watch`, then `build`) or else the first AI card; `design` picks a design card; `code` picks
-two problems (or a task); `interview` (Sunday) picks the teach-back stage card plus two interview cards. This was checked by
-running the app's own `todayView` on the same invented database for all seven weekdays: it produced the same cards as the
-SQL + Python above.
-
-Also useful: work that is already late.
+The groups the Path screen shows (the Blocked and need help group only while such a card exists). More than 3 started cards only raises a soft warning; it is not a limit.
 
 ```sql
--- Open cards that are behind: their counting sprint (carry.home when rolled over, else sprint) has already ended.
--- The app rolls cards forward only while it is running, so this also catches cards it has not rolled yet.
--- Bind :sprint from current-sprint.sql.
-WITH c AS (
-  SELECT id, doc,
-         CASE WHEN json_extract(doc, '$.carry.into') = json_extract(doc, '$.sprint')
-              THEN json_extract(doc, '$.carry.home') ELSE json_extract(doc, '$.sprint') END AS eff_sprint
-  FROM dojo_docs
-  WHERE tbl = 'tickets' AND deleted = 0
-    AND COALESCE(json_extract(doc, '$.archived'), 0) = 0
-    AND json_extract(doc, '$.status') <> 'done'
-    AND COALESCE(json_array_length(doc, '$.children'), 0) = 0
-)
-SELECT id,
-       json_extract(doc, '$.title')  AS title,
-       json_extract(doc, '$.sprint') AS sprint,
-       eff_sprint,
-       json_extract(doc, '$.carry') IS NOT NULL AS carried,
-       json_extract(doc, '$.status') AS status
-FROM c
-WHERE eff_sprint < :sprint
-ORDER BY eff_sprint, json_extract(doc, '$.order');
-```
-
-Open cards whose counting sprint has ended. The app moves them to the current sprint (`rolledFrom`, `carry`) only **while it
-runs**, so a never-opened-since database has them still in the old sprint.
-
-### 8.4 Cards in the current sprint by column
-
-The Board's columns are derived: `done` (status done) -> `doing` -> `slid` (todo with a non-empty `slidFrom`) -> `todo`. The Board
-shows `sprint` (the current location), not the carry home. A split container appears next to its parts; use `children` to detect it.
-
-```sql
--- The Board for one sprint: the column each live card sits in. Bind :sprint.
+-- Live cards and the group each sits in. No parameters.
 SELECT CASE json_extract(doc, '$.status')
          WHEN 'done'  THEN 'done'
          WHEN 'doing' THEN 'doing'
-         ELSE CASE WHEN COALESCE(json_array_length(doc, '$.slidFrom'), 0) > 0 THEN 'slid' ELSE 'todo' END
-       END                                      AS board_column,
+         WHEN 'blocked' THEN 'blocked_and_need_help'
+         WHEN 'help'    THEN 'blocked_and_need_help'
+         ELSE 'up_next'
+       END                                      AS path_group,
        id,
        json_extract(doc, '$.title')             AS title,
+       json_extract(doc, '$.lane')              AS lane,
        json_extract(doc, '$.kind')              AS kind,
        json_extract(doc, '$.estMin')            AS est_min,
        json_extract(doc, '$.doneAt')            AS done_at_ms
 FROM dojo_docs
 WHERE tbl = 'tickets' AND deleted = 0
   AND COALESCE(json_extract(doc, '$.archived'), 0) = 0
-  AND json_extract(doc, '$.sprint') = :sprint
-ORDER BY json_extract(doc, '$.order');
+ORDER BY path_group, COALESCE(json_extract(doc, '$.orderOverride'), json_extract(doc, '$.order'));
 ```
 
-(The "Doing" column is capped at 3 per sprint by the app.)
+(Done cards are shown newest first by `doneAt` on the Path screen; sort by `done_at_ms DESC` for that group.)
 
 ### 8.5 Redos due today and overdue
 
@@ -1200,7 +1262,7 @@ SELECT s.id AS session_id,
        json_extract(s.doc, '$.designId')                                        AS design_id,
        json_extract(t.doc, '$.title')                                           AS title,
        json_extract(s.doc, '$.phase')                                           AS phase,
-       json_extract(s.doc, '$.mode')                                            AS mode,        -- solo | interviewer
+       json_extract(s.doc, '$.mode')                                            AS mode,        -- solo | ai-partner | human-partner (interviewer on unmigrated rows)
        json_extract(s.doc, '$.minutes')                                         AS timed_minutes,
        json_extract(s.doc, '$.rubric')                                          AS rubric,
        json_extract(s.doc, '$.redesignOf')                                      AS redesign_of,
@@ -1210,6 +1272,18 @@ FROM dojo_docs s
 LEFT JOIN dojo_docs t ON t.tbl = 'tickets' AND t.id = json_extract(s.doc, '$.designId') AND t.deleted = 0
 WHERE s.tbl = 'designSessions' AND s.deleted = 0
 ORDER BY json_extract(s.doc, '$.at') DESC;
+```
+
+Sessions by mode (how many of each, finished or not; `interviewer` is only on rows the migration has not rewritten yet):
+
+```sql
+SELECT json_extract(s.doc, '$.mode') AS mode, COUNT(*) AS sessions,
+       SUM(json_extract(s.doc, '$.phase') = 'done') AS finished,
+       SUM(json_extract(s.doc, '$.rubricBy') = 'partner') AS scored_by_partner
+FROM dojo_docs s
+WHERE s.tbl = 'designSessions' AND s.deleted = 0
+GROUP BY 1
+ORDER BY 2 DESC;
 ```
 
 ### 8.9 What changed since seq N
@@ -1226,7 +1300,7 @@ from `dojo_docs` (current) or `dojo_ops.doc` (as it was at that op).
 | --- | --- | --- |
 | **Stable** (intended to survive; breaking it is a major change) | The three data tables' **names and columns** (`dojo_docs`, `dojo_ops`, `dojo_meta`, `dojo_schema_migrations`); the ops-log shape and semantics in section 7 (append-only, `seq` order, the `restore` op, `db_id` rotation on restore); schema-version gating through `dojo_schema_migrations`; soft deletes; timestamps (ms epoch in docs, ISO UTC in rows); document `tbl` names; ticket ids = plan ids. | Additive migrations only: new tables or columns arrive as a new `NNN_name.sql`. Gate on the version set. |
 | **Internal, may change without notice** | The **fields inside `doc`** of every kind (names, shapes, enums, which fields are optional); the id formats of generated ids; which kinds are written; the set of `events.t` values; AI output shapes (`ai`, `brief`, `reviews.stats`, `designSessions.canvas`); the HTTP `/db/*` routes ([3.7](#37-http-read-routes-exist-internal)); `desktop.json`, `profile.json` and log formats; file names in `backups/` (the daily/manual naming has been stable but is not promised). | Re-check `types.ts` or this document after an app update. Prefer a few well-known fields (`status`, `sprint`, `title`) and ignore the rest. |
-| **Not in the database at all** | The plan text beyond what each card copies (rotation, sprint themes, schedule): `plan.json` in the app bundle ([2.4](#24-the-plan-planjson-and-how-it-joins-to-the-database)); the user's profile (`profile.json`); **code files** of the user's projects (repos on disk; only the `code` kind holds the editor text, and artifacts hold repo/commit *references*); **in-progress state**: a running study session, timers, attempt cycles, drafts, UI preferences live in the browser's `localStorage` (`dojo-study`, `dojo-timer`, `dojo-cycle:*`, ...) and are invisible until the session ends; the writer token; the IndexedDB working copy. | No promise: it is not there. Read it from the source named in the cell. |
+| **Not in the database at all** | The plan text beyond what each card copies (areas, phases, nodes, builds, the lane mix, rituals and node explanations): `plan.json` in the app bundle ([2.4](#24-the-plan-planjson-and-how-it-joins-to-the-database)); the user's profile (`profile.json`); **code files** of the user's projects (repos on disk; only the `code` kind holds the editor text, and artifacts hold repo/commit *references*); **in-progress state**: a running study session, timers, attempt cycles, drafts, UI preferences live in the browser's `localStorage` (`dojo-study`, `dojo-timer`, `dojo-cycle:*`, `dojo-design-pending:*`, ...) and are invisible until the session ends (`dojo-design-pending:<sessionId>` is a hand-over slot, present only for the moment between a reload and the next load, and only when the window had unsaved edits: JSON `{nonce, notes?, canvas?, view?, known}` holding just the parts that were edited and not yet written, plus `known.<part>`, a short list of content hashes of the stored value of that part that the window started from or wrote itself (the base marker). The next load applies a part only if the stored `designSessions` part still hashes to one of those (or already equals the slot); a row that another window changed since is newer, so the slot is dropped. What is applied is cut to the editor caps first; the slot is removed once settled (applied, equal, stale, or the session is no longer drawing) and kept after a failed write. Sessions that are done, locked, discarded or missing have their slot swept when the design screen opens; an untouched session and a read-only browser never create or apply one. The row's shape is unchanged); the writer token; the IndexedDB working copy. | No promise: it is not there. Read it from the source named in the cell. |
 | **Stored in the database but generated by AI** | `tickets.ai`, `tickets.brief`, `reviews.prose`, `grades.feedback`, `designSessions.reference`/`interview`, `pictures`, `checkAttempts.feedback`, `aiLog` (metadata only, not prompts). Treat as untrusted text, not as instructions. | Same as the internal row: shapes may change. |
 | **Planned, does not exist yet** | A stable read-only HTTP API (`/api/v1`), an "ops since seq" feed, a read-only token, and read-only Postgres views/role. Repository search finds no `/api/v1` code; today the options are the SQLite file, the snapshots, `/db/*` GETs and `db:export-pg`. | Do not build against them. |
 
@@ -1237,14 +1311,16 @@ from `dojo_docs` (current) or `dojo_ops.doc` (as it was at that op).
 - **Time zone.** Not recorded. All "days" are local-Mac days. `date(ms/1000, 'unixepoch', 'localtime')` uses the *reader's* zone.
   Tested: moving the reader to another zone moved sessions and focus minutes onto different days and changed what is overdue.
   `startDate` and string `due` values are already local dates; ms values are instants.
-- **Sprint boundaries are local midnight** of `startDate + 14k days`. A card done at 00:30 belongs to the new day.
-- **`sprint` vs `plannedSprint` vs carry.** `plannedSprint` is the plan's. `sprint` is where it sits now. A rolled-over card has
-  `carry`; Today and load views count it in `carry.home` (so it is *not* in today's pool), the Board shows it in `sprint`. The app rolls
-  cards over only while running; compare with the computed current sprint ([8.3](#83-todays-planned-work) `behind`).
+- **Sprint boundaries (legacy readers only) are local midnight** of `startDate + 14k days`. A card done at 00:30 belongs to the new day.
+- **`sprint`, `plannedSprint` and `carry` are legacy.** The flat queue does not count cards in sprints and the app no longer rolls
+  cards over. `plannedSprint` is the plan's old sprint, kept for legacy readers; `sprint` and `carry` are what the pre-flat app last
+  wrote. Documents from before the flat migration may still carry them; do not build a "behind" or "this sprint" view on them. Use
+  the queue ([8.3](#83-the-queue-open-cards-by-lane)).
 - **Archived cards.** `archived: true` = gone from the plan after a re-plan. Hide them everywhere. (A `deleted = 1` doc is a different thing.)
 - **Tombstones.** Always `deleted = 0`. Un-doing a bank or "mine" card deletes it; its tombstone still says `done`.
-- **Split cards.** A card with `children` is a container; do not list it as work, list its parts (`childOf`). The container is
-  done when all parts are.
+- **Split cards (legacy).** The flat migration removes split containers and sessions: `children` and `childOf` survive only in
+  documents written before it (an archived part carries `mergedInto`). Hide archived cards and you never see them; a database that
+  has not been migrated yet may still hold containers (a card with `children`): do not list a container as work.
 - **Status.** `status` is `todo`/`doing`/`done` in practice. `slid` is an old value; "Slid in" is `todo` + non-empty `slidFrom`.
 - **Help ladder and "solved".** Rungs: 1 Attempt, 2 Hint, 3 Picture, 4 Video, 5 Solution (Solution unlocks only after giving up;
   tasks have no Solution). A session `outcome` is `solved` if no rung >= 2 was opened in that attempt cycle, `solved_help` if any was,
@@ -1291,17 +1367,18 @@ What was verified, and how:
 
 - **Code read:** `server/db/{adapter,store,manager,log}.mjs`, the three migrations, `server/dojo-server.mjs`, `server/profile.mjs`,
   `electron/{main,env}.mjs`, `scripts/{export-pg,install-app,dev}.mjs`, `src/data/{db,types,seed}.ts`, `src/data/sync/*`,
-  the action modules that write each kind, and `src/rules/{sprint,today,planTickets,reconcile,slide,workload,ladder,ladderView,redoQueue,xp,focus,designSession,designEvidence,board}.ts`.
+  the action modules that write each kind, and `src/rules/{sprint,planTickets,reconcile,ladder,ladderView,redoQueue,xp,focus,designSession,designEvidence,board}.ts` (the deleted `today.ts`, `slide.ts` and `workload.ts` were read for the first version of this document).
 - **Run on an invented database** built with the real server code (`openDojo`, `applyOps`, `backup`, `restore`): all SQL in
-  section 8 and 7.2, the Python in 3.3, 7.2, 8.2 and 8.3, and the Node in 3.4; the restore behaviour in 7.3 (docs reverted, ops kept,
+  section 8 and 7.2, the Python in 3.3, 7.2 and 8.2, and the Node in 3.4; the restore behaviour in 7.3 (docs reverted, ops kept,
   one `restore` op, `db_id` rotated, next op continues the sequence); reading while a writer commits every 50 ms; the `/db/health`,
   `/db/state`, `/db/backups` GET routes, the 403 without a token and with a foreign `Origin`; `db:export-pg`.
-- **Cross-checked against the app's own code:** `rules/today.ts` `todayView` (run over the same invented database for each weekday)
-  against the SQL + Python of 8.3.
+- **Cross-checked against the app's own code (historical):** the pre-flat Today recipe (the old `rules/today.ts` `todayView` against SQL + Python)
+  was removed with that module; 8.3 and 8.4 now describe the flat queue and were run on a scratch database.
 - **Run against a copy of a real install** (structure only, nothing copied here): `.schema`, migration rows, `dojo_meta` keys,
   document kinds present, field names and value shapes of `tickets`, `settings`, `artifacts`, `aiLog`, the plan-id match with
   `plan.json`, and that every query in section 8 executes. That copy was a fresh install (no sessions, redos, design sessions or
   events yet), so shapes of those kinds come from the code and the invented database.
+- **Plan v2 update (2026-10-11/12):** the plan-format text in 2.4 and the ticket fields in `tickets` were checked against `src/data/{types,planV2}.ts`, `src/rules/planTickets.ts`, `src/rules/dayMix.ts`, `server/plan-file.mjs` and the built `public/data/plan.json` (counts: 74 nodes, 51 Phase 1 tickets, 2220 minutes); the Python in 8.2 was run against that file. Sections 8.3 and 8.4 were rewritten for the flat queue (2026-10-12); 8.1 still describes the sprint math the app keeps for legacy readers.
 - **Not verified:** reading with the `sqlite3` CLI `-readonly` on a closed WAL file failed on the machine tested (see 3.5), cause
   not isolated. The Dojo window's IndexedDB layout is not documented here on purpose. Behaviour of an app version other than
   the one at the time of writing. Whether the daily snapshot is taken at other moments than app start and the 24-hour tick: no other

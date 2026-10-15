@@ -130,6 +130,7 @@ describe('normalizeCanvas (Review Focus #4)', () => {
       nodes: [{ id: 'a', kind: 'service', label: 'A', x: 3, y: 0 }, { id: 'c', kind: 'sql', label: 'c', x: 0, y: 0 }],
       links: [{ from: 'a', to: 'c', kind: 'sync' }],
       zones: [],
+      notes: [],
       flows: [],
     })
     expect(normalizeCanvas(null)).toEqual(emptyCanvas())

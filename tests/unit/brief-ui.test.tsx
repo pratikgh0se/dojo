@@ -1,16 +1,10 @@
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { draftBrief } from '../../src/data/briefActions'
-import { patchSettings } from '../../src/data/db'
-import { reloadDraftJob } from '../../src/data/draftJob'
+import { seedBrief } from '../helpers/briefs'
 import { setNow } from '../../src/lib/clock'
-import { Board } from '../../src/screens/Board'
 import { CardBrief } from '../../src/screens/brief/CardBrief'
-import { Today } from '../../src/screens/Today'
-import { Reviews } from '../../src/screens/progress/Reviews'
-import { Settings } from '../../src/screens/Settings'
-import { freshDb, seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { freshDb } from '../helpers/db'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 import { mkTicket } from '../helpers/tickets'
 
@@ -18,18 +12,18 @@ const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const NOW = ist('2026-09-08T10:00:00') // Tuesday of sprint 1 (start 2026-09-07)
 afterEach(() => { vi.unstubAllGlobals(); localStorage.clear() })
 
-async function cardFor(over: Parameters<typeof mkTicket>[0]) {
+async function cardFor(over: Parameters<typeof mkTicket>[0], briefOver: Parameters<typeof seedBrief>[2] = {}) {
   setNow(() => NOW)
   const d = freshDb()
   await d.tickets.put(mkTicket(over))
-  await draftBrief(d, over.id, NOW)
+  await seedBrief(d, over.id, briefOver)
   const t = (await d.tickets.get(over.id))!
   return { d, t }
 }
-const show = async (over: Parameters<typeof mkTicket>[0]) => {
-  const { d, t } = await cardFor(over)
+const show = async (over: Parameters<typeof mkTicket>[0], briefOver: Parameters<typeof seedBrief>[2] = {}) => {
+  const { d, t } = await cardFor(over, briefOver)
   const Live = () => <CardBrief ticket={t} />
-  renderWithApp(<Live />, { db: d, plan: smallPlan })
+  renderWithApp(<Live />, { db: d, plan: flatPlanV2 })
   return d
 }
 
@@ -37,7 +31,7 @@ describe('CardBrief', () => {
   it('renders nothing until a brief exists', async () => {
     setNow(() => NOW)
     const d = freshDb()
-    renderWithApp(<CardBrief ticket={mkTicket({ id: 'a' })} />, { db: d, plan: smallPlan })
+    renderWithApp(<CardBrief ticket={mkTicket({ id: 'a' })} />, { db: d, plan: flatPlanV2 })
     expect(screen.queryByTestId('card-brief')).toBeNull()
   })
 
@@ -67,7 +61,7 @@ describe('CardBrief', () => {
       outcome: 'Tests in forge/stages/00-setup/tests/core pass.',
       deliverable: { ...b.deliverable, prompt: 'Paste notes.md, typed by hand' },
     }
-    renderWithApp(<CardBrief ticket={{ ...t, brief }} />, { db: d, plan: smallPlan })
+    renderWithApp(<CardBrief ticket={{ ...t, brief }} />, { db: d, plan: flatPlanV2 })
     const card = screen.getByTestId('card-brief')
     expect([...card.querySelectorAll('code.file-ref')].map(c => c.textContent)).toEqual([
       'forge/stages/00-setup/redo.md', 'forge/stages/00-setup/redo.md', 'QUESTIONS.md', 'rubric.md', 'forge/stages/00-setup/tests/core', 'notes.md',
@@ -79,7 +73,7 @@ describe('CardBrief', () => {
     const { d, t } = await cardFor({ id: 'w1', kind: 'watch', track: 'interview', title: 'Hash maps' })
     const b = t.brief!
     const withLinks = { ...t, brief: { ...b, steps: [{ text: 'a', url: 'https://ok.test/' }, { text: 'b', url: 'https://gone.test/' }, { text: 'c' }], linkCheck: [{ url: 'https://ok.test/', ok: true, status: 200 }, { url: 'https://gone.test/', ok: false, status: 404 }] } }
-    renderWithApp(<CardBrief ticket={withLinks} />, { db: d, plan: smallPlan })
+    renderWithApp(<CardBrief ticket={withLinks} />, { db: d, plan: flatPlanV2 })
     const li = screen.getByTestId('card-brief').querySelectorAll('ol > li')
     expect(within(li[0] as HTMLElement).getByTestId('link-ok')).toBeInTheDocument()
     expect(within(li[1] as HTMLElement).getByTestId('link-broken')).toHaveTextContent('404')
@@ -94,7 +88,7 @@ describe('CardBrief', () => {
       { url: 'https://lc.test/', ok: false, status: 403 }, { url: 'https://auth.test/', ok: false, status: 401 }, { url: 'https://busy.test/', ok: false, status: 429 },
       { url: 'https://gone.test/', ok: false, status: 404 }, { url: 'https://down.test/', ok: false, status: 503 }, { url: 'https://nobody.test/', ok: false, status: 0 },
     ]
-    renderWithApp(<CardBrief ticket={{ ...t, brief: { ...b, steps, linkCheck } }} />, { db: d, plan: smallPlan })
+    renderWithApp(<CardBrief ticket={{ ...t, brief: { ...b, steps, linkCheck } }} />, { db: d, plan: flatPlanV2 })
     const li = [...screen.getByTestId('card-brief').querySelectorAll('ol > li')] as HTMLElement[]
     expect(within(li[0]).getByTestId('link-unverified')).toHaveTextContent("can't verify (403)")
     expect(within(li[0]).queryByTestId('link-broken')).toBeNull()
@@ -218,7 +212,7 @@ describe('CardBrief', () => {
   })
 
   it('UAT cu-5 P2-2: a teach-back card asks to Explain it in your own words, and Get feedback grades the prose, not code', async () => {
-    const d = await show({ id: 'tb1', kind: 'stage', track: 'ai', session: 'teachback', stage: 0, title: 'Stage 00 · teach-back' })
+    const d = await show({ id: 'tb1', kind: 'stage', track: 'ai', session: 'teachback', stage: 0, title: 'Stage 00 · teach-back' }, { deliverable: { kind: 'explanation', prompt: 'Explain it in your own words' } })
     expect(screen.getByTestId('brief-deliverable')).toHaveTextContent('Explain it in your own words')
     expect(screen.getByTestId('brief-deliverable')).not.toHaveTextContent('code')
     fireEvent.click(screen.getByRole('button', { name: 'Mark done' }))
@@ -234,19 +228,6 @@ describe('CardBrief', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(async () => expect((await d.tickets.get('tb1'))!.status).toBe('done'))
     expect((await d.tickets.get('tb1'))!.deliverable).toMatchObject({ kind: 'explanation', feedback: [expect.stringContaining('the explanation names the mechanism')] })
-  })
-
-  it('UAT cu-5 P2-2: a teach-back drafted before the explanation kind (a forge code deliverable) reads and grades as an explanation', async () => {
-    const { d, t } = await cardFor({ id: 'tb2', kind: 'stage', track: 'ai', session: 'teachback', stage: 1, title: 'micrograd teach-back' })
-    const old = { ...t, brief: { ...t.brief!, deliverable: { kind: 'code' as const, prompt: 'Paste your code, typed by hand' } } }
-    await d.tickets.put(old)
-    renderWithApp(<CardBrief ticket={old} />, { db: d, plan: smallPlan })
-    expect(screen.getByTestId('brief-deliverable')).toHaveTextContent('Explain it in your own words')
-    fireEvent.click(screen.getByRole('button', { name: 'Mark done' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Deliverable' })
-    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'It is reverse-mode autodiff over a graph of scalars.' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Get feedback' }))
-    expect(await within(dialog).findByTestId('deliverable-feedback', {}, { timeout: 5000 })).toHaveTextContent('the explanation names the mechanism')
   })
 
   it('Edit brief saves goal, link and day type; Save is refused without a goal', async () => {
@@ -270,7 +251,7 @@ describe('CardBrief', () => {
   it('a learning card that needs a check but has no questions says so and offers Edit brief; saving without a question is refused', async () => {
     const { d, t } = await cardFor({ id: 'w1', kind: 'watch', track: 'interview', title: 'Hash maps' })
     const bare = { ...t, brief: { ...t.brief!, questions: [], deliverable: { kind: 'code' as const, prompt: 'p' } } }
-    renderWithApp(<CardBrief ticket={bare} />, { db: d, plan: smallPlan })
+    renderWithApp(<CardBrief ticket={bare} />, { db: d, plan: flatPlanV2 })
     fireEvent.click(screen.getByRole('button', { name: 'Mark done' }))
     const dialog = await screen.findByRole('dialog', { name: 'Check your understanding' })
     expect(within(dialog).getByTestId('check-no-questions')).toHaveTextContent('This brief has no questions yet — Edit brief to add one.')
@@ -301,246 +282,5 @@ describe('CardBrief', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true, results: [{ url: 'https://example.com/hash-maps', ok: false, status: 404 }] }), { status: 200 })))
     fireEvent.click(screen.getByRole('button', { name: 'Check links' }))
     await waitFor(async () => expect((await d.tickets.get('w1'))!.brief!.linkCheck).toEqual([{ url: 'https://example.com/hash-maps', ok: false, status: 404 }]))
-  })
-})
-
-describe('Board: draft, tools, rebalance', () => {
-  async function board() {
-    setNow(() => NOW)
-    const d = await seededDb()
-    renderWithApp(<Board />, { db: d, plan: smallPlan, route: '/board', path: '/board' })
-    await screen.findByTestId('card-p127')
-    return d
-  }
-
-  it('Draft briefs for Sprint N runs to Done and drafts each card once', async () => {
-    const d = await board()
-    fireEvent.click(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' }))
-    await waitFor(() => expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Done$/))
-    expect((await d.tickets.toArray()).filter(t => t.sprint === 1).every(t => t.brief)).toBe(true)
-    expect(screen.queryByTestId('ai-error')).toBeNull()
-  })
-
-  // UAT cu-3 P3-1: with every card already briefed the run is a no-op; it said "Done" and offered a stray "×"
-  it('Draft briefs with every card already briefed says so, asks the AI nothing and has no Dismiss', async () => {
-    const d = await board()
-    fireEvent.click(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' }))
-    await waitFor(() => expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Done$/))
-    const calls = await d.aiLog.where('job').equals('brief').count()
-    expect(calls).toBeGreaterThan(0)
-    fireEvent.click(screen.getByTestId('brief-dismiss'))
-    fireEvent.click(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' }))
-    await waitFor(() => expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Every card in Sprint 1 already has a brief$/))
-    expect(screen.queryByTestId('brief-dismiss')).toBeNull()
-    expect(screen.queryByTestId('brief-failed')).toBeNull()
-    expect(await d.aiLog.where('job').equals('brief').count()).toBe(calls)
-    expect(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' })).toBeEnabled()
-    // the note is not a result: it is not kept across a reload, and leaving the Board clears it
-    cleanup()
-    reloadDraftJob()
-    await board()
-    expect(screen.queryByTestId('brief-progress')).toBeNull()
-  })
-
-  it('a failing ticket shows the AI error, drafts the rest and can be retried', async () => {
-    const d = await board()
-    localStorage.setItem('dojo-ai-fake-fail', 'brief@p127')
-    fireEvent.click(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' }))
-    await waitFor(() => expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Done$/))
-    expect(await screen.findByTestId('ai-error-detail')).toHaveTextContent('claude_failed: fake brief unavailable')
-    expect(screen.getByTestId('brief-failed')).toHaveTextContent(/^\d+ of \d+ drafted; 1 couldn't be\.$/)
-    expect((await d.tickets.get('p127'))!.brief).toBeUndefined()
-    expect((await d.tickets.get('p1'))!.brief).toBeDefined()
-    localStorage.removeItem('dojo-ai-fake-fail')
-    fireEvent.click(screen.getByTestId('ai-retry'))
-    await waitFor(async () => expect((await d.tickets.get('p127'))!.brief).toBeDefined())
-  })
-
-  // UAT r3 P2: 16 of 16 failed read "Done" and "16 cards could not be drafted; the others were.", with no way out
-  it('a run that drafts nothing is Failed, says none could be drafted and why (signed out), and Dismiss clears it', async () => {
-    await board()
-    localStorage.setItem('dojo-ai-fake-fail', 'brief:claude_signed_out')
-    fireEvent.click(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' }))
-    await waitFor(() => expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Failed$/))
-    expect(screen.getByTestId('brief-failed')).toHaveTextContent(/^None of the \d+ cards could be drafted\.$/)
-    const err = screen.getByTestId('ai-error')
-    expect(err).toHaveTextContent("Claude Code isn't signed in. Open Terminal, run claude, sign in, then try again.")
-    expect(within(err).getByText('claude', { selector: 'code' })).toBeInTheDocument()
-    expect(screen.getByTestId('ai-error-detail')).toHaveTextContent('claude_signed_out: fake brief unavailable')
-    expect(screen.getByTestId('ai-retry')).toBeInTheDocument()
-    fireEvent.click(screen.getByTestId('brief-dismiss'))
-    expect(screen.queryByTestId('brief-progress')).toBeNull()
-    expect(screen.queryByTestId('brief-failed')).toBeNull()
-    expect(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' })).toBeEnabled()
-  })
-
-  it('the outcome stays on the Board after leaving it and coming back (and after a reload)', async () => {
-    await board()
-    localStorage.setItem('dojo-ai-fake-fail', 'brief@p127')
-    fireEvent.click(screen.getByRole('button', { name: 'Draft briefs for Sprint 1' }))
-    await waitFor(() => expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Done$/))
-    const line = screen.getByTestId('brief-failed').textContent
-    cleanup()
-    reloadDraftJob()
-    await board()
-    expect(screen.getByTestId('brief-progress')).toHaveTextContent(/^Done$/)
-    expect(screen.getByTestId('brief-failed')).toHaveTextContent(line!)
-    expect(screen.getByTestId('ai-error')).toBeInTheDocument()
-  })
-
-  it('Pin toggles and Move to sprint… lists sprints and moves the card', async () => {
-    const d = await board()
-    const card = screen.getByTestId('card-p127')
-    // UAT cu-3 P3-2: the "Pinned" chip's place is kept when unpinned (an invisible stand-in), so pinning moves nothing
-    expect(card.querySelector('.card-chips .pin-ghost')).not.toBeNull()
-    expect(within(card).queryByText('Pinned')).toBeNull()
-    fireEvent.click(within(card).getByRole('button', { name: 'Pin' }))
-    await waitFor(async () => expect((await d.tickets.get('p127'))!.pinned).toBe(true))
-    expect(await within(card).findByText('Pinned')).toBeInTheDocument()
-    expect(card.querySelector('.card-chips .pin-ghost')).toBeNull()
-    expect(await within(card).findByRole('button', { name: 'Unpin' })).toBeInTheDocument()
-    fireEvent.click(within(card).getByRole('button', { name: 'Move to sprint…' }))
-    const menu = within(card).getByRole('menu')
-    expect(within(menu).queryByRole('menuitem', { name: 'Sprint 1' })).toBeNull()
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Sprint 3' }))
-    await waitFor(async () => expect((await d.tickets.get('p127'))!.sprint).toBe(3))
-    await waitFor(() => expect(screen.queryByTestId('card-p127')).toBeNull())
-  })
-
-  it('an over-budget sprint offers Rebalance?, lists the moves, and Accept moves exactly the checked ones', async () => {
-    const d = await board()
-    await patchSettings(d, { coreMinutes: 90 })
-    for (const t of await d.tickets.toArray()) if (t.sprint === 1) await d.tickets.put({ ...t, estMin: 60 })
-    expect(await screen.findByTestId('bd-rebalance')).toHaveTextContent(/Sprint 1: \d+(\.\d)? h planned, budget 1\.5 h\./)
-    fireEvent.click(screen.getByRole('button', { name: 'Rebalance?' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Rebalance?' })
-    const boxes = within(dialog).getAllByRole('checkbox')
-    expect(boxes.length).toBeGreaterThan(0)
-    boxes.forEach(b => expect(b).toBeChecked())
-    const first = boxes[0].getAttribute('data-testid')!.replace('rebalance-move-', '')
-    fireEvent.click(boxes[0])
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Accept' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    const after = await d.tickets.toArray()
-    expect(after.find(t => t.id === first)!.sprint).toBe(1)
-    expect(after.filter(t => t.sprint === 2 && ['p1', 'p127', 'p200', 'm1w1i1', 'm1w1t1'].includes(t.id))).toHaveLength(boxes.length - 1)
-  })
-})
-
-describe('Settings: Core minutes per sprint', () => {
-  it('shows 1440 by default and saves a valid change straight away', async () => {
-    setNow(() => NOW)
-    const d = await seededDb()
-    renderWithApp(<Settings />, { db: d, plan: smallPlan, route: '/settings', path: '/settings' })
-    const input = await screen.findByRole('spinbutton', { name: 'Core minutes per sprint' })
-    expect(input).toHaveValue(1440)
-    fireEvent.change(input, { target: { value: '120' } })
-    await waitFor(async () => expect((await d.settings.get('main'))!.coreMinutes).toBe(120))
-    fireEvent.change(input, { target: { value: '12' } })
-    fireEvent.blur(input)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Core minutes must be a whole number from 30 to 20160')
-    expect((await d.settings.get('main'))!.coreMinutes).toBe(120)
-  })
-})
-
-describe('Today: workload', () => {
-  async function today(at: string) {
-    setNow(() => ist(at))
-    const d = await seededDb()
-    renderWithApp(<Today />, { db: d, plan: smallPlan })
-    await screen.findByTestId('load-minutes')
-    return d
-  }
-  it('shows planned minutes against the budget, and suggestions that fit the day', async () => {
-    await today('2026-09-08T10:00:00')
-    expect(screen.getByTestId('load-minutes')).toHaveTextContent('3.2 h / 24 h')
-    const links = within(screen.getByTestId('suggested')).getAllByRole('link')
-    expect(links.length).toBeGreaterThan(0)
-    expect(links[0].getAttribute('data-testid')).toMatch(/^do-/)
-  })
-  it('on a Thursday only light cards are suggested when any exist', async () => {
-    setNow(() => ist('2026-09-10T10:00:00'))
-    const d = await seededDb()
-    const t = (await d.tickets.get('p127'))!
-    await d.tickets.put({ ...t, brief: { goal: 'g', steps: [{ text: 's' }], minutes: 30, dayType: 'light', learn: [], outcome: 'o', deliverable: { kind: 'note', prompt: 'p' }, questions: [], status: 'draft', source: 'ai' } })
-    renderWithApp(<Today />, { db: d, plan: smallPlan })
-    await screen.findByTestId('load-minutes')
-    const links = within(screen.getByTestId('suggested')).getAllByRole('link')
-    expect(links.map(l => l.getAttribute('data-testid'))).toEqual(['do-p127'])
-  })
-  it('notes cards that rolled over from an ended sprint', async () => {
-    setNow(() => ist('2026-09-22T10:00:00')) // sprint 2
-    const d = await seededDb()
-    for (const id of ['p127', 'p1']) await d.tickets.update(id, { sprint: 2, rolledFrom: [1] })
-    renderWithApp(<Today />, { db: d, plan: smallPlan })
-    expect(await screen.findByTestId('rolled-note')).toHaveTextContent('2 cards rolled from Sprint 1')
-  })
-})
-
-describe('Progress: Reviews', () => {
-  it('Build review shows the numbers and the fake prose, and lists it afterwards', async () => {
-    setNow(() => NOW)
-    const d = await seededDb()
-    await d.tickets.update('p1', { status: 'done', xp: 5, doneAt: NOW })
-    await d.events.add({ t: 'tick', id: 'p1', at: NOW, xp: 5 })
-    renderWithApp(<Reviews />, { db: d, plan: smallPlan })
-    const region = await screen.findByRole('region', { name: 'Reviews' })
-    expect(await within(region).findByTestId('no-reviews')).toBeInTheDocument()
-    fireEvent.click(within(region).getByRole('button', { name: 'Build review' }))
-    expect(await within(region).findByTestId('rv-done', {}, { timeout: 5000 })).toHaveTextContent(/^1$/)
-    expect(within(region).getByTestId('rv-days')).toHaveTextContent('1 day')
-    expect(within(region).getByTestId('rv-slipped')).toHaveTextContent(/^0$/)
-    expect(region).toHaveTextContent('Review for Sprint 1: 1/5 cards done.')
-    expect(await d.reviews.count()).toBe(1)
-    // ruling 8 S4: the fake review has items, so "Do better next sprint" renders as an ol
-    const list = within(region).getByRole('list', { name: 'Do better next sprint' })
-    expect(list.tagName).toBe('OL')
-    expect(within(list).getAllByRole('listitem').length).toBeGreaterThanOrEqual(2)
-    expect(within(region).getByRole('heading', { name: 'Do better next sprint' })).toBeInTheDocument()
-  })
-  it('a review without items shows no "Do better next sprint" list', async () => {
-    setNow(() => NOW)
-    const d = await seededDb()
-    const stats = { sprint: 1, planned: 5, done: 1, focusDays: [], longestStreak: 0, gaps: [], slipped: [], redoPassRate: null, checkPassRate: null }
-    await d.reviews.add({ id: 'rv1', sprint: 1, at: NOW, stats, prose: 'Old prose only.', provider: 'fake', kind: 'manual' })
-    renderWithApp(<Reviews />, { db: d, plan: smallPlan })
-    expect(await screen.findByText('Old prose only.')).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Do better next sprint' })).toBeNull()
-    expect(screen.queryByText('Do better next sprint')).toBeNull()
-  })
-  it('UAT cu-3p P3-10: two reviews of one sprint on one day are told apart by the time; a lone one has none', async () => {
-    setNow(() => NOW)
-    const d = await seededDb()
-    const stats = { sprint: 1, planned: 5, done: 1, focusDays: [], longestStreak: 0, gaps: [], slipped: [], redoPassRate: null, checkPassRate: null }
-    await d.reviews.add({ id: 'rv1', sprint: 1, at: NOW, stats, prose: 'First.', provider: 'fake', kind: 'manual' })
-    renderWithApp(<Reviews />, { db: d, plan: smallPlan })
-    const heading = async () => (await screen.findAllByRole('heading', { level: 3 })).map(h => h.textContent ?? '').filter(t => t.startsWith('Sprint 1 ·'))
-    const [lone] = await heading()
-    expect(lone).toMatch(/^Sprint 1 · \d{1,2} [A-Z][a-z]{2} \d{4}$/)
-    await d.reviews.add({ id: 'rv2', sprint: 1, at: NOW + 120_000, stats, prose: 'Second.', provider: 'fake', kind: 'manual' })
-    await waitFor(async () => expect((await heading()).length).toBe(2))
-    const [newer, older] = await heading()
-    expect(newer).toMatch(/ · \d\d:\d\d$/)
-    expect(older).toMatch(/ · \d\d:\d\d$/)
-    expect(newer).not.toBe(older)
-  })
-  it('M7: while the review builds the button reads "Building…" and is disabled', async () => {
-    setNow(() => NOW)
-    const d = await seededDb()
-    localStorage.setItem('dojo-ai-fake-delay-ms', '400')
-    renderWithApp(<Reviews />, { db: d, plan: smallPlan })
-    fireEvent.click(await screen.findByRole('button', { name: 'Build review' }))
-    const busy = await screen.findByRole('button', { name: 'Building…' })
-    expect(busy).toBeDisabled()
-    expect(await screen.findByRole('button', { name: 'Build review' }, { timeout: 5000 })).toBeEnabled()
-  })
-  it('an AI failure shows the error line and keeps the list empty', async () => {
-    setNow(() => NOW)
-    const d = await seededDb()
-    localStorage.setItem('dojo-ai-fake-fail', 'review_sprint')
-    renderWithApp(<Reviews />, { db: d, plan: smallPlan })
-    fireEvent.click(await screen.findByRole('button', { name: 'Build review' }))
-    expect(await screen.findByTestId('ai-error', {}, { timeout: 5000 })).toBeInTheDocument()
-    expect(await d.reviews.count()).toBe(0)
   })
 })

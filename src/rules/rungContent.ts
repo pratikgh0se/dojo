@@ -1,7 +1,5 @@
-import type { AiTicket, DiagramJson, SlideCandidate, SrAlgoJson } from '../ai/types'
+import type { AiTicket, DiagramJson, SrAlgoJson } from '../ai/types'
 import type { Link, PlanJson, Ticket } from '../data/types'
-import { leftBehind } from './load'
-import { sprintTaskWork } from './vitals'
 
 export const NO_WATCH_LINK = 'No watch link for this task'
 export const NO_VIDEO = 'No video for this task'
@@ -106,19 +104,4 @@ export function designDeepDives(plan: PlanJson, id: string): string[] {
     if (it) return [...it.deep_dives]
   }
   return []
-}
-
-/**
- * Due tickets for suggest_slide (C-LADDER §7.3): left behind, then remaining this sprint. `inUse`: the cards being worked
- * on right now (a running session or timer) are not offered: sliding the card in the learner's hands is never the advice
- * (UAT cu-2 P3-5).
- */
-export function slideCandidates(tickets: Ticket[], sprint: number, inUse: ReadonlySet<string> = new Set()): SlideCandidate[] {
-  // the work that can slide: a split card's open parts, not the card (ruling 20 S4)
-  const due = [...leftBehind(tickets, sprint, true), ...sprintTaskWork(tickets, sprint).filter(t => t.status !== 'done')].filter(t => !inUse.has(t.id))
-  return due.map(t => ({
-    id: t.id, title: t.title, track: aiTrack(t), estMin: t.estMin,
-    ...(t.difficulty ? { difficulty: t.difficulty } : {}),
-    slidCount: t.slidFrom.length,
-  }))
 }

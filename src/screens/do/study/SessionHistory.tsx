@@ -5,10 +5,10 @@ import { Panel } from '../../../ui/primitives'
 import './study.css'
 
 /** What closed a study session that was not ended with End session (UAT cu-4 P3-11): the card's own outcome buttons. */
-const ENDED_BY: Partial<Record<Outcome, string>> = { solved: 'Solved ✓', solved_help: 'Solved with help', gave_up: 'Give up' }
+const ENDED_BY: Partial<Record<Outcome, string>> = { solved: 'Solved', solved_help: 'Solved with help', gave_up: 'Give up' }
 
 /**
- * A study session that has a row to show: one ended with End session (it has an end log), or one that Solved ✓, Solved with help
+ * A study session that has a row to show: one ended with End session (it has an end log), or one that Solved, Solved with help
  * or Give up closed with it running (that row carries the plan line and the focus minutes, and no end log).
  */
 export function isStudyRow(s: Session): boolean {

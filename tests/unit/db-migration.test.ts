@@ -34,7 +34,7 @@ describe('schema v2 migration (Review Focus #1)', () => {
       events: '++seq, t, id, at',
       settings: 'id',
     })
-    expect(DB_VERSION).toBe(7) // v3 only adds the _outbox/_meta sync tables, v4 the checkAttempts and reviews tables, v5 the runner's code table, v6/v7 re-key it by (ticketId, lang) (SCHEMA_V2 is unchanged)
+    expect(DB_VERSION).toBe(10) // v3 only adds the _outbox/_meta sync tables, v4 the checkAttempts and reviews tables, v5 the runner's code table, v6/v7 re-key it by (ticketId, lang) v8 adds pulses, v9 journal, v10 bankGrades and bankExtra; SCHEMA_V2 is unchanged)
     expect(SCHEMA_V2.tickets).toBe('id, sprint, status, track, kind, origin')
     expect(Object.keys(SCHEMA_V2).sort()).toEqual([...Object.keys(SCHEMA_V1), ...NEW_TABLES].sort())
   })
@@ -44,7 +44,7 @@ describe('schema v2 migration (Review Focus #1)', () => {
     const { ticket, session } = await seedV1(name)
     const d = createDb(name)
     await d.open()
-    expect(d.verno).toBe(7)
+    expect(d.verno).toBe(10)
     expect(await d.tickets.get('p127')).toEqual(ticket)
     expect(await d.sessions.get('s1')).toEqual(session)
     expect(await d.events.toArray()).toEqual([{ seq: 1, t: 'tick', id: 'p127', at: 5, xp: 10 }])

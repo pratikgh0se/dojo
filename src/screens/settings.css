@@ -1,11 +1,10 @@
 .settings { display: grid; gap: 16px; max-width: 720px; min-width: 0; }
-.settings .screen-title { margin: 0; font-weight: 700; line-height: 1.2; }
 .settings .sr-panel { display: grid; gap: 12px; min-width: 0; }
 .settings .sr-panel-title { margin: 0; }
 .settings p { margin: 0; }
 /* ST2: field rows are inline (field + its button, gap 8) on desktop and tablet; stacked on phone. */
 .start-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
-.settings input[type='text'], .settings input[type='number'], .settings select { height: var(--sr-size-control-h); }
+.settings input[type='text'], .settings input[type='number'], .settings select { height: var(--sr-size-control-h); font-size: var(--type-small); }
 .settings .date-iso { width: 160px; }
 .settings .num-160 { width: 160px; }
 .settings input[aria-invalid='true'] { border-color: var(--sr-signal-danger); }
@@ -37,3 +36,19 @@
 .bk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .bk-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .bk-name { font-family: var(--sr-font-mono); font-size:var(--type-small); overflow-wrap: anywhere; }
+
+.ps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: 12px 16px; }
+.ps-day { display: grid; gap: 6px; font-size: var(--type-small); min-width: 0; }
+/* the weekday input is 160 wide like every numeric Settings field (it only shrinks when its cell is narrower) and the "min" suffix keeps its own width on one line (it used to stack M/I/N) */
+.ps-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.settings .ps-field input { flex: 0 1 160px; width: 160px; min-width: 0; }
+.ps-field .settings-meta { flex: none; white-space: nowrap; overflow-wrap: normal; }
+.ps-switch { display: flex; align-items: center; gap: 12px; font-size: var(--type-small); }
+.ps-switch input { width: 22px; height: 22px; }
+
+/* SET-09: the Pom debug panel: a stage beside its controls, one column on a phone */
+.dbg-pom { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; align-items: start; }
+.dbg-well { position: relative; height: 210px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.dbg-well pom-stage { position: absolute; inset: 0; }
+.dbg-pom-controls { display: grid; gap: 12px; justify-items: start; min-width: 0; }
+.dbg-pom-controls select { min-width: 160px; }

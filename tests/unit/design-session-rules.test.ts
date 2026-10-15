@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { InterviewFinal } from '../../src/ai/types'
 import type { CloseAnswers, DeepDive } from '../../src/data/types'
 import {
-  capScore, cappedDive, clockText, closeComplete, divesText, EMPTY_CLOSE, interviewStage, interviewStoppedText, isOverdue,
+  capScore, cappedDive, clockText, closeComplete, divesText, EMPTY_CLOSE, isOverdue,
   lensText, lockAt, lockReason, lockStatusText, needsInterviewerTurn, needsRedesign, parseRubric, pngName, prefillFromFinal,
   redesignDueAt, remainingMs, RUBRIC_BREAKDOWN, scoreReady, seedTradeoffs, SESSION_MS, summaryText,
 } from '../../src/rules/designSession'
@@ -27,6 +27,9 @@ const FULL_CLOSE: CloseAnswers = {
 describe('clock (D-5, D-6, D-8, D-9)', () => {
   it('counts down from 45:00 with ceil seconds', () => {
     expect(clockText(remainingMs({ at: T }, T))).toBe('45:00')
+    // a clock reading from before the session began (the rail ticked once before Start) never reads above 45:00 (DESIGN-06)
+    expect(clockText(remainingMs({ at: T }, T - 400))).toBe('45:00')
+    expect(clockText(remainingMs({ at: T }, T - 5_000))).toBe('45:00')
     expect(clockText(remainingMs({ at: T }, T + 10 * MIN))).toBe('35:00')
     expect(clockText(remainingMs({ at: T }, T + 10 * MIN + 400))).toBe('35:00')
     expect(clockText(remainingMs({ at: T }, T + 44 * MIN + 59_000))).toBe('00:01')
@@ -55,19 +58,11 @@ describe('clock (D-5, D-6, D-8, D-9)', () => {
     expect(lockReason({ at: T, lockedAt: T + SESSION_MS })).toBe('timer')
     expect(lockStatusText('timer')).toBe('Canvas locked at 45 minutes')
     expect(lockStatusText('ended')).toBe('Canvas locked')
-    expect(interviewStoppedText('timer')).toBe('Interview stopped at 45 minutes')
-    expect(interviewStoppedText('ended')).toBe('Interview stopped')
   })
 })
 
-describe('interview stage (D-32, D-33, DECISION 11)', () => {
-  it('walks requirements, 4 × (ask, push-back), complete', () => {
-    expect(interviewStage(msgs(0))).toMatchObject({ answers: 0, activeDive: 0, complete: false, status: 'Requirements' })
-    expect([1, 2, 3, 4, 5, 6, 7, 8].map(a => interviewStage(msgs(a)).activeDive)).toEqual([1, 1, 2, 2, 3, 3, 4, 4])
-    expect(interviewStage(msgs(3)).status).toBe('Deep dive 2 of 4')
-    expect(interviewStage(msgs(9))).toMatchObject({ answers: 9, complete: true, status: 'Interview complete · 4 of 4 deep dives' })
-  })
-
+// The coach's stage walk is covered in design-coach.test.ts.
+describe('interviewer turns (D-32, D-33)', () => {
   it('needs an interviewer turn when empty or after a learner message', () => {
     expect(needsInterviewerTurn([])).toBe(true)
     expect(needsInterviewerTurn(msgs(2))).toBe(false)
@@ -106,7 +101,7 @@ describe('close and score (D-25…D-30)', () => {
     for (const bad of ['21', '-1', '12.5', 'abc', '1e1']) expect(parseRubric(bad)).toEqual({ value: null, invalid: true })
   })
 
-  it('is ready only with 4 dives, 7 lenses, 2 complete trade-offs and a rubric', () => {
+  it('is ready with 4 scored dives and a whole rubric of 0 to 20; lenses and trade-off rows stay optional (DESIGN-66, DESIGN-72)', () => {
     const ok = {
       deepDives: dives(2, 1, 2, 0),
       lenses: { load: 2, data: 1, consistency: 1, failure: 0, latency: 2, cost: 1, evolution: 1 } as const,
@@ -115,9 +110,12 @@ describe('close and score (D-25…D-30)', () => {
     }
     expect(scoreReady(ok)).toBe(true)
     expect(scoreReady({ ...ok, deepDives: dives(2, 1, null, 0) })).toBe(false)
-    expect(scoreReady({ ...ok, lenses: { ...ok.lenses, cost: undefined } })).toBe(false)
-    expect(scoreReady({ ...ok, tradeoffs: [ok.tradeoffs[0], { chose: 'x', over: '', because: 'y' }] })).toBe(false)
+    expect(scoreReady({ ...ok, lenses: { ...ok.lenses, cost: undefined } })).toBe(true)
+    expect(scoreReady({ ...ok, lenses: {} })).toBe(true)
+    expect(scoreReady({ ...ok, tradeoffs: [ok.tradeoffs[0], { chose: 'x', over: '', because: 'y' }] })).toBe(true)
+    expect(scoreReady({ ...ok, tradeoffs: [] })).toBe(true)
     expect(scoreReady({ ...ok, rubric: null })).toBe(false)
+    expect(scoreReady({ ...ok, rubric: 0 })).toBe(true)
     expect(scoreReady({ ...ok, rubric: 21 })).toBe(false)
   })
 
@@ -155,7 +153,8 @@ describe('redesign rule (D-45)', () => {
 describe('texts', () => {
   it('summarises a session (D-31, D-37)', () => {
     expect(summaryText({ mode: 'solo', minutes: 12, rubric: 12 })).toBe('Solo · 12 min · rubric 12 / 20')
-    expect(summaryText({ mode: 'interviewer', minutes: 45, rubric: 15 })).toBe('Interviewer · 45 min · rubric 15 / 20')
+    expect(summaryText({ mode: 'interviewer', minutes: 45, rubric: 15 })).toBe('Solo · AI partner · 45 min · rubric 15 / 20')
+    expect(summaryText({ mode: 'solo', minutes: 12, rubric: null })).toBe('Solo · 12 min · rubric – / 20')
     expect(divesText(dives(2, 1, 2, 0))).toBe('2 · 1 · 2 · 0')
     expect(lensText({ load: 2, data: 1, consistency: 1, failure: 0, latency: 2, cost: 1, evolution: 1 }))
       .toBe('Load 2 · Data 1 · Consistency 1 · Failure 0 · Latency 2 · Cost 1 · Evolution 1')

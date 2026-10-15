@@ -5,7 +5,7 @@ import { AppProviders } from '../../src/app/providers'
 import { Shell } from '../../src/app/Shell'
 import { setNow } from '../../src/lib/clock'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 
 // Ruling 23 K4: Dojo › Settings… (⌘,) in the native menu has the main process dispatch `dojo:navigate` in the page.
 function Where() { return <div data-testid="where">{useLocation().pathname}</div> }
@@ -14,7 +14,7 @@ async function renderShell(route: string) {
   setNow(() => new Date('2026-09-08T10:00:00+05:30').getTime())
   render(
     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
-      <AppProviders db={await seededDb()} plan={smallPlan}>
+      <AppProviders db={await seededDb()} plan={flatPlanV2}>
         <Shell />
         <Where />
       </AppProviders>
@@ -26,8 +26,8 @@ const dispatch = (detail: unknown) => act(() => { window.dispatchEvent(new Custo
 
 describe('dojo:navigate (the native menu)', () => {
   it('goes to /settings from any screen, including a Do screen', async () => {
-    await renderShell('/board')
-    await screen.findByTestId('more-button')
+    await renderShell('/path')
+    await screen.findByTestId('shell-rail')
     dispatch('/settings')
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/settings'))
   })
@@ -40,12 +40,12 @@ describe('dojo:navigate (the native menu)', () => {
   })
 
   it('ignores anything that is not an in-app path', async () => {
-    await renderShell('/board')
+    await renderShell('/path')
     dispatch('https://example.com')
     dispatch('//example.com')
     dispatch(42)
     dispatch(undefined)
     await new Promise(r => setTimeout(r, 50))
-    expect(screen.getByTestId('where').textContent).toBe('/board')
+    expect(screen.getByTestId('where').textContent).toBe('/path')
   })
 })

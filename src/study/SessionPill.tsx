@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useTicket } from '../data/hooks'
-import { isPlainClick, useNavigateAfterWrites } from '../data/useNavigateAfterWrites'
 import { now } from '../lib/clock'
-import { sessionLabel } from '../lib/studyTimer'
+import { sessionLabel } from '../lib/timer'
 import { useNow } from '../lib/useNow'
 import { phaseLabel, type Study } from '../rules/studySession'
 import { Sized } from '../ui/Sized'
@@ -21,7 +20,6 @@ export function pillSummary(study: Study, nowMs: number, title: string): string 
 
 function Pill({ study }: { study: Study }) {
   const t = useNow(1000)
-  const go = useNavigateAfterWrites()
   const ticket = useTicket(study.ticketId)
   const title = ticket?.title ?? ''
   const paused = study.paused != null
@@ -34,7 +32,6 @@ function Pill({ study }: { study: Study }) {
       <Link
         to={to} className="session-pill-link" data-testid="session-pill-link" title={title ? `Back to ${title}` : 'Back to the card'}
         aria-label={`Study session: ${pillSummary(study, t, title)}. Back to the card.`}
-        onClick={e => { if (isPlainClick(e)) { e.preventDefault(); go(to) } }}
       >
         <span className="session-pill-phase" data-testid="session-pill-phase">
           {study.away ? 'Away' : phaseLabel(study)}{paused ? ' · paused' : ''}
@@ -42,7 +39,7 @@ function Pill({ study }: { study: Study }) {
         <span className="session-pill-time" data-testid="session-pill-time" role="timer">{study.away ? '--:--' : sessionLabel(study, t)}</span>
         <span className="session-pill-title" data-testid="session-pill-title">{title}</span>
       </Link>
-      {!study.away && (
+      {!study.away && !study.over && (
         paused
           ? <Button className="session-pill-toggle" data-testid="session-pill-resume" onClick={() => resumeSession(now())}><Sized label="Resume" alts={TOGGLE_LABELS} /></Button>
           : <Button className="session-pill-toggle" data-testid="session-pill-pause" onClick={() => pauseSession(now())}><Sized label="Pause" alts={TOGGLE_LABELS} /></Button>

@@ -1,16 +1,14 @@
 // The small visible P3s of the code-blind Electron UAT run 3 (dojo-acceptance/reports/uat/dojo-electron-r3.md).
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { readFileSync } from 'node:fs'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Screen } from '../../src/app/Screen'
 import { setNow } from '../../src/lib/clock'
 import { Dsa } from '../../src/screens/Dsa'
-import { nodeLines } from '../../src/screens/SkillTree'
 import { FILE_REF, WithFileRefs } from '../../src/ui/FileRefs'
 import { Loading, LOADING_DELAY_MS } from '../../src/ui/Loading'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 afterEach(() => vi.useRealTimers())
@@ -35,13 +33,13 @@ describe('J2: no "Loading…" flash (ruling 9)', () => {
         <Nav />
         <Routes>
           <Route path="/a" element={<Screen name="today"><p>ready</p></Screen>} />
-          <Route path="/b" element={<Screen name="ai"><Loading /></Screen>} />
+          <Route path="/b" element={<Screen name="path"><Loading /></Screen>} />
         </Routes>
       </MemoryRouter>,
     )
     await vi.waitFor(() => expect(screen.getByTestId('screen-today')).toHaveAttribute('data-ready', 'true'))
     act(() => go('/b'))
-    expect(screen.getByTestId('screen-ai')).toHaveAttribute('data-ready', 'false')
+    expect(screen.getByTestId('screen-path')).toHaveAttribute('data-ready', 'false')
   })
 })
 
@@ -52,12 +50,12 @@ describe('J2: a DSA topic click brings its detail into view', () => {
     const before = Element.prototype.scrollIntoView
     Element.prototype.scrollIntoView = function (this: Element, opts?: boolean | ScrollIntoViewOptions) { calls.push({ el: this, opts }) }
     setNow(() => new Date('2026-09-08T10:00:00+05:30').getTime())
-    const d = await seededDb(smallPlan)
-    renderWithApp(<Dsa />, { db: d, plan: smallPlan, route: '/dsa?topic=1', path: '/dsa' })
+    const d = await seededDb(flatPlanV2)
+    renderWithApp(<Dsa />, { db: d, plan: flatPlanV2, route: '/dsa?topic=1', path: '/dsa' })
     await screen.findByTestId('topic-detail')
     expect(calls).toHaveLength(0) // restored from the URL (Back): the position is the user's
     cleanup()
-    renderWithApp(<Dsa />, { db: d, plan: smallPlan, route: '/dsa', path: '/dsa' })
+    renderWithApp(<Dsa />, { db: d, plan: flatPlanV2, route: '/dsa', path: '/dsa' })
     fireEvent.click(await screen.findByTestId('topic-1'))
     await vi.waitFor(() => expect(calls).toHaveLength(1))
     expect(calls[0].el).toBe(screen.getByTestId('topic-detail'))
@@ -66,22 +64,6 @@ describe('J2: a DSA topic click brings its detail into view', () => {
     expect(calls).toHaveLength(2)
     if (had) Element.prototype.scrollIntoView = before
     else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
-  })
-})
-
-describe('J9: skill-tree labels are never clipped (ruling 1)', () => {
-  it('every plan label fits two lines of a node, whole', () => {
-    const plan = JSON.parse(readFileSync('public/data/plan.json', 'utf8')) as { skills: Array<{ label: string }> }
-    for (const { label } of plan.skills) {
-      const lines = nodeLines(label)
-      expect(lines.length, label).toBeLessThanOrEqual(2)
-      expect(lines.join(' '), label).toBe(label)
-      expect(lines.join(''), label).not.toContain('…')
-    }
-    expect(nodeLines('AI engineering (RAG, agents, evals)')).toEqual(['AI engineering (RAG,', 'agents, evals)'])
-  })
-  it('a label longer than two lines gets a third line, not an ellipsis', () => {
-    expect(nodeLines('one two three four five six seven eight nine ten eleven twelve')).toHaveLength(4)
   })
 })
 

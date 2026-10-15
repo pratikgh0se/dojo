@@ -4,7 +4,7 @@ import { KIT_FAMILIES } from '../../src/content/diagramKit'
 
 /**
  * D-59 (axe color-contrast): the kit palette gives every family a per-family tint on its label
- * (`.kit-family-name`), matching the prototype's diagram engine FAM map. Some of those saturated
+ * (`.kit-flyout-name`, the family name above a flyout's tiles), matching the prototype's diagram engine FAM map. Some of those saturated
  * colours don't hit WCAG's 4.5:1 text minimum against the palette's background
  * (`--sr-surface-panel`, #2a2f45 in the Console/dark theme the axe scan ran in) — e.g.
  * `--sr-signal-arcane` (#8c75fa) on 'ai' was 3.79:1. This test computes the ratio for every
@@ -39,12 +39,19 @@ const ratio = (a: string, b: string) => {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-/** The label colour actually applied to `.kit-family[data-family='<family>'] .kit-family-name`. */
+/** The label colour actually applied to the family name in `.kit-flyout[data-family='<family>']`: its own rule when it has one, else the family's `--fam` tint. */
 const labelColorFor = (family: string): string => {
-  const rule = block(kitCss, `.kit-family[data-family='${family}'] .kit-family-name`)
-  const decl = rule.match(/color:\s*([^;]+);/)
-  if (!decl) throw new Error(`no .kit-family-name color rule for family '${family}'`)
-  const value = decl[1].trim()
+  const own = `.kit-flyout[data-family='${family}'] .kit-flyout-name`
+  let value: string
+  if (kitCss.includes(own)) {
+    const decl = block(kitCss, own).match(/color:\s*([^;]+);/)
+    if (!decl) throw new Error(`no color in ${own}`)
+    value = decl[1].trim()
+  } else {
+    const decl = block(kitCss, `.kit-flyout[data-family='${family}']`).match(/--fam:\s*([^;]+);/)
+    if (!decl) throw new Error(`no --fam tint for family '${family}'`)
+    value = decl[1].trim()
+  }
   const varMatch = value.match(/^var\(--([a-z0-9-]+)\)$/)
   if (varMatch) {
     const resolved = tokens[varMatch[1]]
@@ -52,7 +59,7 @@ const labelColorFor = (family: string): string => {
     return resolved
   }
   const hexMatch = value.match(/^(#[0-9a-fA-F]{6})$/)
-  if (!hexMatch) throw new Error(`unresolvable .kit-family-name color for family '${family}': ${value}`)
+  if (!hexMatch) throw new Error(`unresolvable colour for family '${family}': ${value}`)
   return hexMatch[1]
 }
 

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { ApproachStrip } from '../../src/ui/algo/ApproachStrip'
 import { seededDb } from '../helpers/db'
 import { installAlgoEngines } from '../helpers/engines'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 // UAT cu-4 P3-1: a chip with no library picture said so, but the player opened before it stayed on screen under that
@@ -13,7 +13,7 @@ describe('ApproachStrip', () => {
 
   it('a chip with no library picture closes the player that was open and releases its chip', async () => {
     const d = await seededDb()
-    renderWithApp(<ApproachStrip problemId="p322" />, { db: d, plan: smallPlan })
+    renderWithApp(<ApproachStrip problemId="p322" />, { db: d, plan: flatPlanV2 })
     const tab = screen.getByRole('button', { name: /^Tabulation/ })
     fireEvent.click(tab)
     expect(tab).toHaveAttribute('aria-pressed', 'true')

@@ -16,7 +16,7 @@ export function Redesigns({ rows, rate }: { rows: RedesignRow[]; rate: { passed:
             <span className="chip">{r.state}</span>
             {r.readNext && <span className="ev-redo-read">Read: {r.readNext}</span>}
             {r.state === 'due' && (
-              <Link to={`/designs/session/${r.designId}`} className="sr-btn sr-btn-accent" aria-label={`Start redesign: ${r.title}`}>
+              <Link to={`/designs/session/${r.designId}?new=1`} className="sr-btn sr-btn-accent" aria-label={`Start redesign: ${r.title}`}>
                 Start redesign ▸
               </Link>
             )}

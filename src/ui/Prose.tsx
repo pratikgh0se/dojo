@@ -3,12 +3,13 @@ import type { Link } from '../data/types'
 import { appRoute } from '../lib/appLinks'
 import type { PromptTemplate, ProseItem, ProseSection, ProseTable } from '../content/types'
 import { Panel } from './primitives'
+import { Glyph } from './Glyph'
 import './prose.css'
 
 export function ExtLink({ link, className = 'ext' }: { link: Link; className?: string }) {
   const route = appRoute(link.url)
-  if (route) return <RouterLink className={className} to={route}>{link.label}</RouterLink>
-  return <a className={className} href={link.url} target="_blank" rel="noopener noreferrer">{link.label} ↗</a>
+  if (route) return <RouterLink className={className} to={route} data-content="plan">{link.label}</RouterLink>
+  return <a className={className} href={link.url} target="_blank" rel="noopener noreferrer" data-content="plan">{link.label} <Glyph name="external" /></a>
 }
 
 function ExtLinks({ links }: { links?: Link[] }) {

@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react'
-import { isStudy, markProgress, dismissStuck, setChime, takeBreak, type Study } from '../rules/studySession'
+import { isStudy, markProgress, dismissStuck, takeBreak, type Study } from '../rules/studySession'
 import { STUDY_KEY, subscribeStudy, updateStudy } from '../lib/studyStore'
 
 function read(): string | null {
@@ -34,6 +34,5 @@ export function useStudyFor(ticketId: string) {
     mark: () => void updateStudy(markProgress),
     dismissStuck: () => void updateStudy(dismissStuck),
     takeBreak: (at: number) => void updateStudy(s => takeBreak(s, at)),
-    setChime: (on: boolean) => void updateStudy(s => setChime(s, on)),
   }
 }

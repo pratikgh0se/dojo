@@ -9,15 +9,14 @@ import { endStudySession, recordFocus, startDoing } from '../data/sessionActions
 import { safeWrite } from '../data/safeWrite'
 import type { EndLog, Ticket } from '../data/types'
 import { isReadOnly } from '../data/writer'
-import { bankRun, clearCycle, loadCycle, saveCycle } from '../lib/cycle'
+import { bankRun, clearCycle, loadCycle, saveCycle, type Cycle } from '../lib/cycle'
 import { localDayKey } from '../lib/dates'
 import { clearDraft, closingNotes, dropSessionNotes, loadDraft } from '../lib/drafts'
 import { dropEndDraft } from '../lib/endDraft'
 import { newId } from '../lib/id'
 import { loadStudy, notifyStudy, saveStudy, saveChimePref, clearStudy } from '../lib/studyStore'
-import { applyAdvance, blockTimer } from '../lib/studyTimer'
-import { blockingTimerTicketId, clearTimer, loadTimer, saveTimer } from '../lib/timer'
-import { advance, markProgress, phaseEnd, startStudy, type Study } from '../rules/studySession'
+import { blockingTimerTicketId, blockTimer, clearTimer, loadTimer, saveTimer, type TimerState } from '../lib/timer'
+import { advance, markProgress, phaseEnd, startStudy, type Advanced, type Study } from '../rules/studySession'
 import { copy } from '../lib/platform'
 
 export interface Fx {
@@ -26,6 +25,16 @@ export interface Fx {
   onError: (msg: string) => void
   /** overrides the browser's read-only state (tests) */
   readOnly?: boolean
+}
+
+/**
+ * The focus minutes a session row records. A finished block counts in full; a `single` session that is not `over` has no
+ * finished block yet, so it records the minutes actually focused so far (capped at the block, minus paused time), never 0.
+ */
+export function focusMinutesOf(s: Study, nowMs: number): number {
+  if (!s.single || s.over) return s.blocks * s.focusMin
+  const usedMs = s.paused != null ? s.phaseMin * 60_000 - s.paused : nowMs - s.phaseStart
+  return Math.max(0, Math.min(s.phaseMin, Math.round(usedMs / 60_000)))
 }
 
 /** A rung opened or a tick on one of the session's cards inside the block's window is a progress action. */
@@ -49,7 +58,7 @@ export function runTick(d: DojoDB, nowMs: number, fx: Fx): Promise<void> {
 
 async function tickOnce(d: DojoDB, nowMs: number, fx: Fx): Promise<void> {
   const seen = loadStudy()
-  if (!seen || seen.away || seen.paused != null || nowMs < phaseEnd(seen)) return
+  if (!seen || seen.away || seen.paused != null || seen.over || nowMs < phaseEnd(seen)) return
   let s = seen
   if (s.phase === 'focus' && !s.progress && (await hadProgress(d, s))) s = markProgress(s)
   const r = advance(s, nowMs)
@@ -72,7 +81,28 @@ async function tickOnce(d: DojoDB, nowMs: number, fx: Fx): Promise<void> {
   if (r.finished.length) fx.toast(`Focus block done · ${r.finished[r.finished.length - 1].minutes} min`)
 }
 
-export interface Plan { goal: string; focusMin: number; breakMin: number; cardIds: string[]; chime: boolean }
+export interface Applied { cycle: Cycle | null; timer: TimerState | null }
+
+/**
+ * After `advance`: bank every finished focus block into the cycle (idempotent, keyed by the block's
+ * start) and return the legacy timer for the new phase: running for a focus block, stopped and
+ * notified for a break or an `over` single block. `timer` is null when nothing switched.
+ */
+export function applyAdvance(cycle: Cycle | null, before: Study, r: Advanced, now: number): Applied {
+  if (!r.switched) return { cycle, timer: null }
+  let c = cycle
+  if (c) for (const b of r.finished) c = bankRun(c, blockTimer(before, b.start, b.end, false), now)
+  const s = r.study
+  const last = r.finished[r.finished.length - 1]
+  const timer = s.over
+    ? blockTimer(s, s.phaseStart, phaseEnd(s), false)
+    : s.phase === 'focus'
+      ? blockTimer(s, s.phaseStart, phaseEnd(s), true)
+      : blockTimer(s, last ? last.start : s.phaseStart, last ? last.end : s.phaseStart, false)
+  return { cycle: c, timer }
+}
+
+export interface Plan { goal: string; focusMin: number; breakMin: number; cardIds: string[]; chime: boolean; single?: boolean }
 
 /** Start a session on `ticket`. False when refused (another timer or session, read-only is gated by the caller). */
 export async function beginStudy(a: { d: DojoDB; ticket: Ticket; plan: Plan; nowMs: number } & Fx): Promise<boolean> {
@@ -92,7 +122,7 @@ export async function beginStudy(a: { d: DojoDB; ticket: Ticket; plan: Plan; now
     }
   }
   bankLive(ticket.id, nowMs)
-  const s = startStudy({ id: newId('st', nowMs), ticketId: ticket.id, goal: plan.goal, cardIds: plan.cardIds, focusMin: plan.focusMin, breakMin: plan.breakMin, chime: plan.chime, now: nowMs })
+  const s = startStudy({ id: newId('st', nowMs), ticketId: ticket.id, goal: plan.goal, cardIds: plan.cardIds, focusMin: plan.focusMin, breakMin: plan.breakMin, chime: plan.chime, now: nowMs, single: plan.single })
   saveChimePref(plan.chime)
   saveTimer(blockTimer(s, nowMs, nowMs + plan.focusMin * 60_000, true))
   saveStudy(s)
@@ -114,7 +144,7 @@ export async function finishStudy(a: { d: DojoDB; log: Partial<EndLog>; nowMs: n
   bankLive(s.ticketId, a.nowMs)
   const r = await safeWrite(
     () => endStudySession(a.d, {
-      ticketId: s.ticketId, start: s.startedAt, now: a.nowMs, goal: s.goal, cards: s.cardIds, focusMinutes: s.blocks * s.focusMin,
+      ticketId: s.ticketId, start: s.startedAt, now: a.nowMs, goal: s.goal, cards: s.cardIds, focusMinutes: focusMinutesOf(s, a.nowMs),
       endLog: a.log, sessionId: `s-${s.id}`,
     }),
     a.onError,
@@ -174,6 +204,7 @@ export async function closeStudyOnCheckPass(a: { d: DojoDB; ticketId: string; no
   // duplicate check and endStudySession's block dedupe: whichever tab writes second finds the row and writes nothing.
   let r: LadderClose | undefined
   let blocks = s?.blocks ?? 0 // the focus blocks the closed session held, for the line that says it ended (UAT cu-4 P3-11)
+  let focusMin = 0 // the focus minutes the closed session recorded (a single session closed early: the minutes so far)
   let reported = false // safeWrite already told the user (quota, read-only): no second toast
   try {
     r = await safeWrite(
@@ -185,12 +216,13 @@ export async function closeStudyOnCheckPass(a: { d: DojoDB; ticketId: string; no
       const adv = s && cur ? advance(cur, nowMs) : null
       if (s && cur && adv) for (const b of adv.finished) await recordFocus(d, { ticketId, at: b.end, minutes: b.minutes, sid: cur.id, block: b.index })
       if (adv) blocks = adv.study.blocks
+      if (cur && adv) focusMin = focusMinutesOf(adv.study, nowMs)
       return closeLadderSession(d, {
         ticketId, outcome: 'solved', attemptStart: cycle?.attemptStart ?? s?.startedAt ?? mine?.sessionStart ?? nowMs, cycleId: cycle?.id ?? '', sessionStart, now: nowMs,
         netAtStart: cycle?.netAtStart ?? t.xp - (a.xpDelta ?? 0), redoId: cycle?.redoId ?? null,
         notes: closingNotes(draft, isAi),
         proof: isAi ? { repo: draft.repo, note: draft.note } : undefined,
-        ...(cur && adv ? { goal: cur.goal, focusMinutes: adv.study.blocks * cur.focusMin } : {}),
+        ...(cur && adv ? { goal: cur.goal, focusMinutes: focusMin } : {}),
         checkPass: true, sessionId: rowId,
       })
     }),
@@ -218,7 +250,7 @@ export async function closeStudyOnCheckPass(a: { d: DojoDB; ticketId: string; no
     clearStudy()
     dropEndDraft(s.id)
     // the same line Solved says (Do's finish()): the check ended the session with the card, and it is under Earlier sessions
-    a.toast(`Study session ended with the card · ${blocks} focus block${blocks === 1 ? '' : 's'}`)
+    a.toast(s.single ? `Session ended · ${focusMin} min focus` : `Study session ended with the card · ${blocks} focus block${blocks === 1 ? '' : 's'}`)
   }
   clearDraft(ticketId)
   clearCycle(ticketId)

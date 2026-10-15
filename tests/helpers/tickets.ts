@@ -1,6 +1,6 @@
 import type { Ticket } from '../../src/data/types'
 import { newTicket, planToTickets } from '../../src/rules/planTickets'
-import { smallPlan } from './plan'
+import { flatPlanV2 } from './plan'
 
 export function mkTicket(p: Partial<Ticket> & { id: string }): Ticket {
   return {
@@ -11,5 +11,5 @@ export function mkTicket(p: Partial<Ticket> & { id: string }): Ticket {
 }
 
 export function smallTickets(): Ticket[] {
-  return planToTickets(smallPlan).map(newTicket)
+  return planToTickets(flatPlanV2).map(newTicket)
 }

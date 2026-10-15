@@ -1,8 +1,5 @@
-import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { IST, idbPatch, onboard, serveLegacyPlan } from './helpers'
-
-const LEGACY_PLAN_PATH = new URL('../fixtures/plan.legacy-2026-09-05.json', import.meta.url)
 
 const bodyBg = (page: import('@playwright/test').Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor)
@@ -24,51 +21,52 @@ test('M4: dark only: no theme control, and a stored light theme changes nothing'
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'light')
 })
 
-test('M4: cross a form threshold in a keyboard-only Today → Do → Solved → Board session', async ({ page }) => {
+// The header's only progress chips are `level` and `xp-total` (SHELL-07/25), so the threshold crossed here is the level chip going from
+// 29 to 30 (and XP from 295 to 305) through the keyboard. Pom's form card has its own `level` (TODAY-50), so the header's is read by scope.
+test('M4: cross a level threshold in a keyboard-only Today → Do → Done → destinations session', async ({ page }) => {
   await serveLegacyPlan(page)
   await page.clock.setFixedTime(IST('2026-09-21T21:10:00'))
   await onboard(page)
 
-  const plan = JSON.parse(readFileSync(LEGACY_PLAN_PATH, 'utf8')) as {
-    sprints: Array<{ ai: Array<{ id: string }> }>
-  }
-  const earlier = plan.sprints.slice(2).flatMap(s => s.ai.map(t => t.id)).slice(0, 30)
-  await idbPatch(page, 'tickets', earlier, { status: 'done', xp: 10, doneAt: IST('2026-09-10T21:00:00').getTime(), doneAtApprox: false })
+  await idbPatch(page, 'tickets', ['m1w2t1'], { status: 'done', xp: 295, doneAt: IST('2026-09-10T21:00:00').getTime(), doneAtApprox: false })
   await page.reload()
-  await expect(page.getByTestId('xp-total')).toHaveText('300 XP')
-  await expect(page.getByTestId('form-name')).toHaveText('Pom · BASE')
-  await expect(page.getByTestId('form-next')).toContainText('to KINDLE')
-  await expect(page.getByTestId('form-next')).toContainText('1 xp')
+  await expect(page.getByTestId('xp-total')).toHaveAttribute('data-value', '295')
+  await expect(page.getByTestId('shell-header').getByTestId('level')).toHaveAttribute('data-value', '29')
 
-  // keyboard only from here
+  await expect(page.getByTestId('start-button')).toBeVisible() // the quest is on screen before the key goes down
+  // keyboard only from here (TODAY-23: Enter on the page body starts the quest)
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/\/do\/m1w2t1$/)
-  await expect(page.getByTestId('timer-state')).toHaveText('idle') // wait for the Do screen to mount before pressing keys
-  await page.keyboard.press('Space')
-  await expect(page.getByTestId('timer-state')).toHaveText('running')
+  await expect(page).toHaveURL(/\/do\/m1w1t1$/)
+  await expect(page.getByTestId('timer-state')).toHaveText('running') // starting from Today runs the one timer (TICKET-04)
   await expect(page.getByTestId('timer-readout')).toHaveText('25:00')
 
-  let onSolved = false
-  for (let i = 0; i < 40 && !onSolved; i++) {
+  let onDone = false
+  for (let i = 0; i < 40 && !onDone; i++) {
     await page.keyboard.press('Tab')
-    onSolved = await page.evaluate(() => document.activeElement?.textContent === 'Solved ✓')
+    onDone = await page.evaluate(() => document.activeElement?.getAttribute('data-testid') === 'ticket-done')
   }
-  expect(onSolved).toBe(true)
+  expect(onDone).toBe(true)
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/\/board$/)
-  await expect(page.getByTestId('count-done')).toHaveText('1')
+  await expect(page.getByTestId('ticket-done-state')).toBeVisible()
+  await expect(page.getByTestId('xp-total')).toHaveAttribute('data-value', '305')
+  await expect(page.getByTestId('shell-header').getByTestId('level')).toHaveAttribute('data-value', '30')
 
-  await page.keyboard.press('t')
+  // keys 1 to 4 walk the destinations from the focused button (SHELL-02, SHELL-26); the gear menu reaches Settings from the keyboard
+  await page.keyboard.press('1')
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByTestId('xp-total')).toHaveText('310 XP')
-  await expect(page.getByTestId('form-name')).toHaveText('Pom · KINDLE')
-  // shell-today-board M8: the Pom canvas is aria-hidden; its label still names the form
-  await expect(page.locator('pom-stage[aria-label="Pom, form KINDLE"]')).toBeVisible()
-
-  await page.keyboard.press('2')
-  await expect(page).toHaveURL(/\/board$/)
-  await page.keyboard.press('0')
+  await expect(page.getByTestId('xp-total')).toHaveAttribute('data-value', '305')
+  for (const [key, path] of [['2', '/path'], ['5', '/skills'], ['6', '/review']] as const) {
+    await page.keyboard.press(key)
+    await expect(page).toHaveURL(new RegExp(`${path}$`))
+  }
+  await page.getByTestId('shell-gear').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByTestId('shell-gear-menu')).toBeVisible()
+  await page.getByTestId('shell-menu-settings').focus()
+  await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/\/settings$/)
+  await page.getByTestId('screen-settings').waitFor()
+  await page.locator('body').click({ position: { x: 5, y: 5 } })
   await page.keyboard.press('1')
   await expect(page).toHaveURL(/\/$/)
 })

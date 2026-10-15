@@ -46,7 +46,7 @@ export async function startDiskSync(db: DojoDB, opts: DiskSyncOptions = {}): Pro
       if (suspended) return
       adopting ??= hydrate({ db, gate, loop: loop!, clientId, ...net }).finally(() => { adopting = null })
     }
-    loop = createSyncLoop({ db, clientId, ...net, ...(pollMs ? { pollMs } : {}), adoptedDb: await getSyncedDb(db), onMismatch: readopt })
+    loop = createSyncLoop({ db, clientId, gate, ...net, ...(pollMs ? { pollMs } : {}), adoptedDb: await getSyncedDb(db), onMismatch: readopt })
     gate.onQueued = rows => loop?.queued(rows)
     // I-c: a restore in any tab pauses every tab; when it is done they all reload.
     const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(channelName) : null

@@ -14,6 +14,7 @@ import { isAbsolute, join, resolve } from 'node:path'
 
 export const PROFILE_FILE = 'profile.json'
 /** The plan keys a profile may replace: content the shipped plan.json must not carry for one person. */
+// legacy: no screen reads plan.schedule any more
 export const PLAN_OVERLAY_KEYS = ['schedule', 'learner']
 
 /** DOJO_HOME/profile.json as an object; {} when it is missing, unreadable, not JSON or not an object. */

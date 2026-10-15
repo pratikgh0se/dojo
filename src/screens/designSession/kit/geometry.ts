@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { KIT_GRID, KIT_NODE_H, KIT_NODE_W, KIT_PAD } from '../../../content/diagramKit'
 import { loadEngine } from '../../../lib/engines'
-import type { KitCanvas, KitLink } from '../../../rules/designCanvas'
+import type { KitLink } from '../../../rules/designCanvas'
 
 export interface NodeBox { left: number; top: number; w: number; h: number }
 export interface KitGeometry { boxes: Map<string, NodeBox>; width: number; height: number }
 
-/** Minimum stage so there is room to drop and drag (40 × 24 cells). */
-export const STAGE_MIN_W = 960
-export const STAGE_MIN_H = 576
+/** Minimum stage so there is room to drop and drag (26 × 14 cells). The stage also fills the canvas box (kit.css), so a drawing that fits never scrolls. */
+export const STAGE_MIN_W = 624
+export const STAGE_MIN_H = 336
 /** diagram.js `route`: ports sit at py + round(PROP_H × 0.62). */
 export const PROP_H = 60
 
@@ -20,7 +20,7 @@ function engineLayout(): LayoutFn | null {
 }
 
 /** Node boxes exactly where sr-diagram draws them (its own layout), with a fixed-box fallback before it loads. */
-export function kitGeometry(canvas: KitCanvas, useEngine: boolean): KitGeometry {
+export function kitGeometry(canvas: { nodes: { id: string; x: number; y: number }[] }, useEngine: boolean): KitGeometry {
   const boxes = new Map<string, NodeBox>()
   let width = 0
   let height = 0

@@ -29,7 +29,7 @@ test('R7 / Q10: no local copy and /db/state answering 500 shows the error card, 
   const { ctx } = await openApp(browser, srv) // the server is onboarded
   await ctx.close()
   for (const writer of [true, false]) {
-    for (const path of ['', 'board', 'settings', 'progress']) {
+    for (const path of ['', 'path', 'skills', 'review', 'settings']) { // R1 destinations (the Board and Progress routes redirect, SHELL-20)
       const f = await freshContext(browser, writer, 'fail')
       await f.page.goto(writer ? `/${path}#writer=${srv.token()}` : `/${path}`)
       const fatal = f.page.locator('.fatal')
@@ -57,7 +57,7 @@ test('F7: the loading line is Space Mono 15', async ({ browser }) => {
   await f.ctx.close()
 })
 
-test('Phone sizes: DSA heat cells 20 drawn / 44 hit, ticks and links 44; bank cells 44; Settings inputs and Atlas search 44', async ({ browser }) => {
+test('Phone sizes: DSA heat cells 20 drawn / 44 hit, ticks and links 44; bank cells 44; Settings inputs (start date, lane budgets, session minutes) and Atlas search 44', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize(PHONE)
   await page.goto('/dsa?topic=2')
@@ -88,80 +88,20 @@ test('Phone sizes: DSA heat cells 20 drawn / 44 hit, ticks and links 44; bank ce
   expect(await css(btick, 'accent-color')).toBe('rgb(255, 138, 42)')
   for (const id of ['bank-item-link', 'bank-item-inplan']) expect(Math.round((await page.getByTestId(id).first().boundingBox())!.height), id).toBeGreaterThanOrEqual(44)
   await page.goto('/settings')
-  for (const name of ['Start date', 'Core minutes per sprint']) {
-    const input = page.getByRole(name === 'Start date' ? 'textbox' : 'spinbutton', { name })
-    expect(Math.round((await input.boundingBox())!.height), name).toBeGreaterThanOrEqual(44)
+  // the sprint "Core minutes" input is retired; the pace section's weekly lane budgets and the session length replace it (SET-01, SET-06)
+  for (const [label, input] of [
+    ['Start date', page.getByRole('textbox', { name: 'Start date' })],
+    ['Monday budget', page.getByTestId('settings-budget-1')],
+    ['Saturday budget', page.getByTestId('settings-budget-6')],
+    ['Session minutes', page.getByTestId('settings-session-minutes')],
+  ] as const) {
+    expect(Math.round((await input.boundingBox())!.height), label).toBeGreaterThanOrEqual(44)
   }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth), 'Settings does not scroll sideways at 393').toBeLessThanOrEqual(PHONE.width)
   await page.goto('/atlas')
   expect(Math.round((await page.getByRole('searchbox').first().boundingBox())!.height)).toBeGreaterThanOrEqual(44)
   await page.setViewportSize({ width: 1280, height: 900 })
   expect(Math.round((await page.getByRole('searchbox').first().boundingBox())!.height)).toBe(36)
-  await ctx.close()
-})
-
-test('Smaller items: designs-hint, radar labels inside, Reviews title gap, design session 2:1, read-only status warn', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.goto('/designs')
-  const hint = page.getByTestId('designs-hint')
-  expect(await css(hint, 'font-size')).toBe('15px')
-  expect(await css(hint, 'font-family')).toMatch(/^"?Chivo/)
-  for (const w of [800, 393]) {
-    await page.setViewportSize({ width: w, height: 900 })
-    await page.goto('/progress')
-    await page.waitForTimeout(600)
-    const out = await page.getByTestId('ev-design-radar-img').evaluate(fig => {
-      const host = fig.querySelector('sr-chart')!
-      const box = fig.getBoundingClientRect()
-      const svg = host.shadowRoot!.querySelector('svg') as SVGSVGElement
-      return [...svg.querySelectorAll('text')].filter(t => {
-        const b = t.getBoundingClientRect()
-        return b.left < box.left - 0.5 || b.right > box.right + 0.5 || b.top < box.top - 0.5 || b.bottom > box.bottom + 0.5
-      }).map(t => t.textContent)
-    })
-    expect(out, `${w}`).toEqual([])
-  }
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await page.goto('/progress')
-  const gap = await page.getByRole('region', { name: 'Reviews' }).evaluate(p => {
-    const h = p.querySelector('.sr-panel-title')!.getBoundingClientRect()
-    const next = (p.querySelector('.sr-panel-title')!.nextElementSibling as HTMLElement).getBoundingClientRect()
-    return Math.round(next.top - h.bottom)
-  })
-  expect(gap).toBe(12)
-  await page.goto('/designs/session/d-ratelimit')
-  await page.getByRole('radio', { name: 'Solo' }).check()
-  await page.getByRole('button', { name: 'Start · 45 min' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('drawing')
-  const cols = await page.locator('.ds-body').evaluate(e => getComputedStyle(e).gridTemplateColumns.split(' ').map(parseFloat))
-  expect(cols[0] / cols[1]).toBeGreaterThan(1.85)
-  expect(cols[0] / cols[1]).toBeLessThan(2.15)
-  await ctx.close()
-  const ro = await browser.newContext({ baseURL: srv.url, timezoneId: 'Asia/Kolkata' })
-  const rp = await ro.newPage()
-  await rp.goto('/')
-  const status = rp.getByTestId('save-status')
-  await expect(status).toBeVisible({ timeout: 15_000 })
-  expect(await css(status, 'color')).toBe('rgb(255, 224, 90)')
-  const saveHint = rp.getByTestId('save-hint')
-  if (await saveHint.count()) expect(await css(saveHint, 'color')).toBe('rgb(255, 224, 90)') // Q18: every read-only status text
-  await ro.close()
-})
-
-test('final rerun: the study-session head shows the stored title; AI stage-row buttons have scale padding', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  const t = (await rows(srv, 'tickets')).find(x => x.id === 'p91')!
-  const at = new Date('2026-10-05T09:00:00+05:30').getTime()
-  const res = await fetch(`${srv.url}/db/ops`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Dojo-Writer': srv.token() },
-    body: JSON.stringify({ clientId: 'e2e', ops: [{ opId: 'op-ss1', tbl: 'sessions', op: 'put', id: 'ss1', at: new Date().toISOString(), doc: { id: 'ss1', ticketId: 'p91', start: at, end: at + 25 * 60_000, minutes: 25, outcome: 'studied', xpDelta: 0, endLog: { done: 'x', stuckOn: '', nextStep: '' } } }] }),
-  })
-  expect(res.ok).toBe(true)
-  await page.goto('/progress')
-  await expect(page.getByTestId('study-session-ss1').locator('.study-row-head')).toContainText(` · ${t.title} · 25 min`)
-  await page.goto('/ai')
-  const btn = page.getByTestId('stage-row-1')
-  const pads = await btn.evaluate(e => [getComputedStyle(e).paddingTop, getComputedStyle(e).paddingBottom])
-  for (const p of pads) expect(['0px', '4px', '8px']).toContain(p)
   await ctx.close()
 })
 

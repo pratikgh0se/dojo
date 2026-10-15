@@ -1,12 +1,13 @@
+import { readFileSync } from 'node:fs'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { AppProviders } from '../../src/app/providers'
 import { AppRoutes } from '../../src/app/routes'
-import { MORE_TABS, PRIMARY_TABS, TABS, tabForPath } from '../../src/app/tabs'
 import { setNow } from '../../src/lib/clock'
-import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { freshDb, seededDb } from '../helpers/db'
+import { flatPlanV2 } from '../helpers/plan'
+import { mkAiTickets, mkPlanV2 } from '../helpers/planV2'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 
@@ -14,12 +15,17 @@ function Where() {
   return <div data-testid="where">{useLocation().pathname}</div>
 }
 
-async function renderAt(route: string) {
-  setNow(() => ist('2026-09-08T10:00:00'))
-  const d = await seededDb()
-  render(
+/** The flat-plan screens (Today, Path, Skills, Review, Do, Settings, Guide) read the v2 plan; the legacy four read the small v1 plan. */
+async function renderAt(route: string, legacy = false) {
+  setNow(() => ist('2026-11-04T10:00:00'))
+  const d = legacy ? await seededDb() : freshDb()
+  if (!legacy) {
+    await d.settings.put({ id: 'main', startDate: '2026-11-02', planVersion: 't', aiProviders: {}, possibleXp: 0, navLabels: 'hover' })
+    await d.tickets.bulkPut(mkAiTickets())
+  }
+  return render(
     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
-      <AppProviders db={d} plan={smallPlan}>
+      <AppProviders db={d} plan={flatPlanV2} planV2={legacy ? null : mkPlanV2()}>
         <AppRoutes />
         <Where />
       </AppProviders>
@@ -27,76 +33,77 @@ async function renderAt(route: string) {
   )
 }
 
-describe('tab registry', () => {
-  it('has fourteen destinations: five primary, nine under More', () => {
-    expect(TABS).toHaveLength(14)
-    expect(PRIMARY_TABS.map(t => t.label)).toEqual(['Today', 'Board', 'DSA', 'Designs', 'AI'])
-    expect(MORE_TABS.map(t => t.label)).toEqual(['Map', 'Progress', 'Week', 'Overview', 'Atlas', 'Banks', 'Mentors', 'Ritual', 'Settings'])
-  })
+/** The routes of the contract (Global Constraints) and the screen hook each one renders. */
+const ROUTES: [string, string][] = [
+  ['/', 'today'], ['/path', 'path'], ['/skills', 'skills'], ['/skills/area/llm', 'skills'], ['/skills/stats', 'skills'],
+  ['/board', 'board'], ['/review', 'review'], ['/do/ai.l3.learn', 'do'], ['/designs/session/d-ratelimit', 'design-session'], ['/settings', 'settings'], ['/guide', 'guide'],
+]
+const LEGACY: [string, string][] = [['/dsa', 'dsa'], ['/designs', 'designs'], ['/atlas', 'atlas'], ['/banks', 'banks']]
+const DELETED = ['/week', '/overview', '/mentors', '/ritual', '/map', '/progress', '/ai', '/no-such-page', '/ai/anything/else', '/board/x'] // /board itself is the Board again (board.md); a path under it still ends at Today
 
-  it('maps a pathname to its tab, with / matching only Today', () => {
-    expect(tabForPath('/')?.label).toBe('Today')
-    expect(tabForPath('/map')?.label).toBe('Map')
-    expect(tabForPath('/do/p1')).toBeUndefined()
-    expect(tabForPath('/atlas')?.label).toBe('Atlas')
-    expect(tabForPath('/banks')?.label).toBe('Banks')
-    expect(tabForPath('/designs/session/d-ratelimit')?.label).toBe('Designs')
-  })
-
-  it.each(TABS.map(t => [t.label, t.to] as const))('%s (%s) renders without redirecting', async (_label, to) => {
+describe('routes (SHELL-20, SHELL-21)', () => {
+  it.each(ROUTES)('%s renders screen-%s without redirecting', async (to, name) => {
     await renderAt(to)
     expect(screen.getByTestId('where').textContent).toBe(to)
-    await waitFor(() => expect(screen.queryByText('Loading…')).toBeNull())
+    const root = screen.getByTestId(`screen-${name}`)
+    await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
+    expect(root.querySelector('.loading')).toBeNull()
+    expect(screen.queryByTestId('screen-error')).toBeNull()
   })
 
-  it('redirects an unknown path to Today', async () => {
-    await renderAt('/nope')
-    expect(screen.getByTestId('where').textContent).toBe('/')
+  it.each(LEGACY)('%s stays routed and renders screen-%s (off the nav)', async (to, name) => {
+    await renderAt(to, true)
+    expect(screen.getByTestId('where').textContent).toBe(to)
+    const root = screen.getByTestId(`screen-${name}`)
+    await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
   })
 
-  it.each(TABS.map(t => [t.label, t.to] as const))('%s (%s) is a real screen, not the M5 placeholder', async (_label, to) => {
-    await renderAt(to)
-    expect(screen.queryByTestId('soon')).toBeNull()
+  it.each(DELETED)('%s ends at / with screen-today', async from => {
+    await renderAt(from)
+    await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/'))
+    expect(await screen.findByTestId('screen-today')).toBeInTheDocument()
+    for (const gone of ['week', 'overview', 'mentors', 'ritual', 'map', 'progress', 'ai']) expect(screen.queryByTestId(`screen-${gone}`), gone).toBeNull()
+  })
+
+  it('replaces the history entry for a redirect (Back does not return to a deleted route)', () => {
+    expect(readFileSync('src/app/routes.tsx', 'utf8')).toMatch(/<Navigate to="\/" replace \/>/)
   })
 
   it('Atlas and Banks render a real header with one purpose line', async () => {
-    await renderAt('/atlas')
+    await renderAt('/atlas', true)
     expect(await screen.findByRole('heading', { level: 1, name: 'Atlas' })).toBeInTheDocument()
     expect(await screen.findByTestId('atlas-summary')).toHaveTextContent('16 atoms · 36 patterns · you have predicted 0')
   })
 
-  it('Banks renders its header and bank switcher (chain B real screen, not the M5 stub)', async () => {
-    await renderAt('/banks')
+  it('Banks renders its header and bank switcher', async () => {
+    await renderAt('/banks', true)
     expect(await screen.findByTestId('banks-page')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Banks' })).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'Banks' })).toBeInTheDocument()
   })
 
-  it.each([
-    ['/designs/session/d-ratelimit'],
-    ['/designs/session/d%20nope'],
-  ])('the design session route renders "Design not found" for an id absent from the small plan (%s), without redirecting', async route => {
+  it.each([['/designs/session/d-ratelimit'], ['/designs/session/d%20nope']])('the design session route renders "Design not found" for an id absent from the plan (%s), without redirecting', async route => {
     await renderAt(route)
     expect(screen.getByTestId('where').textContent).toBe(route)
     expect(await screen.findByRole('heading', { level: 1, name: 'Design not found' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back to Designs' })).toHaveAttribute('href', '/designs')
   })
-})
 
-describe('screen roots (contract UX addendum 1, Q1)', () => {
-  it.each([
-    ['today', '/'], ['board', '/board'], ['dsa', '/dsa'], ['designs', '/designs'], ['ai', '/ai'],
-    ['banks', '/banks'], ['progress', '/progress'], ['settings', '/settings'],
-  ])('%s carries screen-%s and turns data-ready true once loaded', async (name, path) => {
-    await renderAt(path)
-    const root = screen.getByTestId(`screen-${name}`)
-    await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
-    expect(root.querySelector('.loading')).toBeNull()
-  })
-  it('do carries screen-do next to its own do-screen', async () => {
-    await renderAt('/do/m1w1t1')
+  it('carries screen-do next to its own do-screen', async () => {
+    await renderAt('/do/ai.l3.learn')
     const root = screen.getByTestId('screen-do')
     await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
     expect(root.querySelector('[data-testid="do-screen"]')).not.toBeNull()
+  })
+})
+
+describe('routes: bundle (R17)', () => {
+  it('imports no screen statically except Today: everything else is lazy, so the entry chunk stays under budget', () => {
+    const src = readFileSync('src/app/routes.tsx', 'utf8')
+    const staticScreens = [...src.matchAll(/^import .* from '\.\.\/screens\/([^']+)'/gm)].map(m => m[1])
+    expect(staticScreens).toEqual(['Today'])
+    for (const s of ['Do', 'Path', 'Review', 'Skills', 'Guide', 'Settings', 'designSession/DesignSessionScreen', 'Dsa', 'Atlas', 'Designs', 'Banks']) {
+      expect(src, s).toContain(`import('${['..', 'screens', s].join('/')}')`)
+    }
   })
 })

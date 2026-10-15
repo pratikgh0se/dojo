@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { DiagramJson, SrAlgoJson } from '../../src/ai/types'
 import {
   aiTicketOf, designDeepDives, diagramSummary, leetcodeSlug, normaliseAnswer, pairedWatchId, pictureSummary,
-  quizResultText, quizScore, slideCandidates, taskPictureLinks, videoLinks,
+  quizResultText, quizScore, taskPictureLinks, videoLinks,
 } from '../../src/rules/rungContent'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanProse } from '../helpers/plan'
 import { mkTicket } from '../helpers/tickets'
 
 const p200 = mkTicket({ id: 'p200', kind: 'problem', track: 'interview', title: '200 · Number of Islands', difficulty: 'M', links: [{ label: 'LeetCode 200', url: 'https://leetcode.com/problems/number-of-islands/' }] })
@@ -69,22 +69,7 @@ describe('AI mapping and summaries', () => {
     expect(diagramSummary(dia)).toEqual({ nodes: 2, links: 1, caption: 'Reference architecture · 2 nodes · 1 links', labels: ['Client', 'Service'] })
   })
   it('reads a design’s deep dives from the plan', () => {
-    expect(designDeepDives(smallPlan, 'd-method')).toEqual(['Requirements', 'API first', 'One deep dive', 'Failure modes'])
-    expect(designDeepDives(smallPlan, 'nope')).toEqual([])
-  })
-  it('slide candidates are left-behind then remaining current tasks', () => {
-    const ts = [
-      mkTicket({ id: 'a', sprint: 1, order: 1 }), mkTicket({ id: 'b', sprint: 2, order: 2, slidFrom: [1] }),
-      mkTicket({ id: 'c', sprint: 2, order: 3, status: 'done' }), mkTicket({ id: 'p1', kind: 'problem', sprint: 1 }),
-    ]
-    expect(slideCandidates(ts, 2)).toEqual([
-      { id: 'a', title: 'a', track: 'ai', estMin: 50, slidCount: 0 },
-      { id: 'b', title: 'b', track: 'ai', estMin: 50, slidCount: 1 },
-    ])
-  })
-  it('never offers a card that is in use (cu-2 P3-5): the one a session or timer is running on', () => {
-    const ts = [mkTicket({ id: 'a', sprint: 1, order: 1 }), mkTicket({ id: 'b', sprint: 2, order: 2 }), mkTicket({ id: 'c', sprint: 2, order: 3 })]
-    expect(slideCandidates(ts, 2, new Set(['b'])).map(c => c.id)).toEqual(['a', 'c'])
-    expect(slideCandidates(ts, 2, new Set()).map(c => c.id)).toEqual(['a', 'b', 'c'])
+    expect(designDeepDives(flatPlanProse, 'd-method')).toEqual(['Requirements', 'API first', 'One deep dive', 'Failure modes'])
+    expect(designDeepDives(flatPlanProse, 'nope')).toEqual([])
   })
 })

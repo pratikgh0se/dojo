@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { closeSession, endStudySession, END_LOG_MAX, recordFocus, startDoing } from '../../src/data/sessionActions'
 import { totalXp } from '../../src/rules/xp'
-import { outcomesBySprint } from '../../src/rules/progress'
 import { patchSettings } from '../../src/data/db'
 import { runReconcile } from '../../src/data/seed'
 import { activityByDay } from '../../src/rules/calendar'
 import { failingDb, seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const NOW = ist('2026-09-14T22:00:00')
@@ -22,15 +21,10 @@ describe('startDoing', () => {
     expect((await d.tickets.get('p1'))!.status).toBe('done')
   })
 
-  it('rejects a 4th Doing ticket from the Do screen and changes nothing (Review Focus #5)', async () => {
+  it('starts a 4th Doing ticket from the Do screen: Doing is a soft cap', async () => {
     const d = await seededDb()
-    for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await d.tickets.update(id, { sprint: 1 }) // the limit is per sprint (ruling 25 R2)
     for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await startDoing(d, id, NOW)
-    const before = await d.tickets.orderBy('id').toArray()
-    const r = await startDoing(d, 'p127', NOW)
-    expect(r).toMatchObject({ ok: false, reason: 'doing_full' })
-    expect(await d.tickets.orderBy('id').toArray()).toEqual(before)
-    expect(await d.events.count()).toBe(0)
+    expect(await startDoing(d, 'p127', NOW)).toEqual({ ok: true, xpDelta: 0 })
   })
 })
 
@@ -84,7 +78,7 @@ describe('closeSession', () => {
 
   it('writes nothing if any part of the close fails', async () => {
     const d = failingDb('events')
-    await runReconcile(d, smallPlan)
+    await runReconcile(d, flatPlanV2)
     await patchSettings(d, { startDate: '2026-09-07' })
     await expect(closeSession(d, 'p127', 'solved', { sessionStart: NOW, now: NOW })).rejects.toThrow('boom')
     expect(await d.sessions.count()).toBe(0)
@@ -142,11 +136,6 @@ describe('study session data (ux spec: focus is a health signal, never XP)', () 
     const r = await endStudySession(d, { ticketId: 'nope', start: NOW - 1, now: NOW, cards: [], focusMinutes: 0, endLog: { done: '', stuckOn: '', nextStep: '' } })
     expect(r).toMatchObject({ ok: false, reason: 'missing' })
     expect(await d.sessions.count()).toBe(0)
-  })
-
-  it('a studied session is not an outcome column in Progress', () => {
-    const s = { id: 'a', ticketId: 'p1', start: NOW, end: NOW, minutes: 1, outcome: 'studied' as const, xpDelta: 0 }
-    expect(outcomesBySprint([s], '2026-09-07')).toEqual([])
   })
 
   it('recordFocus is idempotent per {sid, block}: a second tab crediting the same block adds nothing', async () => {

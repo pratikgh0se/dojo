@@ -2,9 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { App } from './app/App'
+import { ErrorBoundary } from './app/ErrorBoundary'
 import { db } from './data/db'
 import { startDisk } from './data/sync/entry'
-import { setDiskSettling } from './data/diskSettled'
 import { installViewportFix } from './lib/viewportFix'
 import { installScrollbarGutter } from './lib/scrollbarGutter'
 import './styles/tokens.css'
@@ -30,12 +30,11 @@ async function boot() {
   // shows "Loading…" (after 300 ms) until the sync is done. VITE_DOJO_DISK=off (the e2e suite's dev
   // server) runs on Dexie alone, exactly as before v2.
   const disk = import.meta.env.VITE_DOJO_DISK !== 'off' ? startDisk() : undefined
-  if (disk) setDiskSettling(disk)
   const localCopy = disk ? await hasLocalCopy() : false
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <App disk={disk} localCopy={localCopy} />
+        <ErrorBoundary><App disk={disk} localCopy={localCopy} /></ErrorBoundary>
       </BrowserRouter>
     </StrictMode>,
   )

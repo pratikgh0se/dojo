@@ -32,6 +32,16 @@ export function isBankOrigin(origin: Ticket['origin'] | string | undefined | nul
   return origin === 'mine' || (typeof origin === 'string' && origin.startsWith('bank:'))
 }
 
+/** A weekly ritual ticket (`ritual:<id>:<period>`, e.g. `ritual:try-new-model:2026-W42`): minted on Open, never part of the plan. */
+export function isRitualOrigin(origin: Ticket['origin'] | string | undefined | null): boolean {
+  return typeof origin === 'string' && origin.startsWith('ritual:')
+}
+
+/** Tickets the learner's own actions create, outside plan content: a plan refresh and the flat migration keep them exactly as they are. */
+export function isOffPlanOrigin(origin: Ticket['origin'] | string | undefined | null): boolean {
+  return isBankOrigin(origin) || isRitualOrigin(origin)
+}
+
 /** Board chip text for a bank-origin ticket (C-BANKS §2: the bank's tab label). */
 export function originLabel(origin: Ticket['origin']): string | null {
   if (origin === 'plan') return null

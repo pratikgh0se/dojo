@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { GO_VF } from '../../helpers/visualSolutions'
-import { draftSprint1, learningCard, openApp, putTicket, rows } from './briefs-helpers'
+import { learningCard, openApp, openApproaches, putTicket, rows } from './briefs-helpers'
 import { ServerHarness } from './harness'
 
 // The APP findings of the blind UI lane do-dp-families (reports/ui/do-dp-families/triage.md §4, Controller
@@ -45,15 +45,24 @@ async function run(page: Page, id: string, code: string, mode: 'Run' | 'Submit' 
   await page.getByTestId('dp-view').waitFor()
 }
 
-test('A1 / UAT r4: a long title with a URL never widens the page; the rail title is one line, two on phone (then cut), with a tooltip', async ({ browser }) => {
+test('A1 / UAT r4: a long title with a URL never widens the page; the ticket view wraps it whole, the problem rail title is one line, two on phone (then cut), with a tooltip', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   const long = `Read https://example.com/a/really/long/path/that/never/breaks/${'x'.repeat(120)} and take notes`
   await putTicket(srv, learningCard('long-title-card', long))
+  await putTicket(srv, { ...learningCard('long-title-problem', long), kind: 'problem', difficulty: 'M', track: 'interview' })
   for (const w of [375, 393, 560, 800, 834]) {
     await page.setViewportSize({ width: w, height: 900 })
+    // a watch card is a ticket view (TICKET-01): the title is the h1, wrapped whole, nothing clipped and nothing wider than the page
     await page.goto('/do/long-title-card')
+    const title = page.getByTestId('do-title')
+    await title.waitFor()
+    await expect(title).toHaveText(long)
+    expect(await overflow(page), `${w} ticket view`).toBeLessThanOrEqual(0)
+    expect(await title.evaluate(e => e.scrollHeight <= e.clientHeight + 1 && e.scrollWidth <= e.clientWidth + 1), `${w}: the whole title shows`).toBe(true)
+    // a problem keeps its sticky rail: one line on desktop, two on phone, the full title in the tooltip
+    await page.goto('/do/long-title-problem')
     await page.getByTestId('do-title').waitFor()
-    expect(await overflow(page), `${w}`).toBeLessThanOrEqual(0)
+    expect(await overflow(page), `${w} problem`).toBeLessThanOrEqual(0)
     const rail = page.locator('.do-rail-title')
     await expect(rail).toHaveAttribute('title', long)
     if (w >= 768) expect(await rail.evaluate(e => getComputedStyle(e).whiteSpace)).toBe('nowrap')
@@ -101,7 +110,8 @@ test('A2 / A3 / A15 / S10: Esc clears a pressed element first; arrows rove betwe
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.locator('body').click({ position: { x: 5, y: 300 } })
   await page.keyboard.press('Escape')
-  await expect(page).toHaveURL(/\/board$/)
+  await expect(page).toHaveURL(/\/$/) // a direct load has no earlier screen: Esc leaves to Today (the Board is retired, SHELL-20)
+  await expect(page.getByTestId('screen-today')).toBeVisible()
   // A15 and S10 on tree nodes: 700 calls in one case
   const many = 'package main\n\nimport "dojo/tk"\n\nfunc numDecodings(s string) int {\n\tif len(s) != 2 {\n\t\treturn 3\n\t}\n\tfor i := 0; i < 700; i++ {\n\t\ttk.Enter("f", i)\n\t\ttk.Exit(i)\n\t}\n\treturn 2\n}\n'
   await run(page, 'p91', many)
@@ -117,7 +127,7 @@ test('A2 / A3 / A15 / S10: Esc clears a pressed element first; arrows rove betwe
   await ctx.close()
 })
 
-test('A4 / A5 / A6 / A7 / A11 / S1 / S4: timer controls and readout, the signature, the no-brief line, gutter on first paint, the rail banner, dashed locked rungs', async ({ browser }) => {
+test('A4 / A5 / A6 / A7 / A11 / S1 / S4: timer controls and readout, the signature, the no-brief line, gutter on first paint, the rail, dashed locked rungs', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/do/p91')
@@ -131,55 +141,48 @@ test('A4 / A5 / A6 / A7 / A11 / S1 / S4: timer controls and readout, the signatu
     return lines.map((t, i) => Math.abs(t - nums[i]))
   })
   for (const d of gut) expect(d).toBeLessThanOrEqual(1)
-  // S1
-  await expect(page.locator('.do-rail')).toHaveAttribute('role', 'banner')
+  // S1: the sticky rail is a labelled group, not a second banner (274c712: one banner per page, the Shell's header)
+  await expect(page.locator('.do-rail')).toHaveAttribute('role', 'group')
+  await expect(page.locator('.do-rail')).toHaveAttribute('aria-label', 'Ticket')
+  await expect(page.getByRole('banner')).toHaveCount(1)
   // A6, Go then Python
   await expect(page.getByTestId('code-sig')).toHaveText('func numDecodings(s string) int')
   await page.getByRole('radiogroup', { name: 'Language' }).getByRole('radio', { name: 'Python' }).check()
   await expect(page.getByTestId('code-sig')).toHaveText('def numDecodings(s: str) -> int:')
-  // A7
-  await expect(page.locator('p.brief-note').filter({ hasText: 'No brief yet' })).toHaveText('No brief yet. Draft briefs for this sprint from the Board.')
+  // A7: a problem without a brief says so, and no longer points at the Board (TICKET-25: `no-brief` may appear on problems)
+  await expect(page.getByTestId('no-brief')).toHaveText(/^No brief for this ticket yet\./)
+  await expect(page.getByTestId('no-brief')).not.toContainText('Board')
   // S4: rungs not yet open are dashed
   await expect(page.getByTestId('ladder-rung-hint')).toHaveCSS('border-top-style', 'dashed')
-  // A5 and A4
-  const panelReadout = page.getByTestId('timer-panel-readout')
-  await expect(panelReadout).toHaveText('--:--')
-  await page.getByTestId('do-timer-preset-25').click()
-  await expect(panelReadout).toHaveText(/^\d\d:\d\d$/)
+  // A5 and A4 on the one ticket timer (TICKET-03/07): the readout shows the remembered length before the start, then counts down;
+  // `ticket-start` is replaced by Pause, End session is the quiet button, and no preset buttons exist (TICKET-08)
+  const readout = page.getByTestId('timer-readout')
+  await expect(readout).toHaveText('25:00')
+  await expect(page.getByTestId('timer-state')).toHaveText('ready')
+  await page.getByTestId('ticket-start').click()
+  await expect(readout).toHaveText(/^2[45]:\d\d$/)
+  await expect(page.getByTestId('ticket-start')).toHaveCount(0)
   await expect(page.getByTestId('do-timer-preset-25')).toHaveCount(0)
-  await expect(page.locator('.timer').getByRole('button', { name: 'Pause' })).toBeVisible()
-  const retreat = page.locator('.timer').getByRole('button', { name: 'Retreat' })
-  await expect(retreat).toHaveClass(/sr-btn-quiet/)
-  await page.locator('.timer').getByRole('button', { name: 'Pause' }).click()
-  // UAT J3: Pause keeps the block (state paused, Resume); Retreat abandons it
+  await expect(page.getByTestId('timer-pause')).toBeVisible()
+  await expect(page.getByTestId('session-end')).toHaveClass(/sr-btn-quiet/)
+  // UAT J3: Pause keeps the block (state paused, Resume); End session closes it and the timer is ready again
+  await page.getByTestId('timer-pause').click()
   await expect(page.getByTestId('timer-state')).toHaveText('paused')
-  await expect(page.locator('.timer').getByRole('button', { name: 'Resume' })).toBeVisible()
-  await retreat.click()
-  await expect(panelReadout).toHaveText('--:--')
-  await ctx.close()
-})
-
-test('A8 / A9: a briefed ticket offers Split into sessions, and a Draft brief has exactly one accent (Approve)', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await draftSprint1(page)
-  await page.goto('/do/m1w1i1')
-  const card = page.getByTestId('card-brief')
-  await expect(card).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Split into sessions' })).toBeVisible()
-  await expect(card.locator('.sr-btn-accent')).toHaveCount(1)
-  await expect(card.getByRole('button', { name: 'Approve' })).toHaveClass(/sr-btn-accent/)
-  await card.getByRole('button', { name: 'Approve' }).click()
-  await expect(page.getByTestId('brief-status')).toHaveText('Approved')
-  await expect(card.locator('.sr-btn-accent')).toHaveCount(1)
-  await expect(card.getByRole('button', { name: 'Mark done' })).toHaveClass(/sr-btn-accent/)
+  await expect(page.getByTestId('timer-resume')).toBeVisible()
+  await page.getByTestId('session-end').click()
+  await page.getByTestId('end-dialog').getByTestId('end-save').click()
+  await expect(page.getByTestId('timer-state')).toHaveText('ready')
+  await expect(readout).toHaveText('25:00')
   await ctx.close()
 })
 
 test('A10 / A13 / A14 / S8: the unknown-ticket screen, 44 px phone targets, the warn Read-only toast, a current DSU root keeps its border', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.goto('/do/zz-no-such-ticket')
-  await expect(page.locator('.do-missing')).toHaveText('No ticket zz-no-such-ticket.')
-  await expect(page.getByTestId('do-back')).toHaveText('‹ Back')
+  // TICKET-02: one sentence and one action, no stack trace
+  await expect(page.locator('.do-missing')).toHaveText('That ticket is not on your path.')
+  await expect(page.getByTestId('ticket-missing-action')).toHaveAttribute('href', '/path')
+  await expect(page.getByTestId('do-back')).toHaveText('Back')
   // S8
   await run(page, 'p684', GO_VF.vf03[1])
   await page.getByTestId('dp-scrubber').press('Home')
@@ -197,13 +200,13 @@ test('A10 / A13 / A14 / S8: the unknown-ticket screen, 44 px phone targets, the 
   const tall = async (loc: ReturnType<Page['locator']>, what: string) => { const b = await loc.first().boundingBox(); expect(Math.round(b!.height), what).toBeGreaterThanOrEqual(44); expect(Math.round(b!.width), what).toBeGreaterThanOrEqual(44) }
   await tall(page.getByTestId('do-back'), 'do-back')
   await tall(page.locator('.open-link'), 'Open link')
-  await tall(page.getByTestId('dsa-approaches').getByRole('button').first(), 'approach chip')
+  await tall((await openApproaches(page)).getByRole('button').first(), 'approach chip')
   await tall(page.getByTestId('ladder-open-hint'), 'rung button')
-  await page.getByTestId('start-session').click()
-  await page.getByTestId('plan-dialog').getByRole('textbox').first().fill('Try one approach')
-  await page.getByTestId('plan-start').click()
+  // the Plan dialog and the Soft chime row are retired; in a running ticket the timer's own buttons are the phone targets
+  await page.getByTestId('ticket-start').click()
   await page.getByTestId('session-panel').waitFor()
-  await tall(page.getByTestId('session-panel').locator('label', { hasText: 'Soft chime' }), 'Soft chime row')
+  await tall(page.getByTestId('timer-pause'), 'Pause')
+  await tall(page.getByTestId('session-end'), 'End session')
   await ctx.close()
   // A13 save-status link and A14 in a read-only browser
   const ro = await browser.newContext({ baseURL: srv.url, timezoneId: 'Asia/Kolkata', viewport: { width: 393, height: 900 } })
@@ -223,7 +226,7 @@ test('A12: picture players in the two-up scroll rather than clip at 393', async 
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 393, height: 900 })
   await page.goto('/do/p91')
-  const strip = page.getByTestId('dsa-approaches')
+  const strip = await openApproaches(page)
   await strip.getByRole('button', { name: 'Pick two' }).click()
   const chips = strip.getByRole('button').filter({ hasNotText: /Pick two/ })
   await chips.nth(1).click()
@@ -245,79 +248,18 @@ test('A12: picture players in the two-up scroll rather than clip at 393', async 
 const css = (page: Page, sel: string, prop: string) => page.locator(sel).first().evaluate((e, p) => getComputedStyle(e).getPropertyValue(p), prop)
 const box = async (page: Page, sel: string) => (await page.locator(sel).first().boundingBox())!
 
-test('Minors on the Do screen: M1 type roles, M2 history head, M3 rail, M4 custom input, M5 cubes, M7 two-up row, M8 brief header, M17 language text, M18 layers, M20 gutter, M21 brief paddings', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await draftSprint1(page)
-  await page.goto('/do/p91')
-  await page.getByTestId('code-editor').waitFor()
-  expect(await css(page, '[data-testid="do-title"]', 'line-height')).toBe('28.6px') // M1
-  expect(Math.round((await box(page, '.do-rail')).height)).toBeGreaterThanOrEqual(44) // M3
-  expect(Math.round((await box(page, '.timer-controls input')).height)).toBe(36) // M4
-  const cube = await box(page, '[data-testid="ladder-cost-hint"]')
-  expect([Math.round(cube.width), Math.round(cube.height)]).toEqual([32, 32]) // M5
-  expect(await css(page, '.lang-option[data-checked="true"] span', 'color')).toBe('rgb(26, 29, 43)') // M17
-  expect(await page.evaluate(() => [...document.querySelectorAll('body *')].filter(e => getComputedStyle(e).zIndex === '200').map(e => `${e.tagName}.${e.className}`))).toEqual([]) // M18
-  const gp = await page.locator('.cm-lineNumbers .cm-gutterElement').nth(1).evaluate(e => [getComputedStyle(e).paddingLeft, getComputedStyle(e).paddingRight])
-  for (const p of gp) expect(['0px', '4px', '8px', '12px', '14px', '16px']).toContain(p) // M20
-  // M7: the two-up controls on one row. In Do's 450 px Approaches column one row leaves the select a stub ("Tab": UAT cu-4 P3-2), so
-  // there Compare with has a row to itself and Own input and Close two-up share the next; the one row is for a wide two-up (cu-4 spec).
-  const strip = page.getByTestId('dsa-approaches')
-  await strip.getByRole('button', { name: 'Pick two' }).click()
-  const chips = strip.getByRole('button').filter({ hasNotText: /Pick two/ })
-  await chips.nth(1).click()
-  await chips.nth(2).click()
-  const head = page.getByTestId('lab-two-up').locator('.lab-two-up-head')
-  const ys = await head.locator('button').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2)))
-  expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(4)
-  // M8 and M21 and M1 (meta line)
-  await page.goto('/do/m1w1i1')
-  const card = page.getByTestId('card-brief')
-  await card.waitFor()
-  const h2 = await card.getByRole('heading', { name: 'Brief' }).boundingBox()
-  const chip = await page.getByTestId('brief-status').boundingBox()
-  expect(Math.abs((h2!.y + h2!.height / 2) - (chip!.y + chip!.height / 2))).toBeLessThanOrEqual(6)
-  expect(chip!.x).toBeGreaterThan(h2!.x + h2!.width)
-  expect(await css(page, '[data-testid="brief-status"]', 'border-top-width')).toBe('2px')
-  expect(await css(page, '[data-testid="brief-status"]', 'padding-top')).toBe('0px')
-  expect(await css(page, '.brief-steps', 'padding-left')).toBe('24px')
-  const meta = page.locator('.brief-meta').first()
-  await expect(meta).toHaveText(/^\d+ min · (Focus|Light|Long) day$/)
-  expect(await meta.evaluate(e => getComputedStyle(e).fontFamily)).toMatch(/^"?Space Mono/)
-  expect(await meta.evaluate(e => getComputedStyle(e).fontSize)).toBe('14px')
-  // M1 session phase weight, M2 history head line not a p
-  await page.getByTestId('start-session').click()
-  await page.getByTestId('plan-dialog').getByRole('textbox').first().fill('Read the brief')
-  await page.getByTestId('plan-start').click()
-  await page.getByTestId('session-phase').waitFor()
-  expect(await css(page, '[data-testid="session-phase"]', 'font-weight')).toBe('700')
-  await page.getByTestId('session-end').click()
-  await page.getByTestId('end-dialog').getByRole('textbox').first().fill('read it')
-  await page.getByTestId('end-save').click()
-  const row = page.getByTestId('session-history').locator('[data-testid^="session-history-"]').first()
-  await row.waitFor()
-  expect(await row.locator('.hist-row-head').evaluate(e => e.tagName)).not.toBe('P')
-  expect(await row.locator('p').first().evaluate(e => getComputedStyle(e).fontSize)).toBe('17px')
-  // M1 given-up line
-  await page.goto('/do/p200')
-  await page.getByTestId('do-outcome-giveup').click()
-  const given = page.getByTestId('do-given-up')
-  await given.waitFor()
-  expect(await given.evaluate(e => [getComputedStyle(e).fontFamily, getComputedStyle(e).fontSize, getComputedStyle(e).color])).toEqual([expect.stringMatching(/^"?Space Mono/), '15px', 'rgb(255, 224, 90)'])
-  await ctx.close()
-})
-
 test('Minors in the trace and families: M9 case rows, M10 mapping, M11 tree well, M12 legend at tablet, M13 2-D grid, M15 heap slots, M16 list arrows', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 1280, height: 900 })
-  // M9: a failing row reads ✗ <call> → <got>
+  // M9: a failing row reads <error glyph> <call> → <got>
   await page.goto('/do/p91')
   const wrong = 'package main\n\nfunc numDecodings(s string) int {\n\tif len(s) <= 2 { return len(s) }; return len(s) + 1\n}\n'
   await page.getByRole('textbox', { name: 'Code' }).fill(wrong)
   await expect.poll(async () => (await rows(srv, 'code')).find(r => r.ticketId === 'p91')?.source, { timeout: 5000 }).toBe(wrong)
   await page.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(page.getByTestId('run-status')).toHaveText('Failed 1/2', { timeout: 90_000 })
-  await expect(page.getByTestId('run-case-2')).toContainText('✗ numDecodings("226") → 4')
+  await expect(page.getByTestId('run-case-2')).toContainText('numDecodings("226") → 4')
+  await expect(page.getByTestId('run-case-2').locator('svg.glyph')).toHaveAttribute('data-glyph', 'error')
   // M10, M11, M12 on the memo + table fixture
   const both = `package main
 

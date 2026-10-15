@@ -10,9 +10,9 @@ test('D-1 start a session from the tier list', async ({ page }) => {
   await page.goto('/designs')
   await page.getByRole('region', { name: 'Tier ladder' }).getByRole('button', { name: 'Core distributed systems' }).click()
   await page.getByRole('button', { name: `Start session: ${RL_TITLE}` }).click()
-  await expect(page).toHaveURL(new RegExp(`/designs/session/${RL}$`))
+  await expect(page).toHaveURL(new RegExp(`/designs/session/${RL}\\?new=1$`))
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(RL_TITLE)
-  await expect(page.getByTestId('session-phase')).toHaveText('setup')
+  await expect(page.getByTestId('session-phase')).toHaveText('Setup')
   check()
 })
 
@@ -21,12 +21,14 @@ test('D-2 every one of the 48 designs has exactly one Start session button', asy
   await begin(page)
   await page.goto('/designs')
   let total = 0
-  for (const t of TIERS) {
+  for (const [i, t] of TIERS.entries()) {
     await page.getByRole('region', { name: 'Tier ladder' }).getByRole('button', { name: t }).click()
     const detail = page.getByTestId('tier-detail')
+    // wait for this tier's detail to be the one on screen before counting (the counts below do not retry)
+    await expect(detail).toContainText(`Tier ${i + 1} · ${t}`)
     const rows = await detail.locator('.design-item').count()
     const starts = detail.getByRole('button', { name: /^Start session: / })
-    expect(await starts.count()).toBe(rows)
+    await expect(starts).toHaveCount(rows)
     total += rows
   }
   expect(total).toBe(48)

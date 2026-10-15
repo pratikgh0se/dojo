@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { FAKE_FAIL_KEY } from '../../src/ai/fake'
 import { deliverableFeedback, submitCheck, submitDeliverable } from '../../src/data/checkActions'
-import { draftBrief } from '../../src/data/briefActions'
+import { seedBrief } from '../helpers/briefs'
 import { totalXp } from '../../src/rules/xp'
 import { freshDb } from '../helpers/db'
 import { mkTicket } from '../helpers/tickets'
@@ -14,7 +14,7 @@ afterEach(() => failHook(null))
 async function learning() {
   const d = freshDb()
   await d.tickets.put(mkTicket({ id: 'w1', kind: 'watch', track: 'interview', title: 'Hash maps' }))
-  await draftBrief(d, 'w1', NOW)
+  await seedBrief(d, 'w1')
   return d
 }
 const good = [{ id: 'q1', answer: 'I can explain hash maps now' }, { id: 'q2', choice: 0 }]
@@ -91,7 +91,7 @@ describe('submitDeliverable', () => {
   async function build() {
     const d = freshDb()
     await d.tickets.put(mkTicket({ id: 'c1', kind: 'problem', track: 'interview', title: 'Two Sum', difficulty: 'E' }))
-    await draftBrief(d, 'c1', NOW)
+    await seedBrief(d, 'c1')
     return d
   }
   it('BR-07: stores the text on the ticket and finishes the card with base XP', async () => {
@@ -109,7 +109,7 @@ describe('submitDeliverable', () => {
   })
   it('the deliverable and the finished card land together: a refusal leaves the ticket untouched', async () => {
     const d = await build()
-    await d.tickets.update('c1', { children: ['x'] }) // a container cannot be finished by hand
+    await d.tickets.update('c1', { archived: true }) // an archived card cannot be finished by hand
     expect(await submitDeliverable(d, 'c1', 'text', NOW)).toMatchObject({ ok: false })
     expect((await d.tickets.get('c1'))!.deliverable).toBeUndefined()
     expect((await d.tickets.get('c1'))!.status).toBe('todo')
@@ -130,17 +130,9 @@ describe('a teach-back card (UAT cu-5 P2-2)', () => {
   async function teachback() {
     const d = freshDb()
     await d.tickets.put(mkTicket({ id: 'tb1', kind: 'stage', track: 'ai', session: 'teachback', stage: 0, title: 'Stage 00 · teach-back' }))
-    await draftBrief(d, 'tb1', NOW)
+    await seedBrief(d, 'tb1', { deliverable: { kind: 'explanation', prompt: 'Explain it in your own words' } })
     return d
   }
-  it('is drafted with the explanation deliverable, not "Paste your code"', async () => {
-    const d = await teachback()
-    expect((await d.tickets.get('tb1'))!.brief!.deliverable).toEqual({ kind: 'explanation', prompt: 'Explain it in your own words' })
-    // a build card of the same stage still hands in code typed by hand
-    await d.tickets.put(mkTicket({ id: 'b1', kind: 'stage', track: 'ai', session: 'build', stage: 0, title: 'Stage 00 · build' }))
-    await draftBrief(d, 'b1', NOW)
-    expect((await d.tickets.get('b1'))!.brief!.deliverable).toEqual({ kind: 'code', prompt: 'Paste your code, typed by hand' })
-  })
   it('"Get feedback" grades the prose as an explanation (no commit, diff or measurement), and the hand-in keeps the explanation kind', async () => {
     const d = await teachback()
     const f = await deliverableFeedback(d, 'tb1', 'The forward pass multiplies and adds; the backward pass reverses it.', NOW)

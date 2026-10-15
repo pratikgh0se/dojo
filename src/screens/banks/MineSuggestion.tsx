@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ATLAS_PATTERNS } from '../../content/patterns'
 import type { MineDraft } from '../../data/bankActions'
 import type { Difficulty } from '../../data/types'
@@ -11,7 +11,7 @@ import { Button } from '../../ui/primitives'
 export function MineSuggestion({ mode, initial, note, onAccept, onSave, onCancel }: {
   mode: 'add' | 'edit'
   initial: MineDraft
-  note: string
+  note: ReactNode
   onAccept?: (d: MineDraft) => void
   onSave?: (d: MineDraft) => void
   onCancel: () => void

@@ -5,6 +5,7 @@ import type { PatternState } from '../../rules/atlasProgress'
 export const STATE_TEXT: Record<PatternState, string> = { none: 'not seen', seen: 'seen', predicted: 'predicted' }
 const USE_TEXT = { ok: 'reached for', avoided: 'avoided' } as const
 
+const KIND_TEXT = { main: 'main picture', side: 'side panel', none: 'not drawn' } as const
 const PREDICTED_MARK = '✓' // ✓
 const LEFT_TEXT = 'problems left to solve'
 const USE_HEAD_TEXT = 'the approach you said you used: filled = reached for it, hollow = avoided it'
@@ -17,14 +18,17 @@ const USE_HEAD_TEXT = 'the approach you said you used: filled = reached for it, 
  * "spoken" state also stays on the row button's aria-describedby) so the kind colours are never hidden.
  */
 export function AtlasMatrix({
-  rows, states, coverage, left, selected, onSelect,
+  rows, states, coverage, left, counts, selected, onSelect, onCellLink,
 }: {
   rows: readonly Pattern[]
   states: Record<string, PatternState>
   coverage: Record<string, PatternCoverage>
   left: Record<string, number>
+  /** problems listed under each row (ATLAS-04: the cell link's accessible name ends with this count) */
+  counts: Record<string, number>
   selected: string | null
   onSelect: (slug: string, button: HTMLButtonElement) => void
+  onCellLink: (slug: string) => void
 }) {
   return (
     <section
@@ -61,6 +65,7 @@ export function AtlasMatrix({
                     type="button"
                     title={p.label}
                     className="am-label"
+                    data-testid={`atlas-row-label-${p.slug}`}
                     data-row={p.slug}
                     aria-pressed={selected === p.slug}
                     aria-describedby={`atlas-state-${p.slug}`}
@@ -72,13 +77,22 @@ export function AtlasMatrix({
                 </th>
                 {ATOMS.map(a => {
                   const kind = p.main.includes(a) ? 'main' : p.side.includes(a) ? 'side' : 'none'
+                  // ATLAS-03: every cell says what it is, drawn or not
+                  const what = `${p.label}: ${ATOM_NAMES[a]} ${KIND_TEXT[kind]}`
+                  const withCount = `${what}, ${counts[p.slug]} ${counts[p.slug] === 1 ? 'problem' : 'problems'}`
                   return (
-                    <td key={a} data-testid={`atlas-cell-${p.slug}-${a}`} data-kind={kind}>
-                      <span className="am-cube" aria-hidden="true" />
+                    <td key={a} data-testid={`atlas-cell-${p.slug}-${a}`} data-kind={kind} title={what} aria-label={what}>
+                      {kind === 'none' ? (
+                        <span className="am-cube" aria-hidden="true" />
+                      ) : (
+                        <button type="button" className="am-cell-link" data-testid={`atlas-cell-link-${p.slug}-${a}`} title={withCount} aria-label={withCount} onClick={() => onCellLink(p.slug)}>
+                          <span className="am-cube" aria-hidden="true" />
+                        </button>
+                      )}
                     </td>
                   )
                 })}
-                <td className="am-left">{left[p.slug]}</td>
+                <td className="am-left" data-testid={`atlas-left-${p.slug}`}>{left[p.slug]}</td>
                 <td className="am-use">
                   {c.state !== 'none' && (
                     <span className="am-use-cube" data-coverage={c.state} role="img" aria-label="Approach use" aria-describedby={`atlas-use-${p.slug}`} />

@@ -31,7 +31,7 @@ const DOJO_SHOTS: Shot[] = [
     name: 'dojo-session-drawing', widths: [1280], dark: true,
     prepare: async page => {
       await page.goto('/designs/session/d-ratelimit')
-      await page.getByRole('button', { name: 'Start · 45 min' }).click()
+      await page.getByTestId('session-start').click()
       for (const k of ['browser', 'gateway', 'service', 'cache', 'sql', 'queue']) await page.getByRole('button', { name: `Add ${k}`, exact: true }).click()
     },
   },

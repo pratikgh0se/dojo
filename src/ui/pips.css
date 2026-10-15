@@ -1,0 +1,4 @@
+.pips { display: inline-flex; gap: 3px; align-items: center; flex: none; }
+.pips i { display: block; width: 10px; height: 10px; box-sizing: content-box; border: 2px solid var(--sr-edge-mid); background: transparent; }
+.pips i.on { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.pips i.cur { border-color: var(--sr-energy-accent); }

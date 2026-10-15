@@ -26,31 +26,12 @@ body {
 }
 a { color: var(--sr-link); }
 code { font-family: var(--sr-font-mono); }
+/* GLOBAL-04: the browser's default sup/sub size (smaller, 11.67 px at 14) is under the 14 px floor; raise by position alone */
+sup, sub { font-size: var(--type-meta); line-height: 0; }
 /* UAT r3 J3: a file in the learner's capstone repo, named inside a statement */
 code.file-ref { cursor: copy; font-size: inherit; padding: 0 4px; border: 2px solid var(--sr-edge-mid); background: var(--sr-chart-well); overflow-wrap: anywhere; white-space: normal; }
 
 .page { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; gap: 16px; }
-.topbar { max-width: 1200px; margin: 0 auto; padding: 16px 24px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-.logo-cube {
-  width: 22px; height: 22px; background: var(--sr-energy-accent); border: 2px solid var(--sr-edge-dark);
-  box-shadow: inset 2px 2px 0 var(--sr-energy-accent-glow), inset -2px -2px 0 var(--sr-energy-accent-shade);
-  flex-shrink: 0;
-}
-.wordmark { font-family: var(--sr-font-pixel); font-weight: 700; font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; flex-shrink: 0; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
-.wordmark-sep { font-family: var(--sr-font-mono); }
-/*
- * ui-shell S1: desktop (>= 1100) is one row that never wraps; tablet (768-1099) puts cube, wordmark
- * and save-status on row 1 and the nav on its own left-aligned row 2; phone (< 768) drops the
- * wordmark, keeps Today/Board/DSA/More on a full-width row and moves Designs and AI into More.
- */
-@media (min-width: 1100px) {
-  .topbar { flex-wrap: nowrap; }
-}
-@media (max-width: 1099px) {
-  .topbar .tabs { order: 3; flex-basis: 100%; margin-left: 0; }
-  .topbar .save-slot { margin-left: auto; }
-}
-.tabs { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
 .screen-title { font-family: var(--sr-font-pixel); font-size: var(--type-display-m); line-height: 1.2; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed; }
 .eyebrow { font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; }
 
@@ -218,7 +199,7 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 20px; background: v
 /*
  * D-59: srin used to fade opacity 0 -> 1 (steps(4)) on entrance. Any element with opacity < 1 is
  * rendered as a group composited over whatever sits behind it (--sr-surface-well in the
- * Console/dark theme), so a `.sr-panel`/`.sr-toast`/`.more-menu` mid-fade pulled every descendant's
+ * Console/dark theme), so a `.sr-panel`/`.sr-toast` mid-fade pulled every descendant's
  * text and background toward that well colour together. At the animation's 50% step that took
  * --sr-text-primary on --sr-surface-tile - a steady-state ratio well above 4.5:1, see
  * tests/unit/contrast.test.ts - down under 4.5:1: exactly the axe scan's intermittent
@@ -258,61 +239,12 @@ input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='
 /* settings-progress-ref M10: chips are padded 2 6 on phone */
 @media (max-width: 767px) { .chip { padding: 2px 6px; } }
 
-.keys-legend {
-  max-width: 1200px; margin: 0 auto; padding: 0 24px 24px;
-  font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary);
-}
-.keys-legend-text { margin: 0; line-height: 1.45; }
-
 /* M5: pages never widen past the viewport; wide children scroll inside themselves */
 .page { grid-template-columns: minmax(0, 1fr); }
 
-/* More ▾ menu */
-.more { display: inline-grid; }
-.more > * { grid-area: 1 / 1; }
-.more-anchor { position: relative; justify-self: start; display: flex; }
-/* A sizer has the button's box metrics (.tab: font, padding 0 14, border 2, gap 6 between "More", "· Tab"
- * and "▾") but no height, so it sets only the width. Its text is CSS content, never DOM text. */
-.more-sizer {
-  display: none; visibility: hidden; pointer-events: none; height: 0; overflow: hidden; align-self: start;
-  gap: 6px; padding: 0 14px; border: 2px solid transparent; border-block-width: 0; white-space: nowrap;
-  font-family: var(--sr-font-body); font-weight: 700; font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase;
-}
-.more-sizer::before { content: 'More'; }
-.more-sizer::after { content: '\25BE'; }
-.more-sizer-label::before { content: attr(data-label); }
-@media (min-width: 1100px) { .topbar .more-sizer { display: inline-flex; } }
-.more-menu {
-  position: absolute; right: 0; width: 240px; top: calc(100% + 8px); z-index: var(--sr-z-dropdown);
-  min-width: 220px; display: grid; gap: 2px; padding: 6px;
-  background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
-  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
-  animation: srin var(--sr-motion-base) steps(4);
-}
-.more-item {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  height: var(--sr-size-hit-touch); padding: 0 12px;
-  font-family:var(--sr-font-body); font-weight: 700; font-size:var(--type-small); letter-spacing: 0.5px; text-transform: uppercase;
-  color: var(--sr-text-primary); text-decoration: none; background: transparent; border: 2px solid transparent;
-}
-.more-item:hover, .more-item:focus-visible { border-color: var(--sr-energy-accent); }
-.more-item.on { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); }
-.more-key { font-family: var(--sr-font-mono); font-size:var(--type-meta); font-weight: 400; line-height: 1.45; letter-spacing: 0; text-transform: none; color: var(--sr-text-secondary); } /* P3-8: the hint is the key itself: a, b (the legend's), never A, B */
-.more-item.on .more-key { color: var(--sr-text-onaccent); }
-
-/* Phone (< 768, ui-foundation F4/F5): cube + save-status, then Today/Board/DSA/More on a full row. */
+/* Phone (< 768, ui-foundation F4/F5): every button, tab and link-styled control is a 44 px touch target. */
 @media (max-width: 767px) {
-  .topbar { padding: 12px 16px 0; gap: 12px; }
-  .wordmark { display: none; }
-  .topbar .tabs { justify-content: space-between; gap: 4px; }
-  .tabs .tab { height: var(--sr-size-hit-touch); padding: 0 12px; }
-  .tabs .tab-wide { display: none; }
-  /* P3-14: "More · <Tab> ▾" shows where it fits the row; where it does not (375 with a long tab name) MoreMenu marks the
-   * nav and the label is "More ▾", accent while a More route is open, the tab name in the button's aria-label. */
-  .tabs[data-more-short] .more-current { display: none; }
-  .more-menu { width: 240px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 120px); overflow-y: auto; }
   .page { padding: 16px; }
-  .keys-legend { display: none; }
   /* F3/F6.1: every button, tab and link-styled control is a 44 px touch target on phone. */
   .sr-btn, .sr-btn-quiet { height: var(--sr-size-hit-touch); }
 }
@@ -326,10 +258,6 @@ input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='
 /* Visually hidden, still read by assistive tech and by getByTestId/text queries. */
 .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-/* Shell's full-screen main (Do, and the design session screen) — kept here, not in a lazy screen's
- * own stylesheet, since Shell applies this class before either screen's chunk has loaded. */
-.do-main { min-height: 100vh; }
-
 /* Disk-storage indicator (Dojo v2): small and quiet; only the offline state asks for attention. */
 /* UAT J2: the status and its refused-changes link share one slot (the header's gap between them). On the
  * one-row desktop header the slot holds the width of the longest label, "Not saved to disk" (17 mono
@@ -337,7 +265,7 @@ input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='
 .save-slot { display: inline-flex; align-items: center; gap: 16px; flex-shrink: 0; }
 /* UAT r3 J1: the status sits at the header's right edge, as in the mockups (today-1280, board-1280); its reserve
  * opens to its left. The nav keeps its place: More grows to the right inside its own reserve. */
-@media (min-width: 1100px) { .topbar .save-slot { min-width: 17ch; justify-content: flex-end; font-family: var(--sr-font-mono); font-size: var(--type-meta); } }
+@media (min-width: 1100px) { .sh-header .save-slot { min-width: 17ch; justify-content: flex-end; font-family: var(--sr-font-mono); font-size: var(--type-meta); } }
 .save-status { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); white-space: nowrap; text-decoration: none; }
 .save-status-saving { color: var(--sr-label-warn); }
 .save-status-offline { color: var(--sr-label-danger); text-decoration: underline; }
@@ -349,7 +277,6 @@ input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='
 
 /* Screen root (contract UX addendum 1, Q1): takes over the page grid so the screen lays out as before. */
 .page > .screen-root { display: grid; gap: 16px; min-width: 0; }
-.do-main > .screen-root { min-height: 100vh; }
 
 /* FitDiagram (src/ui/engines/FitDiagram.tsx, UAT cu-7 P3-5): the drawing keeps its natural size inside, scaled down to fit */
 .fit-diagram { width: 100%; min-width: 0; }

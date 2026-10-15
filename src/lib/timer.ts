@@ -1,3 +1,4 @@
+import { remainingMs, type Study } from '../rules/studySession'
 import { localDayKey, pad2 } from './dates'
 import { readJson, removeKey, writeJson, type StorageLike } from './storage'
 
@@ -140,4 +141,18 @@ export function timerView(t: TimerState | null, now: number): TimerView {
     paused,
     done: false,
   }
+}
+
+/**
+ * The legacy Do timer (`dojo-timer`) mirrors the session's focus block, so the attempt cycle banks the
+ * same minutes and the help ladder unlocks on them (C-LADDER §2.2). One block = one timer window.
+ */
+export function blockTimer(s: Study, start: number, end: number, running: boolean): TimerState {
+  return { ticketId: s.ticketId, sessionStart: s.startedAt, start, end, min: Math.round((end - start) / 60_000), running, notified: !running }
+}
+
+/** mm:ss left in the current phase. */
+export function sessionLabel(s: Study, now: number): string {
+  const secs = Math.ceil(remainingMs(s, now) / 1000)
+  return `${pad2(Math.floor(secs / 60))}:${pad2(secs % 60)}`
 }

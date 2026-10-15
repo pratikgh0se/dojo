@@ -1,5 +1,5 @@
 // approaches.json (TRACKING §3 "DSA: one problem, several ways"; labs contract §2.4), kept as TypeScript so
-// ids, patterns and library keys are type-checked: for each of the 169 plan problems, 2–4 ways, ordered
+// ids, patterns and library keys are type-checked: for each of the 170 plan problems, 2–4 ways, ordered
 // brute → best, exactly one starred best (the last). `pattern` is one of the 36 Atlas rows (its slug);
 // `libraryKey` names the library walkthrough a chip opens (none = "No library picture for this approach yet.").
 // Where no row is a close fit: exhaustive search and plain recursion → Backtracking (as §2.4 p322 does),
@@ -231,6 +231,7 @@ export const APPROACHES: Readonly<Record<string, Approach[]>> = {
   p49: ways(['pairs', 'Compare all pairs', 'O(n²·k)', 'backtracking'], ['sorted', 'Sorted-key map', 'O(n·k log k)', 'sorting', 'hashInsert'], ['count', 'Count-key map', 'O(n·k)', 'lru-design', 'hashInsert']),
   p155: ways(['scan', 'Scan for the min', 'O(n)', 'simulation'], ['pairs', 'Stack of (val, min)', 'O(1)', 'monotonic-stack', 'validParens']),
   p150: ways(['recursion', 'Recursive parse', 'O(n)', 'divide-conquer'], ['stack', 'Operand stack', 'O(n)', 'monotonic-stack', 'validParens']),
+  p204: ways(['trial', 'Trial division to √k', 'O(n√n)', 'number-theory'], ['sieve', 'Sieve of Eratosthenes', 'O(n log log n)', 'sieve-primes', 'sieve']),
 }
 
 export function approachesFor(ticketId: string): Approach[] {

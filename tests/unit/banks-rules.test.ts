@@ -4,11 +4,11 @@ import type { ShippedBank, ShippedBankId } from '../../src/content/banks/types'
 import { loadPacks } from '@bank-packs'
 import { allViews, buildBanks, countDone, groupSlug, groupViews, planBank, planRefs, storedEntry } from '../../src/rules/banks'
 import { liveTicketMap } from '../../src/rules/board'
-import { realPlan, smallPlan } from '../helpers/plan'
+import { realPlan, flatPlanV2 } from '../helpers/plan'
 import { mkTicket } from '../helpers/tickets'
 
 const miniPlan: PlanJson = {
-  ...smallPlan,
+  ...flatPlanV2,
   dsa_bank: [
     { sprint: 2, topic: 'Topological sort', pattern: 'Topological Sort', note: '', problems: [{ num: 207, name: 'Course Schedule', url: 'https://leetcode.com/problems/course-schedule/', difficulty: 'M' }] },
     { sprint: 1, topic: 'Graphs: BFS and DFS', pattern: 'Graphs', note: '', problems: [{ num: 200, name: 'Number of Islands', url: 'https://leetcode.com/problems/number-of-islands/', difficulty: 'M' }] },
@@ -70,8 +70,8 @@ describe('planRefs and planBank', () => {
       ['p200', 'BFS / DFS', 'S1 · Graphs: BFS and DFS'],
     ])
   })
-  it('has 169 items for the live plan', () => {
-    expect(planBank(realPlan()).entries).toHaveLength(169)
+  it('has 170 items for the live plan', () => {
+    expect(planBank(realPlan()).entries).toHaveLength(170)
   })
 })
 
@@ -153,7 +153,7 @@ describe('shared ticket for same LeetCode number (contract DECISION 9)', () => {
 describe('fixture packs with the live plan', () => {
   it('count the fixtures, and link in-plan items and the two overlapping designs', async () => {
     const v = allViews(buildBanks(realPlan(), await loadPacks(), []), planRefs(realPlan()), liveTicketMap([]))
-    expect([v.plan.length, v.neetcode150.length, v.blind75.length, v.striver.length, v.codeforces.length, v.hellointerview.length, v.mine.length]).toEqual([169, 6, 6, 4, 5, 3, 0])
+    expect([v.plan.length, v.neetcode150.length, v.blind75.length, v.striver.length, v.codeforces.length, v.hellointerview.length, v.mine.length]).toEqual([170, 6, 6, 4, 5, 3, 0])
     expect(v.neetcode150.find(i => i.id === 'p207')!.plan?.marker).toBe('Plan · S2')
     expect(v.blind75.find(i => i.id === 'p200')!.plan?.marker).toBe('Plan · S1')
     expect(v.neetcode150.find(i => i.id === 'p9001')!.plan).toBeNull()

@@ -1,0 +1,18 @@
+{
+  "libraryVersion": "0.2.2",
+  "library": ["#0f111c", "#12301f", "#1a1d2b", "#1a2340", "#1b1f30", "#1e4fa0", "#1e6fc2", "#1f7a48", "#262b40", "#2a2f45", "#3a1518", "#3a2a22", "#3a4162", "#3ab4ff", "#3ddc84", "#414968", "#4dd8ff", "#56608a", "#5a2d82", "#5a627f", "#5b5e72", "#5eead4", "#7a4418", "#8a6a00", "#8c75fa", "#9aa0b8", "#9e4416", "#9fdcff", "#b4bad0", "#b8501a", "#b8ae98", "#c084fc", "#c2331f", "#cfc7b5", "#dff3ff", "#e4d0ff", "#e4ddcc", "#efe8d9", "#f2c14e", "#f4efe6", "#faf6ec", "#ff4d4d", "#ff8a2a", "#ffb545", "#ffd9a8", "#ffe05a", "#ffffff"],
+  "dojo": {
+    "#ff7070": "label.danger on a panel (the library's #ff4d4d is 4.04:1)",
+    "#a391fb": "arcane label for text on a panel (the saturated arcane is 3.8:1)",
+    "#00bdb6": "area 1", "#00e1d8": "area 1 glow", "#00837e": "area 1 shade",
+    "#00b5e6": "area 2", "#62d4ff": "area 2 glow", "#007da0": "area 2 shade",
+    "#71a3ff": "area 3", "#a4c5ff": "area 3 glow", "#3a6cce": "area 3 shade",
+    "#b28aff": "area 4", "#ccb6ff": "area 4 glow", "#7e57c1": "area 4 shade",
+    "#e277d0": "area 5", "#fe9dec": "area 5 glow", "#a64697": "area 5 shade",
+    "#fb718c": "area 6", "#ffa8b5": "area 6 glow", "#bb3f5c": "area 6 shade",
+    "#f87d3b": "area 7", "#ffae88": "area 7 glow", "#b74d00": "area 7 shade",
+    "#d29a00": "area 8", "#f4b93c": "area 8 glow", "#926a00": "area 8 shade",
+    "#9cb100": "area 9", "#bcd155": "area 9 glow", "#6c7b00": "area 9 shade",
+    "#29c271": "area 10", "#6ae097": "area 10 glow", "#00884a": "area 10 shade"
+  }
+}

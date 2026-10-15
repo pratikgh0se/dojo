@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  moveOnBoard, moveTicket, shiftPlanAction, slideNext, slideSprintAction, slideTicketTo, undoLast,
-} from '../../src/data/boardActions'
-import { undoableSteps } from '../../src/rules/slide'
+import { moveTicket } from '../../src/data/boardActions'
 import { closeLadderSession, recordRung } from '../../src/data/ladderActions'
 import type { Ticket } from '../../src/data/types'
 import { totalXp } from '../../src/rules/xp'
@@ -19,28 +16,11 @@ describe('moveTicket', () => {
     expect(await d.events.count()).toBe(0)
   })
 
-  it('rejects a 4th Doing ticket of a sprint and changes nothing (Review Focus #5)', async () => {
+  it('a fourth Doing ticket is allowed: Doing is a soft cap', async () => {
     const d = await seededDb()
-    for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await d.tickets.update(id, { sprint: 1 }) // the limit is per sprint (ruling 25 R2)
     for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await moveTicket(d, id, 'doing', NOW)
-    const before = await d.tickets.orderBy('id').toArray()
-    const r = await moveTicket(d, 'p127', 'doing', NOW)
-    expect(r).toMatchObject({ ok: false, reason: 'doing_full', message: expect.stringMatching(/^Doing is full \(3\/3\)/) })
-    expect(await d.tickets.orderBy('id').toArray()).toEqual(before)
-    expect(await d.events.count()).toBe(0)
-  })
-
-  it('counts Doing per sprint: three Doing cards in Sprint 2 never block Sprint 1 (UAT cu-3p P2-2, ruling 25 R2)', async () => {
-    const d = await seededDb()
-    for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await d.tickets.update(id, { sprint: 2 })
-    for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) expect(await moveTicket(d, id, 'doing', NOW)).toEqual({ ok: true, xpDelta: 0 })
-    // Sprint 1 has no Doing card at all: its cards go to Doing, up to three
     expect(await moveTicket(d, 'p127', 'doing', NOW)).toEqual({ ok: true, xpDelta: 0 })
-    // Sprint 2 is full: a fourth card there is refused, and nothing changes
-    await d.tickets.update('p200', { sprint: 2 })
-    const before = await d.tickets.orderBy('id').toArray()
-    expect(await moveTicket(d, 'p200', 'doing', NOW)).toMatchObject({ ok: false, reason: 'doing_full' })
-    expect(await d.tickets.orderBy('id').toArray()).toEqual(before)
+    expect((await d.tickets.get('p127'))!.status).toBe('doing')
   })
 
   it('ticks to Done with XP and one tick event, and unticks back', async () => {
@@ -119,84 +99,5 @@ describe('moveTicket', () => {
     const t = await d.tickets.get('weird')
     expect(t).toMatchObject({ status: 'todo', xp: 0 })
     expect(t!.doneAt).toBeUndefined()
-  })
-})
-
-describe('slides write exactly one event per action', () => {
-  it('slideNext and slideTicketTo', async () => {
-    const d = await seededDb()
-    expect(await slideNext(d, 'm1w1t1', NOW, 1)).toEqual({ ok: true, xpDelta: 0 })
-    expect(await d.tickets.get('m1w1t1')).toMatchObject({ sprint: 2, slidFrom: [1] })
-    expect(await slideTicketTo(d, 'm1w3t1', 1, NOW, 2)).toMatchObject({ ok: false, reason: 'backwards' })
-    expect(await d.events.count()).toBe(1)
-  })
-
-  it('slide sprint and shift plan', async () => {
-    const d = await seededDb()
-    expect(await slideSprintAction(d, 1, NOW, 1)).toEqual({ ok: true, xpDelta: 0, count: 5 })
-    expect(await d.events.count()).toBe(1)
-    expect(await shiftPlanAction(d, 1, NOW, 2)).toEqual({ ok: true, xpDelta: 0, count: 10 })
-    expect(await d.events.count()).toBe(2)
-    expect((await d.tickets.get('m1w1t1'))!.sprint).toBe(3)
-    expect(await slideSprintAction(d, 1, NOW, 1)).toMatchObject({ ok: false, reason: 'empty' })
-  })
-})
-
-// UAT r3 J7: dragging Rebuild to Doing (or Shift+→) left "Undo (0)"
-describe('Board column moves are undoable', () => {
-  it('a move to Doing is one undo step, and Undo puts the card back in Todo', async () => {
-    const d = await seededDb()
-    expect(await moveOnBoard(d, 'p1', 'doing', NOW)).toEqual({ ok: true, xpDelta: 0 })
-    expect(undoableSteps(await d.events.toArray())).toHaveLength(1)
-    expect(await undoLast(d, NOW + 1)).toEqual({ ok: true, xpDelta: 0, count: 1 })
-    expect((await d.tickets.get('p1'))!.status).toBe('todo')
-    expect(undoableSteps(await d.events.toArray())).toHaveLength(0)
-  })
-
-  it('undoing a move to Done takes its XP back; undoing a move out of Done gives it back', async () => {
-    const d = await seededDb()
-    expect(await moveOnBoard(d, 'p127', 'done', NOW)).toEqual({ ok: true, xpDelta: 15 })
-    expect(await undoLast(d, NOW + 1)).toEqual({ ok: true, xpDelta: -15, count: 1 })
-    expect(await d.tickets.get('p127')).toMatchObject({ status: 'todo', xp: 0 })
-    await moveOnBoard(d, 'p127', 'done', NOW + 2)
-    await moveOnBoard(d, 'p127', 'doing', NOW + 3)
-    expect((await d.tickets.get('p127'))!.xp).toBe(0)
-    expect(await undoLast(d, NOW + 4)).toMatchObject({ ok: true, xpDelta: 15 })
-    expect(await d.tickets.get('p127')).toMatchObject({ status: 'done', xp: 15 })
-  })
-
-  it('a refused move records nothing; an undo whose card has moved on since changes nothing', async () => {
-    const d = await seededDb()
-    for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await d.tickets.update(id, { sprint: 1 })
-    for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await moveOnBoard(d, id, 'doing', NOW)
-    expect((await moveOnBoard(d, 'p127', 'doing', NOW)).ok).toBe(false)
-    expect(undoableSteps(await d.events.toArray())).toHaveLength(3)
-    await moveTicket(d, 'm1w3t1', 'todo', NOW + 1) // moved back some other way
-    expect(await undoLast(d, NOW + 2)).toEqual({ ok: true, xpDelta: 0, count: 1 })
-    expect((await d.tickets.get('m1w3t1'))!.status).toBe('todo')
-    expect(undoableSteps(await d.events.toArray())).toHaveLength(2)
-  })
-})
-
-describe('undoLast', () => {
-  it('restores prior state LIFO and records undo events', async () => {
-    const d = await seededDb()
-    const original = await d.tickets.orderBy('id').toArray()
-    await slideSprintAction(d, 1, NOW, 1)
-    await shiftPlanAction(d, 2, NOW, 1)
-    expect(await undoLast(d, NOW)).toMatchObject({ ok: true })
-    expect(await undoLast(d, NOW)).toMatchObject({ ok: true })
-    expect(await d.tickets.orderBy('id').toArray()).toEqual(original)
-    expect((await d.events.toArray()).map(e => e.t)).toEqual(['slide_sprint', 'shift_plan', 'undo', 'undo'])
-    expect(await undoLast(d, NOW)).toEqual({ ok: false, reason: 'nothing', message: 'Nothing to undo' })
-  })
-
-  it('reaches back at most 20 slide events', async () => {
-    const d = await seededDb()
-    for (let i = 0; i < 21; i++) await slideNext(d, 'm1w1t1', NOW, 1)
-    expect((await d.tickets.get('m1w1t1'))!.sprint).toBe(22)
-    for (let i = 0; i < 20; i++) expect((await undoLast(d, NOW)).ok).toBe(true)
-    expect(await undoLast(d, NOW)).toMatchObject({ ok: false, reason: 'nothing' })
-    expect(await d.tickets.get('m1w1t1')).toMatchObject({ sprint: 2, slidFrom: [1] })
   })
 })

@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { approachesFor, chipName, type Approach } from '../../content/approaches'
 import { Button } from '../primitives'
+import { Glyph } from '../Glyph'
 import { AlgoPlayer } from './AlgoPlayer'
 import { TwoUp } from './TwoUp'
 
@@ -22,7 +23,7 @@ function Chip({ a, pressed, disabled, onClick }: { a: Approach; pressed: boolean
     >
       <span className="ac-name">{a.name}</span>
       <span className="ac-cx"><Complexity text={a.complexity} /></span>
-      {a.best && <span className="ac-star" aria-hidden="true">★</span>}
+      {a.best && <span className="ac-star" aria-hidden="true"><Glyph name="flag" /></span>}
     </button>
   )
 }
@@ -73,7 +74,9 @@ export function ApproachStrip({ problemId }: { problemId: string }) {
       {list.length === 0 ? (
         <p className="hint">No approaches listed yet.</p>
       ) : (
-        <>
+        // TICKET-31: the chips and Pick two sit behind one closed disclosure, so the strip counts one control until it is wanted
+        <details className="approaches-more" data-testid="dsa-approaches-more">
+          <summary className="approaches-toggle">{`Compare ${list.length} approaches`}</summary>
           <div className="approach-chips">
             {list.map(a => (
               <Chip
@@ -106,7 +109,7 @@ export function ApproachStrip({ problemId }: { problemId: string }) {
               onClose={close}
             />
           )}
-        </>
+        </details>
       )}
     </section>
   )
@@ -114,7 +117,7 @@ export function ApproachStrip({ problemId }: { problemId: string }) {
 
 /**
  * "Which approach did you use?" after Solved (labs contract §7.3, D-16): the chips' names plus Other;
- * changeable. Answering doesn't itself leave the screen (I4): "Back to Board" is the only way out while
+ * changeable. Answering doesn't itself leave the screen (I4): "Back to Today" is the only way out while
  * this question is open, so it's not stranded here — openRung and the Space/timer shortcut are disabled
  * on the Do screen for as long as this is showing.
  */
@@ -139,7 +142,7 @@ export function ApproachQuestion({
           </Button>
         ))}
       </div>
-      <Button variant="quiet" onClick={onBack}>Back to Board</Button>
+      <Button variant="quiet" onClick={onBack}>Back to Today</Button>
     </div>
   )
 }

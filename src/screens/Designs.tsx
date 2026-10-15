@@ -1,5 +1,5 @@
-import type { CSSProperties } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { usePlan } from '../app/providers'
 import { DESIGN_PRACTICE, DESIGN_SOURCES, DONE_MEANS, RUBRIC, RUBRIC_TOTAL } from '../content/designs'
 import { useDesignSessions } from '../data/designHooks'
@@ -11,7 +11,7 @@ import {
   DEEP_DIVES_PER_DESIGN, designCallout, designTiers, designTotals, planDesigns,
   type DesignCallout, type DesignItemView, type DesignTierView,
 } from '../rules/designs'
-import { effectiveLastSprint, viewSprint } from '../rules/sprint'
+import { extraChips, filterDesigns, normalizeQuery } from '../rules/designSearch'
 import { ExtLink, ProseSectionView } from '../ui/Prose'
 import { Stat } from '../ui/Stat'
 import { TicketRow } from '../ui/TicketRow'
@@ -28,6 +28,7 @@ export function Designs() {
   const t = useNow(60_000)
   const { params, set } = useQuery()
   const sessions = useDesignSessions()
+  const search = useDesignSearch()
   if (!tickets || !settings || !sessions) return <Loading />
   if (plan.design_bank.length === 0) {
     return (
@@ -41,13 +42,16 @@ export function Designs() {
   const totals = designTotals(tiers)
   const designs = planDesigns(plan)
   const rows = wallRows(designs, doneSessions(sessions))
-  const current = viewSprint(t, settings.startDate, effectiveLastSprint(tickets))
-  const callout = designCallout(tiers, current)
+  const callout = designCallout(tiers)
   const sel = intParam(params, 'tier')
-  const tier = tiers.find(x => x.index === sel) ?? null
+  const picked = tiers.find(x => x.index === sel) ?? null
+  // GLOBAL-10 / NAV-32: the screen always shows a tier's detail (and its rows), so with no usable `tier` parameter it opens the tier of the next design, else the first.
+  // `designs-hint` stays while the tier is that default and not the user's pick.
+  const tier = picked ?? (callout.kind === 'next' ? callout.tier : tiers[0]) ?? null
   return (
     <div className="content-screen designs">
       <h1 className="screen-title">Design bank</h1>
+      <SearchBox search={search} />
       <div className="stat-strip">
         <Stat value={`${totals.done}/${totals.total}`} label="designs done" testId="designs-done" />
         <Stat value={totals.deepDivesCovered} label={`deep dives covered (${DEEP_DIVES_PER_DESIGN} per done design) · ${wallAnswered(rows)} answered in full`} testId="designs-dives" />
@@ -58,7 +62,12 @@ export function Designs() {
       <Panel title={`Tier ladder · ${totals.done} of ${totals.total} designs`} aria-label="Tier ladder" data-testid="tier-ladder">
         <Ladder tiers={tiers} selected={tier?.index ?? null} onSelect={i => set({ tier: i })} />
       </Panel>
-      {tier ? <TierDetail tier={tier} /> : <p className="hint designs-pick-hint" data-testid="designs-hint">Pick a tier to see its designs.</p>}
+      {search.active
+        ? <SearchResults groups={filterDesigns(tiers, search.text)} />
+        : <>
+          {!picked && <p className="hint designs-pick-hint" data-testid="designs-hint">Pick a tier to see its designs.</p>}
+          {tier && <TierDetail tier={tier} />}
+        </>}
       <div className="two-col">
         <Rubric />
         <ProseSectionView section={DESIGN_PRACTICE} />
@@ -68,13 +77,64 @@ export function Designs() {
   )
 }
 
+/**
+ * NAV-35: the search text lives in the URL as `q` (next to `tier`), written with replace so typing never fills the history; Back
+ * and a reload find it again. The box keeps its own text, so a half-typed query with spaces is never rewritten under the cursor.
+ */
+function useDesignSearch() {
+  const [params, setParams] = useSearchParams()
+  const urlQ = params.get('q') ?? ''
+  const [text, setText] = useState(urlQ)
+  useEffect(() => { setText(prev => (prev === urlQ ? prev : urlQ)) }, [urlQ]) // Back, Forward or a link changed the URL
+  const change = (v: string) => {
+    setText(v)
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (v === '') next.delete('q')
+      else next.set('q', v)
+      return next
+    }, { replace: true })
+  }
+  return { text, change, active: normalizeQuery(text) !== '' }
+}
+
+function SearchBox({ search }: { search: ReturnType<typeof useDesignSearch> }) {
+  return (
+    <div className="designs-search-row">
+      <input
+        type="text" className="designs-search" data-testid="designs-search" aria-label="Search designs" placeholder="Search designs" autoComplete="off"
+        value={search.text} onChange={e => search.change(e.target.value)}
+      />
+      {search.text !== '' && <Button data-testid="designs-search-clear" onClick={() => search.change('')}>Clear search</Button>}
+    </div>
+  )
+}
+
+function SearchResults({ groups }: { groups: ReturnType<typeof filterDesigns> }) {
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => { ref.current?.scrollIntoView?.({ block: 'start' }) }, []) // the results sit below the charts: show them when the first query opens them
+  const n = groups.reduce((a, g) => a + g.items.length, 0)
+  return (
+    <section className="sr-panel designs-search-results" data-testid="designs-search-results" aria-label="Search results" ref={ref}>
+      <p className="hint" data-testid="designs-search-count" data-count={n}>{n} designs</p>
+      {n === 0 && <p className="empty" data-testid="designs-search-empty" data-empty="true">No design matches that.</p>}
+      {groups.map(g => (
+        <div key={g.tier.index} className="designs-search-tier">
+          <h3 className="designs-search-tier-title" data-testid={`designs-search-tier-${g.tier.index}`}>Tier {g.tier.index} · {g.tier.label}</h3>
+          <div className="rows">{g.items.map(it => <DesignRow key={it.id} it={it} />)}</div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
 function NextDesign({ callout, onOpenTier }: { callout: DesignCallout; onOpenTier: (index: number) => void }) {
   return (
-    <Panel title="Next Sunday design" data-testid="next-design">
+    <Panel title="Next design" data-testid="next-design">
       {callout.kind === 'next' ? (
         <div className="next-design">
-          <p className="next-title" data-testid="next-design-title">{callout.item.title}</p>
-          <p className="hint">Tier {callout.tier.index} · {callout.tier.label} · S{callout.tier.from}–S{callout.tier.to}</p>
+          <h3 className="next-title" data-testid="next-design-title">{callout.item.title}</h3>
+          <p className="hint">Tier {callout.tier.index} · {callout.tier.label}</p>
           <ol className="prose-list">
             {callout.item.deepDives.map((d, i) => <li key={i}>{d}</li>)}
           </ol>
@@ -102,7 +162,7 @@ function Ladder({ tiers, selected, onSelect }: { tiers: DesignTierView[]; select
           onClick={() => onSelect(x.index)}
         >
           <span className="ladder-name">T{x.index} · {x.label}</span>
-          <span className="ladder-range">S{x.from}–S{x.to} · {x.skill}</span>
+          <span className="ladder-range">{x.skill} · {x.total} designs</span>
           <span className="ladder-cubes" aria-label={`${x.done} of ${x.total} done`}>
             {x.items.map(it => <Cube key={it.id} on={it.done} size={8} />)}
           </span>
@@ -115,7 +175,7 @@ function Ladder({ tiers, selected, onSelect }: { tiers: DesignTierView[]; select
 function TierDetail({ tier }: { tier: DesignTierView }) {
   return (
     <Panel title={`Tier ${tier.index} · ${tier.label}`} data-testid="tier-detail">
-      <p className="hint">S{tier.from}–S{tier.to} · {tier.skill} · {tier.done}/{tier.total} done</p>
+      <p className="hint">{tier.skill} · {tier.done}/{tier.total} done</p>
       <div className="rows">
         {tier.items.map(it => <DesignRow key={it.id} it={it} />)}
       </div>
@@ -127,10 +187,10 @@ function DesignRow({ it }: { it: DesignItemView }) {
   const navigate = useNavigate()
   return (
     <div className="design-item">
-      <TicketRow ticket={it.ticket} title={it.title}>
+      <TicketRow ticket={it.ticket} title={it.title} hideSprint>
         <span className={`chip diff-chip diff-${it.difficulty}`}>{it.difficulty}</span>
-        {it.ticket && <span className="chip">plan S{it.ticket.plannedSprint}</span>}
-        <Button className="design-start" aria-label={`Start session: ${it.title}`} onClick={() => navigate(`/designs/session/${it.id}`)}>
+        {extraChips(it).map((c, n) => <span key={n} className="chip" data-testid={`designs-row-chip-${it.id}-${n + 1}`}>{c}</span>)}
+        <Button className="design-start" data-testid={`design-start-${it.id}`} aria-label={`Start session: ${it.title}`} onClick={() => navigate(`/designs/session/${it.id}?new=1`)}>
           Session ▸
         </Button>
       </TicketRow>

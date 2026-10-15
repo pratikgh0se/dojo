@@ -4,7 +4,7 @@ import type { AtlasPattern } from '../content/patterns'
 import type { Difficulty, Kind, Link } from '../data/types'
 
 export const JOB_NAMES = [
-  'hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'suggest_slide', 'classify', 'brief', 'check', 'review_sprint',
+  'hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'classify', 'brief', 'check', 'bank_more',
 ] as const
 export type JobName = (typeof JOB_NAMES)[number]
 export type ProviderName = 'fake' | 'helper'
@@ -49,7 +49,6 @@ export interface AiTicket {
   difficulty?: Difficulty
   links?: Link[]
 }
-export interface SlideCandidate { id: string; title: string; track: string; estMin: number; difficulty?: Difficulty; slidCount: number }
 
 // ---- per-job context and output ----
 export interface HintContext { level: 1 | 2; attemptLog?: string }
@@ -61,9 +60,32 @@ export interface DiagramContext { deepDives: string[]; refs?: Link[] }
 
 /** One transcript line the interview job sees (integration spec §2.5); `you` is the candidate. */
 export interface TranscriptMessage { from: 'interviewer' | 'you'; text: string }
-export interface InterviewContext { turn: number; answers: string[]; deepDives: string[]; final?: boolean; transcript?: TranscriptMessage[] }
+export interface InterviewContext {
+  turn: number; answers: string[]; deepDives: string[]; final?: boolean; transcript?: TranscriptMessage[]
+  /** designDigest of the live session: clipped to 3,000 on a turn and a Hint, 8,000 on the grade */
+  design?: string
+  /** a Hint request: one sharper question about the current phase, never the answer */
+  hint?: boolean
+}
 export interface InterviewTurn { say: string; done: false }
-export interface InterviewItem { item: string; points: number; note: string }
+/** F3: the notes sections an evidence chip may cite (the ids of designNotes NOTE_SECTIONS; a unit test keeps the two equal). */
+export const NOTE_EVIDENCE_IDS = ['requirements', 'assumptions', 'api', 'data-model', 'tradeoffs', 'open'] as const
+export type NoteEvidenceId = (typeof NOTE_EVIDENCE_IDS)[number]
+/** A model's name for a notes section (id, title or any case) to the id, or null when it names none of the six. */
+export function noteEvidenceId(raw: string): NoteEvidenceId | null {
+  const k = raw.toLowerCase().replace(/[^a-z]/g, '')
+  const by: Record<string, NoteEvidenceId> = {
+    requirements: 'requirements', assumptions: 'assumptions', assumptionsandestimates: 'assumptions', estimates: 'assumptions', api: 'api',
+    datamodel: 'data-model', tradeoffs: 'tradeoffs', open: 'open', openquestions: 'open',
+  }
+  return by[k] ?? null
+}
+/** F3: what a grade paragraph leans on. A notes target is a section id; a diagram target is the label of a canvas node, note, frame or table as drawn. */
+export interface EvidenceRef { source: 'notes' | 'diagram'; target: string }
+/** F3: a weak spot worth a review card (topic at most 5 words, question at most 25, answer at most 60). */
+export interface MissedSpot { topic: string; question: string; answer: string }
+/** `feedback` (at most 60 words) and `evidence` (at most 3) are F3's; a grade stored before F3 has neither and `note` stands in. */
+export interface InterviewItem { item: string; points: number; note: string; feedback?: string; evidence?: EvidenceRef[] }
 /** Design contract §7: the final turn grades the rubric (0–20), the 4 deep dives and the 7 lenses. */
 export interface InterviewFinal {
   done: true
@@ -72,6 +94,12 @@ export interface InterviewFinal {
   oneThingToStudy: string
   deepDives: [Score012, Score012, Score012, Score012]
   lenses: Record<Lens, Score012>
+  /** at most 5: where the notes and the diagram disagree (flags to check, never a score on their own) */
+  inconsistencies?: string[]
+  /** at most 4: what a stronger version of THIS design does */
+  stronger?: string[]
+  /** F3, at most 3: the weak spots worth reviewing; "Keep what you missed" turns them into review cards */
+  missed?: MissedSpot[]
 }
 export type InterviewOutput = InterviewTurn | InterviewFinal
 
@@ -86,6 +114,11 @@ export interface GradeContext {
   rubric?: string
   /** UAT cu-5 P2-2: 'explanation' grades written prose (a teach-back) against the rubric; there is no repo, commit or diff to look for */
   deliverableKind?: DeliverableKind
+  /** the design session's final grade: five rubric items out of 20, reading the chat, the notes and the diagram */
+  sessionGrade?: boolean
+  deepDives?: string[]
+  transcript?: TranscriptMessage[]
+  design?: string
 }
 /** AI.md "grade" + projects contract §1: pass iff score ≥ 3; `commitFound` = the helper read the commit. */
 export interface GradeOutput { score: number; max: 5; passed: boolean; feedback: string[]; missing: string[]; commitFound?: boolean }
@@ -93,10 +126,6 @@ export interface GradeOutput { score: number; max: 5; passed: boolean; feedback:
 export interface SolutionContext { gave_up: true; attemptLog?: string; picture?: SrAlgoJson }
 export interface QuizItem { q: string; a: string }
 export interface SolutionOutput { approach: string; pseudocode: string[]; complexity: string; quiz: QuizItem[] }
-
-export interface SuggestSlideContext { tickets: SlideCandidate[]; count: number; pace?: number; nextSprint?: SlideCandidate[] }
-export interface SlideReason { id: string; reason: string }
-export interface SuggestSlideOutput { slide: SlideReason[]; keep: SlideReason[] }
 
 export interface ClassifyContext { input: string }
 export interface ClassifyOutput {
@@ -117,7 +146,6 @@ export const DELIVERABLE_KINDS: readonly DeliverableKind[] = ['answers', 'code',
 export interface BriefStep { text: string; url?: string }
 export interface BriefQuestion { id: string; kind: 'open' | 'mcq'; q: string; choices?: string[]; keyIdeas?: string[]; correct?: number }
 export interface BriefDeliverable { kind: DeliverableKind; prompt: string }
-export interface BriefSplitPart { title: string; minutes: number }
 /** What the `brief` job returns; the stored Brief adds status, source and linkCheck (data/types). */
 export interface BriefOutput {
   goal: string
@@ -128,11 +156,9 @@ export interface BriefOutput {
   outcome: string
   deliverable: BriefDeliverable
   questions: BriefQuestion[]
-  /** optional: propose splitting a big item into sessions of 45-90 minutes each */
-  split?: BriefSplitPart[]
 }
-/** `kind` is the ticket kind; `forge` = an AI-track or stage ticket (the model never writes its code). */
-export interface BriefContext { kind: Kind; forge: boolean; /** watch/read, or a stage whose session is watch: answers deliverable and questions */ learning?: boolean; /** a stage whose session is teachback: an explanation deliverable (UAT cu-5 P2-2) */ teachback?: boolean; estMin: number; sprint: number; session?: string; stage?: number }
+/** `kind` is the ticket kind; `learning` = a watch or read ticket (answers deliverable and questions). */
+export interface BriefContext { kind: Kind; learning?: boolean; estMin: number }
 
 export type CheckVerdict = 'pass' | 'partial' | 'fail'
 export interface CheckQuestionInput { id: string; kind: 'open' | 'mcq'; q: string; answer?: string; choice?: number; choices?: string[]; keyIdeas?: string[]; correct?: number }
@@ -140,7 +166,7 @@ export interface CheckContext { questions: CheckQuestionInput[] }
 export interface CheckResult { id: string; verdict: CheckVerdict; correction: string; pointer: string }
 export interface CheckOutput { results: CheckResult[] }
 
-/** The numbers are computed in code (rules/review.ts); the job only writes the prose. */
+/** The stats stored on a legacy `reviews` row (Dexie table kept; the review_sprint job that wrote them is gone). */
 export interface ReviewStats {
   sprint: number
   planned: number
@@ -152,9 +178,13 @@ export interface ReviewStats {
   redoPassRate: number | null
   checkPassRate: number | null
 }
-export interface ReviewContext { stats: ReviewStats }
-/** doBetter: the "Do better next sprint" items (ui-progress P1 #9; Controller ruling 8 S4). Optional: older reviews have none. */
-export interface ReviewOutput { prose: string; doBetter?: string[] }
+
+// ---- bank_more (R1 W6, BANK-19): five more questions for one node of a question bank ----
+export type BankMoreType = 'concept' | 'estimate' | 'tradeoff' | 'design'
+/** `avoid` is the question text already in that node (so the model does not repeat it); `count` is always 5. */
+export interface BankMoreContext { area: 'design' | 'ai'; node: string; nodeTitle: string; nodeAbout: string; avoid: string[]; count: 5 }
+export interface BankMoreQuestion { type: BankMoreType; difficulty: number; question: string; answer: string; checklist: string[] }
+export interface BankMoreOutput { questions: BankMoreQuestion[] }
 
 export interface Jobs {
   hint: { context: HintContext; output: HintOutput }
@@ -163,13 +193,12 @@ export interface Jobs {
   interview: { context: InterviewContext; output: InterviewOutput }
   grade: { context: GradeContext; output: GradeOutput }
   solution: { context: SolutionContext; output: SolutionOutput }
-  suggest_slide: { context: SuggestSlideContext; output: SuggestSlideOutput }
   classify: { context: ClassifyContext; output: ClassifyOutput }
   brief: { context: BriefContext; output: BriefOutput }
   check: { context: CheckContext; output: CheckOutput }
-  review_sprint: { context: ReviewContext; output: ReviewOutput }
+  bank_more: { context: BankMoreContext; output: BankMoreOutput }
 }
-export type TicketOptionalJob = 'classify' | 'suggest_slide' | 'review_sprint'
+export type TicketOptionalJob = 'classify' | 'bank_more'
 export type JobContext<J extends JobName> = Jobs[J]['context']
 export type JobOutput<J extends JobName> = Jobs[J]['output']
 /** The body the helper receives: `POST /ai/:job {ticket, context}` (ladder contract §7.2). */

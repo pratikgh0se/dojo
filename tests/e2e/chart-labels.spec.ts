@@ -3,12 +3,10 @@ import { IST, onboard } from './helpers'
 
 // P1 fix (chart-label scaling): a chart's SVG viewBox is stretched to fill its panel
 // (width: 100% in charts.css), which used to scale the label text right along with the
-// bars — huge, clipped, overlapping labels on Week/AI/DSA at 1280px. Text now draws at
+// bars — huge, clipped, overlapping labels on DSA at 1280px. Text now draws at
 // a font-size compensated for the measured scale (labelScale.ts / useChartScale.ts) so
 // it renders at a fixed, small CSS pixel size and never escapes its chart's own bbox.
 const ROUTES: Array<[string, string]> = [
-  ['/week', 'Minutes per week, last 8 weeks'],
-  ['/ai', 'Stage sessions done vs total'],
   ['/dsa', 'Solved vs total by difficulty'],
 ]
 
@@ -43,7 +41,7 @@ async function assertChartLabelsWellFormed(page: Page, chartName: string) {
 }
 
 for (const width of [1280, 560]) {
-  test(`chart labels stay small and inside their chart at ${width}px (Week, AI, DSA)`, async ({ page }) => {
+  test(`chart labels stay small and inside their chart at ${width}px (DSA)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.clock.setFixedTime(IST('2026-10-20T21:10:00'))
     await onboard(page, '2026-10-05')

@@ -334,3 +334,50 @@ describe('the health ping (UAT cu-2 P3-13)', () => {
     expect(states).toContain('offline')
   })
 })
+
+describe('the model gate keeps the outbox at home', () => {
+  it('while modelLocked, flush posts nothing and leaves the rows queued; lifting the lock sends them', async () => {
+    await seed(3)
+    const gate: { modelLocked?: boolean } = { modelLocked: true }
+    const f = vi.fn(async () => json(200))
+    const l = loop(f as unknown as typeof fetch, { gate })
+    expect(await l.flush()).toBe(false)
+    expect(f).not.toHaveBeenCalled()
+    expect(await d._outbox.count()).toBe(3)
+    gate.modelLocked = false
+    expect(await l.flush()).toBe(true)
+    expect(f).toHaveBeenCalledTimes(1)
+    expect(await d._outbox.count()).toBe(0)
+    l.stop()
+  })
+
+  it('while modelLocked, an empty outbox still flushes cleanly (restore needs that)', async () => {
+    const l = loop(vi.fn(async () => json(200)) as unknown as typeof fetch, { gate: { modelLocked: true } })
+    expect(await l.flush()).toBe(true)
+    l.stop()
+  })
+
+  it('while modelLocked, the page-hide path posts nothing', async () => {
+    const gate: { modelLocked?: boolean } = {}
+    const f = vi.fn(async () => json(200))
+    const l = loop(f as unknown as typeof fetch, { gate })
+    await l.flush() // memory mirrors the empty outbox
+    gate.modelLocked = true // the gate engages after the early render
+    l.queued([row(1), row(2)])
+    l.flushOnHide()
+    expect(f).not.toHaveBeenCalled()
+    gate.modelLocked = false
+    l.flushOnHide()
+    expect(f).toHaveBeenCalledTimes(1)
+    l.stop()
+  })
+
+  it('a readOnly gate alone does not stop the loop (restore behaviour is unchanged)', async () => {
+    await seed(1)
+    const f = vi.fn(async () => json(200))
+    const l = loop(f as unknown as typeof fetch, { gate: { readOnly: true } as never })
+    expect(await l.flush()).toBe(true)
+    expect(f).toHaveBeenCalledTimes(1)
+    l.stop()
+  })
+})

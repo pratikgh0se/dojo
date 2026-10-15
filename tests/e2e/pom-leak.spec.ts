@@ -3,12 +3,12 @@ import { onboard } from './helpers'
 
 /**
  * Review I2: pom-stage.js (generated, never hand-edited) builds a fresh THREE.Scene per attach
- * and its disconnectedCallback only cancels the render loop, so 10 Today↔Board round trips took
+ * and its disconnectedCallback only cancels the render loop, so 10 Today↔Path round trips took
  * the shared WebGLRenderer's tracked memory from 42→462 geometries, 10→100 textures. The React
  * wrapper (src/ui/engines/PomStage.tsx) now disposes every geometry/material/texture in the
  * scene on unmount. Round-trip a few times and assert those counts don't climb.
  */
-test('Pom stage does not leak GPU geometries/textures across Today↔Board round trips', async ({ page }) => {
+test('Pom stage does not leak GPU geometries/textures across Today↔Path round trips', async ({ page }) => {
   await onboard(page, '2026-10-05')
   await page.locator('pom-stage').waitFor()
 
@@ -27,9 +27,9 @@ test('Pom stage does not leak GPU geometries/textures across Today↔Board round
   expect(before).not.toBeNull()
 
   for (let i = 0; i < 5; i++) {
-    await page.getByRole('link', { name: 'Board', exact: true }).click()
-    await page.getByTestId('col-todo').waitFor()
-    await page.getByRole('link', { name: 'Today', exact: true }).click()
+    await page.getByTestId('shell-nav-path').click()
+    await page.getByTestId('screen-path').waitFor()
+    await page.getByTestId('shell-nav-today').click()
     await page.locator('pom-stage').waitFor()
   }
   await page.waitForTimeout(500)

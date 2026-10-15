@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useDb } from '../../app/providers'
-import { useCheckAttempts, useChildren } from '../../data/hooks'
+import { useCheckAttempts } from '../../data/hooks'
 import { approveBrief, saveLinkCheck } from '../../data/briefActions'
 import { safeWrite } from '../../data/safeWrite'
 import type { Brief, Ticket } from '../../data/types'
@@ -51,13 +51,12 @@ function Steps({ brief }: { brief: Brief }) {
  * what you'll learn, the outcome and the deliverable, with Edit / Approve / Check links / Split /
  * Mark done. Renders nothing until a brief exists, so the old statement stays the only text.
  */
-export function CardBrief({ ticket, part }: { ticket: Ticket; part?: { n: number; of: number; minutes: number } }) {
+export function CardBrief({ ticket, actions = true }: { ticket: Ticket; actions?: boolean }) {
   const d = useDb()
   const toast = useToast()
   const flash = useFlash()
   const { fire: powerUp } = usePowerUp()
   const attempts = useCheckAttempts(ticket.id)
-  const kids = useChildren(ticket.children)
   const [open, setOpen] = useState<Open>(null)
   const [checking, setChecking] = useState(false)
   const doneRef = useRef<HTMLButtonElement>(null)
@@ -65,11 +64,7 @@ export function CardBrief({ ticket, part }: { ticket: Ticket; part?: { n: number
   if (!b) return null
   const urls = stepUrls(b)
   const isDone = ticket.status === 'done'
-  const container = (ticket.children?.length ?? 0) > 0
   const learning = needsCheck(ticket)
-  // ruling 10 Q22: a split card keeps its check; it is taken here once every session is done
-  const kidsDone = !!kids && kids.length > 0 && kids.filter(k => !k.archived).every(k => k.status === 'done')
-  const containerCheck = container && learning && ticket.checkPassedAt === undefined
   const onError = (m: string) => toast(m, 'danger')
   const close = () => setOpen(null)
   const done = (xp: number) => {
@@ -107,8 +102,6 @@ export function CardBrief({ ticket, part }: { ticket: Ticket; part?: { n: number
           <span className="brief-chip">{b.source === 'edited' ? 'Edited by you' : 'AI draft'}</span>
         </span>
       </div>
-      {/* ruling 20 S3: on a part's Do screen, the parent's brief with the part's place in it; it is edited on the parent */}
-      {part && <p className="brief-part" data-testid="brief-part">Part {part.n} of {part.of} · {part.minutes} min · this brief covers the whole card</p>}
       <p className="brief-goal" data-testid="brief-goal"><WithFileRefs text={b.goal} /></p>
       <h3 className="brief-sub">Steps</h3>
       <Steps brief={b} />
@@ -123,14 +116,14 @@ export function CardBrief({ ticket, part }: { ticket: Ticket; part?: { n: number
       <p className="brief-text"><WithFileRefs text={b.outcome} /></p>
       <h3 className="brief-sub">Deliverable</h3>
       <p className="brief-text" data-testid="brief-deliverable"><WithFileRefs text={(deliverableOf(ticket, b) ?? b.deliverable).prompt} /></p>
-      {!part && ticket.deliverable && (
+      {ticket.deliverable && (
         <>
           <h3 className="brief-sub">Handed in</h3>
           <p className="brief-text" data-testid="deliverable-text">{ticket.deliverable.text}</p>
           {ticket.deliverable.feedback?.map((f, i) => <p key={i} className="brief-note">{f}</p>)}
         </>
       )}
-      {!part && attempts && attempts.length > 0 && (
+      {attempts && attempts.length > 0 && (
         <>
           <h3 className="brief-sub">Check attempts</h3>
           <ul className="brief-attempts" data-testid="check-attempts">
@@ -157,13 +150,13 @@ export function CardBrief({ ticket, part }: { ticket: Ticket; part?: { n: number
           </ul>
         </>
       )}
-      {!part && <div className="brief-actions">
+      {/* `actions={false}` on Do: the ticket has one completion path there, not a second "Mark done" (TICKET-12) */}
+      {actions && <div className="brief-actions">
         <Button onClick={() => setOpen('edit')}>Edit brief</Button>
         {b.status === 'draft' && <Button variant="accent" onClick={() => void approve()}>Approve</Button>}
         {urls.length > 0 && <Button disabled={checking} onClick={() => void linkCheck()}>Check links</Button>}
         {/* D3.2: one accent: Approve while Draft, Mark done once Approved */}
-        {containerCheck && kidsDone && <Button ref={doneRef} variant={b.status === 'draft' ? 'control' : 'accent'} onClick={() => setOpen('check')}>Mark done</Button>}
-        {!isDone && !container && <Button ref={doneRef} variant={b.status === 'draft' ? 'control' : 'accent'} onClick={() => setOpen(learning ? 'check' : 'deliver')}>Mark done</Button>}
+        {!isDone && <Button ref={doneRef} variant={b.status === 'draft' ? 'control' : 'accent'} onClick={() => setOpen(learning ? 'check' : 'deliver')}>Mark done</Button>}
       </div>}
       {open === 'edit' && <BriefEditor ticket={ticket} brief={b} onClose={close} returnFocus={() => null} />}
       {open === 'check' && <CheckDialog ticket={ticket} brief={b} onClose={close} onDone={done} returnFocus={() => doneRef.current} />}

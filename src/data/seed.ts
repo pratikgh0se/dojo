@@ -1,11 +1,14 @@
 import { getSettings, type DojoDB } from './db'
-import type { PlanJson, StoredEvent } from './types'
-import { idMapOf, isPlanJson, planToTickets, planVersionOf } from '../rules/planTickets'
+import type { PlanJson } from './types'
+import { remapTables, remapTicketIds } from './remapActions'
+import { isPlanV2, type PlanV2 } from './planV2'
+import { PlanDataError, assertPlanV2Shape, idMapOf, planToTickets, planVersionOf } from '../rules/planTickets'
 import { resolveLearnerLinks } from '../rules/learnerLinks'
 import { reconcilePlan, type ReconcileResult } from '../rules/reconcile'
 import { possibleXp } from '../rules/xp'
 
-export type PlanLoad = { ok: true; plan: PlanJson } | { ok: false; error: string }
+/** `v2` is the plan; `plan` is the slim view of it that the bank screens read (banks, id map, version, learner links). */
+export type PlanLoad = { ok: true; plan: PlanJson; v2: PlanV2 } | { ok: false; error: string }
 
 export async function loadPlan(fetcher: typeof fetch = fetch, url = '/data/plan.json'): Promise<PlanLoad> {
   let res: Response
@@ -21,39 +24,32 @@ export async function loadPlan(fetcher: typeof fetch = fetch, url = '/data/plan.
   } catch {
     return { ok: false, error: `${url} is not valid JSON` }
   }
-  if (!isPlanJson(json)) return { ok: false, error: `${url} is missing sprints/rotation/dsa_bank/design_bank` }
+  if (!isPlanV2(json)) return { ok: false, error: `${url} is not a plan v2 (planFormat 2)` }
+  // isPlanV2 is shallow by contract; a v2 plan missing a deeper part is a plan error card, not a TypeError out of boot
+  try {
+    assertPlanV2Shape(json)
+  } catch (e) {
+    if (e instanceof PlanDataError) return { ok: false, error: `${url} is not a valid plan v2: ${e.message}` }
+    throw e
+  }
   // G6: `{{learner.*}}` links resolve from the plan's learner block (DOJO_HOME/profile.json), or drop out
-  return { ok: true, plan: resolveLearnerLinks(json) }
+  const v2 = resolveLearnerLinks(json)
+  const plan: PlanJson = {
+    planVersion: v2.planVersion, idMap: v2.idMap, dsa_bank: v2.dsa_bank, design_bank: v2.design_bank,
+    ...(v2.learner ? { learner: v2.learner } : {}),
+  }
+  return { ok: true, plan, v2 }
 }
 
-export async function runReconcile(d: DojoDB, plan: PlanJson): Promise<ReconcileResult> {
+export async function runReconcile(d: DojoDB, plan: PlanV2): Promise<ReconcileResult> {
   const content = planToTickets(plan)
   const idMap = idMapOf(plan)
-  return d.transaction('rw', [d.tickets, d.sessions, d.events, d.settings], async () => {
+  return d.transaction('rw', [...remapTables(d), d.settings], async () => {
     const existing = await d.tickets.toArray()
     const res = reconcilePlan(existing, content, idMap)
     if (res.deletes.length) await d.tickets.bulkDelete(res.deletes)
     await d.tickets.bulkPut(res.puts)
-    for (const { from, to } of res.renames) {
-      await d.sessions.where('ticketId').equals(from).modify(s => { s.ticketId = to })
-      await d.events.where('id').equals(from).modify(e => { (e as { id?: string }).id = to })
-      const toMapOf = (e: StoredEvent): Record<string, number> | null => {
-        const map = (e as unknown as { to?: unknown }).to
-        return map && typeof map === 'object' && !Array.isArray(map) ? (map as Record<string, number>) : null
-      }
-      await d.events
-        .filter(e => ('ids' in e && Array.isArray(e.ids) && e.ids.includes(from)) || Boolean(toMapOf(e)?.[from] !== undefined))
-        .modify(e => {
-          if ('ids' in e && Array.isArray(e.ids)) e.ids = e.ids.map(x => (x === from ? to : x))
-          // shift_plan events carry a `to` map keyed by ticket id (id -> resulting sprint);
-          // a rename must remap that map's KEY too, not just the `ids` array.
-          const map = toMapOf(e)
-          if (map && from in map) {
-            map[to] = map[from]
-            delete map[from]
-          }
-        })
-    }
+    await remapTicketIds(d, res.renames)
     const settings = await getSettings(d)
     await d.settings.put({ ...settings, planVersion: planVersionOf(plan), possibleXp: possibleXp(res.puts) })
     return res

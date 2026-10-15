@@ -1,0 +1,64 @@
+.dk { min-width: 0; }
+.dk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; }
+.dk-col { display: grid; gap: 24px; min-width: 0; align-content: start; }
+.dk-card, .dk-box, .dk-timer { display: grid; gap: 12px; }
+.dk-title { margin: 0; font-size: var(--type-title); line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+.dk-headrow { display: flex; align-items: flex-start; gap: 16px; min-width: 0; }
+.dk-headmain { display: grid; gap: 10px; min-width: 0; flex: 1 1 auto; }
+.dk-kind { width: 56px; height: 56px; padding: 0; display: grid; place-items: center; flex: none; color: var(--sr-label-accent); }
+@media (max-width: 767px) { .dk-kind { width: 44px; height: 44px; } }
+.dk-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dk-meta { font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.dk-cap { margin: 0; font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); line-height: 1.3; }
+.dk-text { margin: 0; font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); white-space: pre-wrap; }
+.dk-lane { display: inline-flex; align-items: stretch; height: 26px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); font-size: var(--type-meta); font-weight: 700; letter-spacing: .06em; }
+.dk-lane::before { content: ''; width: 4px; background: var(--sr-lane-path); }
+.dk-lane[data-lane='dsa']::before { background: var(--sr-lane-dsa); }
+.dk-lane[data-lane='design']::before { background: var(--sr-lane-design); }
+.dk-lane[data-lane='career']::before { background: var(--sr-lane-career); }
+.dk-lane span { display: flex; align-items: center; padding: 0 8px; }
+.dk-chip { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-meta); font-weight: 700; }
+.dk-res { display: flex; align-items: center; gap: 14px; padding: 12px 14px; color: var(--sr-text-primary); text-decoration: none; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.dk-res .glyph { color: var(--sr-label-accent); }
+.dk-resmain { display: grid; gap: 2px; min-width: 0; font-size: var(--type-small); overflow-wrap: anywhere; }
+.dk-box textarea, .dk-qa textarea { width: 100%; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-body); line-height: 1.5; resize: vertical; }
+.dk-box textarea:focus, .dk-qa textarea:focus { border-color: var(--sr-energy-accent); outline: 0; }
+.dk-qa { display: grid; gap: 8px; }
+.dk-q { margin: 0; font-size: var(--type-body); font-weight: 700; line-height: 1.4; }
+.dk-q .mono { color: var(--sr-label-accent); }
+.dk-ref p { margin: 4px 0 0; }
+.dk-ref { margin: 0; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-signal-ok); font-size: var(--type-small); line-height: 1.5; }
+.dk-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.dk-step { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 2px solid var(--sr-edge-mid); }
+.dk-step:first-child { border-top: 0; }
+.dk-step code { display: block; padding: 6px 10px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.5; overflow-wrap: anywhere; }
+.dk-self { display: flex; align-items: center; gap: 12px; font-size: var(--type-small); }
+.dk-self input { width: 22px; height: 22px; }
+.dk-trow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.dk-big { font-family: var(--sr-font-pixel); font-size: var(--type-display-xl); letter-spacing: 1px; line-height: 1.1; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.dk-state { font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.dk-timeup { margin: 0; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); }
+.dk-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
+.dk-card .do-back { justify-self: start; }
+.dk-done { display: inline-flex; align-items: center; gap: 10px; color: var(--sr-label-ok); font-weight: 700; font-size: var(--type-body); }
+.dk-unl { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.dk-unl li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); font-weight: 600; }
+.dk-missing { display: grid; gap: 12px; justify-items: start; padding: 24px; background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark); }
+.dk-missing p { margin: 0; }
+/* narrow: one column, the ticket (title, facts, text, links, notes, answers and its action) first, then the timer and why */
+@media (max-width: 1099px) { .dk-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) { .dk-actions { flex-direction: column; align-items: stretch; } .dk-actions .sr-btn { width: 100%; height: var(--sr-size-hit-touch); } .dk-step { grid-template-columns: minmax(0, 1fr) auto; } .dk-step .dk-cap { grid-column: 1 / -1; } }
+.dk-timer .study-body { display: grid; gap: 12px; min-width: 0; }
+/* D4: the statement is a card of short paragraphs and lists; `code` spans read as code, never as literal backticks */
+.dk-statement { gap: 12px; }
+.dk-statement .dk-text { white-space: normal; overflow-wrap: anywhere; }
+.dk-list { margin: 0; padding-left: 24px; display: grid; gap: 6px; font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); overflow-wrap: anywhere; }
+.dk-pre { margin: 0; padding: 8px 12px; background: var(--sr-surface-well); border: 1px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-small); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dk-code { padding: 1px 6px; background: var(--sr-surface-well); border: 1px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-small); overflow-wrap: anywhere; }
+/* the timer card: caption row with the F key chip, block pips under the reading */
+.dk-caprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dk-blocks { display: flex; align-items: center; gap: 10px; }
+.dk-pips { display: inline-flex; gap: 3px; align-items: center; }
+.dk-pip { width: 12px; height: 12px; border: 2px solid var(--sr-edge-mid); background: transparent; display: block; }
+.dk-pip[data-on='true'] { background: var(--sr-energy-accent); border-color: var(--sr-edge-dark); }
+.dk-pip[data-cur='true'] { border-color: var(--sr-energy-accent); }

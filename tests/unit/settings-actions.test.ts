@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { getSettings } from '../../src/data/db'
-import { saveStartDate } from '../../src/data/settingsActions'
+import { saveCareerLane, saveLaneBudgets, saveNavLabels, saveSessionMinutes, saveStartDate } from '../../src/data/settingsActions'
 import { resetNow, setNow } from '../../src/lib/clock'
 import { freshDb } from '../helpers/db'
 
@@ -24,5 +24,26 @@ describe('saveStartDate records where tracking began', () => {
     expect(await saveStartDate(d, 'nope', m => { msg = m })).toBe(false)
     expect(msg).toContain('valid date')
     expect((await getSettings(d)).trackedFrom).toBeUndefined()
+  })
+})
+
+describe('pace and navigation settings (SET-05, SET-06, SET-08)', () => {
+  it('saves valid budgets and refuses bad ones without touching the stored value', async () => {
+    const d = freshDb()
+    expect(await saveLaneBudgets(d, [90, 60, 120, 60, 30, 30, 150])).toEqual({ ok: true })
+    expect((await getSettings(d)).laneBudgets).toEqual([90, 60, 120, 60, 30, 30, 150])
+    for (const bad of [[1, 2], [-1, 0, 0, 0, 0, 0, 0], [601, 0, 0, 0, 0, 0, 0], [1.5, 0, 0, 0, 0, 0, 0]]) {
+      expect(await saveLaneBudgets(d, bad)).toMatchObject({ ok: false, message: expect.stringContaining('0 to 600') })
+    }
+    expect((await getSettings(d)).laneBudgets).toEqual([90, 60, 120, 60, 30, 30, 150])
+  })
+  it('saves the career switch, the session length and the label mode', async () => {
+    const d = freshDb()
+    await saveCareerLane(d, true)
+    await saveSessionMinutes(d, 40)
+    await saveNavLabels(d, 'always')
+    expect(await getSettings(d)).toMatchObject({ careerLane: true, sessionMinutes: 40, navLabels: 'always' })
+    expect(await saveSessionMinutes(d, 3)).toMatchObject({ ok: false })
+    expect(await saveNavLabels(d, 'nope' as never)).toMatchObject({ ok: false })
   })
 })

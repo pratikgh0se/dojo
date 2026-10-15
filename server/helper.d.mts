@@ -18,6 +18,7 @@ export interface HelperConfig {
 export const HOST: string
 export const MODEL: string
 export const JOBS: string[]
+export const EXTRA_JOBS: string[]
 export const STATUS: Record<string, number>
 export const MAX_BODY_BYTES: number
 export const MAX_FAKE_DELAY_MS: number

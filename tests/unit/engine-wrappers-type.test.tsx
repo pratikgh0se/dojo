@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SrAlgo } from '../../src/ui/engines/SrAlgo'
 import { SrChart } from '../../src/ui/engines/SrChart'
 import { SrDiagram } from '../../src/ui/engines/SrDiagram'
-import { PomStage } from '../../src/ui/engines/PomStage'
 
 class FakeSheet { replaceSync() {} }
 const defined = new Map<string, () => void>()
@@ -31,7 +30,6 @@ describe('engine wrappers adopt the readable sheet after the engine is defined (
     ['sr-diagram', () => <SrDiagram data={{}} label="d" />],
     ['sr-algo', () => <SrAlgo engine="algo" json={{}} label="a" />],
     ['sr-algo2', () => <SrAlgo engine="algo2" json={{}} label="a2" />],
-    ['pom-stage', () => <PomStage form={0} pose="idle" label="p" />],
   ] as const)('%s', async (tag, ui) => {
     const { container } = render(ui())
     const el = withShadow(container, tag)

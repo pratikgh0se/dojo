@@ -53,4 +53,22 @@ describe('repairOutput (UAT cu-7 P2-1)', () => {
     expect(repairOutput('hint', {}, v)).toBe(v)
     expect(repairOutput('interview', turn, 'text')).toBe('text')
   })
+
+  it('a session final: lists trimmed to their caps, non-strings dropped, score set to the sum of the five items', () => {
+    const req = { context: { sessionGrade: true } }
+    const fixed = repairOutput('grade', req, {
+      done: true, score: 3, perItem: [{ item: 'a', points: 4, note: '' }, { item: 'b', points: 3, note: '' }, { item: 'c', points: 4, note: '' }, { item: 'd', points: 4, note: '' }, { item: 'e', points: 2, note: '' }],
+      oneThingToStudy: 'x', deepDives: [1, 1, 1, 1], lenses: { load: 1, data: 1, consistency: 1, failure: 1, latency: 1, cost: 1, evolution: 1 },
+      inconsistencies: ['1', '2', '3', '4', '5', '6', 7], stronger: ['a', 'b', 'c', 'd', 'e'],
+    }) as Record<string, unknown>
+    expect(fixed.score).toBe(17)
+    expect(fixed.inconsistencies).toEqual(['1', '2', '3', '4', '5'])
+    expect(fixed.stronger).toEqual(['a', 'b', 'c', 'd'])
+    expect(validateOutput('grade', fixed)).toEqual([])
+  })
+
+  it('an artifact grade is never touched by the session repair', () => {
+    const v = { score: 4, max: 5, passed: true, feedback: [], missing: [] }
+    expect(repairOutput('grade', { context: {} }, v)).toBe(v)
+  })
 })

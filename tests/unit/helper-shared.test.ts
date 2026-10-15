@@ -13,8 +13,8 @@ describe('helper shared bundle', () => {
   it('returns exactly the app fake outputs', async () => {
     const shared = await import('../../server/gen/ai-shared.mjs')
     expect(shared.fakeOutput('hint', HINT_REQ)).toEqual(appFakeOutput('hint', HINT_REQ as never))
-    const slide = { ticket: null, context: { tickets: [{ id: 'a', title: 'A', track: 'ai', estMin: 50, slidCount: 0 }], count: 1 } }
-    expect(shared.fakeOutput('suggest_slide', slide)).toEqual(appFakeOutput('suggest_slide', slide as never))
+    const classify = { ticket: null, context: { input: 'https://leetcode.com/problems/two-sum/' } }
+    expect(shared.fakeOutput('classify', classify)).toEqual(appFakeOutput('classify', classify as never))
   })
 
   it('checks outputs with the app validator and exposes the guardrail system text', async () => {

@@ -127,7 +127,7 @@ export function openDojo({ home, clock = () => new Date(), hooks = {} }) {
         // UAT r3 J8: a daily snapshot's name has only the day ("2026-10-05 00:00" for one taken at 19:53), so its
         // time is the file's own mtime, when that is on the named day (a copied-in file keeps the name's day).
         const t = named !== null && DAILY.test(file) && sameLocalDay(st.mtime.getTime(), named) ? st.mtime.getTime() : named ?? st.mtime.getTime()
-        return { file, bytes: st.size, at: new Date(t).toISOString(), t }
+        return { file, bytes: st.size, at: t, t }
       })
       .sort((x, y) => (y.t - x.t) || (y.file < x.file ? -1 : 1))
       .map(({ t: _t, ...b }) => b)

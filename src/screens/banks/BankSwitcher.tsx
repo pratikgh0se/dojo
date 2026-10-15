@@ -30,13 +30,14 @@ export function BankSwitcher({ tabs, selected, onSelect }: { tabs: TabCount[]; s
             type="button"
             role="tab"
             id={`banks-tab-${t.def.id}`}
+            data-testid={`banks-tab-${t.def.id}`}
             aria-selected={sel}
             aria-controls="banks-panel"
             tabIndex={sel ? 0 : -1}
             className={`banks-tab${sel ? ' sel' : ''}`}
             onClick={() => onSelect(t.def.id)}
           >
-            {t.def.label} <span className="banks-tab-count" data-testid={`banks-tab-count-${t.def.id}`}>{t.done}/{t.total}</span>
+            <span data-content="plan">{t.def.label}</span> <span className="banks-tab-count" data-testid={`banks-tab-count-${t.def.id}`}>{t.done}/{t.total}</span>
           </button>
         )
       })}

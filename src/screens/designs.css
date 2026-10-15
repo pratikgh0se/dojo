@@ -1,5 +1,5 @@
 .next-design { display: grid; gap: 6px; justify-items: start; }
-.next-title { margin: 0; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+.next-title { margin: 0; font-weight: 400; font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
 .ladder { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; align-items: end; }
 .ladder-col {
   display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; padding: 6px; min-height: calc(90px + var(--tier-i, 0) * 24px); cursor: pointer; text-align: left;
@@ -37,3 +37,10 @@
 @media (max-width: 767px) { .dz-charts { grid-template-columns: minmax(0, 1fr); } }
 /* ruling 11 Q14: designs-hint is Chivo 15 secondary, like dsa-hint */
 .designs .designs-pick-hint { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 400; }
+/* NAV-32: the search box sits at the top and stays in view while the results (below the charts) are read; native clear marks are off, the screen has its own button */
+.designs-search-row { position: sticky; top: 0; z-index: var(--sr-z-sticky); display: flex; align-items: center; gap: 12px; padding: 8px 0; background: var(--sr-surface-well); }
+.designs-search { flex: 1 1 auto; min-width: 0; max-width: 520px; height: 40px; box-sizing: border-box; padding: 0 12px; color: var(--sr-text-primary); background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-body); font-size: var(--type-body); }
+.designs-search:focus-visible { outline: 0; border-color: var(--sr-energy-accent); }
+.designs-search-results { scroll-margin-top: 64px; display: grid; gap: 12px; }
+.designs-search-tier { display: grid; gap: 8px; }
+.designs-search-tier-title { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; color: var(--sr-text-secondary); }

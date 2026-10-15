@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { twoUpPartner, walkDef, type Pattern } from '../../content/atlas'
 import type { PatternCoverage } from '../../rules/approachCoverage'
@@ -17,25 +17,29 @@ export type Opened = { mode: 'play' | 'predict' | 'input'; key: string } | { mod
  * One player (or one two-up) at a time, below the list.
  */
 export function AtlasDetail({
-  pattern, state, coverage, problems, opened, onOpen, onClose,
+  pattern, state, coverage, problems, opened, focusProblems, onOpen, onClose,
 }: {
   pattern: Pattern
   state: PatternState
   coverage: PatternCoverage
   problems: TaggedProblem[]
   opened: Opened | null
+  /** a cell link asked for the problem list (ATLAS-04): focus goes there instead of the heading */
+  focusProblems: { slug: string; n: number } | null
   onOpen: (o: Opened | null) => void
   onClose: () => void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
+  const problemsRef = useRef<HTMLElement>(null)
   const opener = useRef<HTMLElement | null>(null)
   const [fixedId, traceId, solvedId] = [useId(), useId(), useId()]
   const firstRunnable = pattern.walkthroughs.find(k => walkDef(k)?.input)
 
-  // Opening the panel moves focus to its heading (§9).
+  // Opening the panel moves focus to its heading (§9); a cell link moves it to the row's problem list (ATLAS-04).
   useEffect(() => {
-    heading.current?.focus()
-  }, [pattern.slug])
+    if (focusProblems && focusProblems.slug === pattern.slug && problemsRef.current) problemsRef.current.focus()
+    else heading.current?.focus()
+  }, [pattern.slug, focusProblems?.n]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const open = (o: Opened, button: HTMLElement) => {
     opener.current = button
@@ -59,16 +63,16 @@ export function AtlasDetail({
       {pattern.walkthroughs.length === 0 ? (
         <p className="hint">No walkthrough yet</p>
       ) : (
-        <ul className="atlas-walks" aria-label="Walkthroughs">
-          {pattern.walkthroughs.map(key => {
+        <ul className="atlas-walks" aria-label="Walkthroughs" data-testid="atlas-walks">
+          {pattern.walkthroughs.map((key, n) => {
             const w = walkDef(key)!
             const partner = twoUpPartner(key, pattern.slug)
             return (
-              <li key={key} className="atlas-walk">
+              <li key={key} className="atlas-walk" data-testid={`atlas-walk-${n + 1}`}>
                 <span className="aw-title">{w.title}</span>
                 <span className="aw-cx">{w.complexity}</span>
                 <span className="aw-actions">
-                  <Button onClick={e => open({ mode: 'play', key }, e.currentTarget)}>Play</Button>
+                  <Button data-testid={`atlas-walk-play-${n + 1}`} onClick={e => open({ mode: 'play', key }, e.currentTarget)}>Play</Button>
                   <Button onClick={e => open({ mode: 'predict', key }, e.currentTarget)}>Predict</Button>
                   <Button disabled={!partner} onClick={e => partner && open({ mode: 'twoup', key, right: partner }, e.currentTarget)}>Two-up</Button>
                   <Button disabled={!w.input} aria-describedby={w.input ? undefined : fixedId} onClick={e => open({ mode: 'input', key }, e.currentTarget)}>
@@ -109,13 +113,13 @@ export function AtlasDetail({
 
       <h3 className="sub-title">Problems</h3>
       {problems.length === 0 ? (
-        <p className="hint">No plan problems tagged yet.</p>
+        <p className="hint" tabIndex={-1} ref={problemsRef as RefObject<HTMLParagraphElement>}>No plan problems tagged yet.</p>
       ) : (
-        <ul className="atlas-problems" aria-label="Problems">
+        <ul className="atlas-problems" aria-label="Problems" data-testid="atlas-problems" tabIndex={-1} ref={problemsRef as RefObject<HTMLUListElement>}>
           {problems.map(t => (
             <li key={t.id}>
               <span className="sr-cube" data-on={t.solved ? 'true' : 'false'} aria-hidden="true" />
-              <Link to={`/do/${t.id}`} aria-describedby={t.solved ? solvedId : undefined}>{`${t.num} ${t.name}`}</Link>
+              <Link to={`/do/${t.id}`} data-testid={`atlas-problem-${t.id}`} aria-describedby={t.solved ? solvedId : undefined}>{`${t.num} ${t.name}`}</Link>
               <span className="ap-sprint">S{t.sprint}</span>
             </li>
           ))}

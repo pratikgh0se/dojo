@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { resolveHome, toolPath } from './env.mjs'
 import { linkVerdict, permissionAllowed } from './links.mjs'
 import { buildMenuTemplate, revealWindow } from './menu.mjs'
+import { windowOpenDecision } from './windows.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(here, '..')
@@ -101,15 +102,38 @@ function createWindow({ url, token }) {
   })
   win.once('ready-to-show', () => { win.show(); win.focus() })
   for (const ev of ['resize', 'move', 'close']) win.on(ev, saveState)
-  win.on('closed', () => { win = null })
+  win.on('closed', () => {
+    win = null
+    for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.close() // the card windows go with the app window
+  })
   // External links open in the default browser; the window never navigates away from the app.
   const own = u => u === url || u.startsWith(url + '/') || u.startsWith(url + '#')
-  win.webContents.setWindowOpenHandler(({ url: u }) => { if (!own(u)) openOutside(u); return { action: 'deny' } })
-  win.webContents.on('will-navigate', (e, u) => { if (!own(u)) { e.preventDefault(); openOutside(u) } })
-  // SEC-D-12: a frame (the Python runner's) never navigates away from the app's own files
-  win.webContents.on('will-frame-navigate', e => {
-    if (!e.isMainFrame && !own(e.url) && e.url !== 'about:blank' && e.url !== 'about:srcdoc') e.preventDefault()
-  })
+  // A2: the partner card opens in its own window of the same session (same origin, so the same token and database); nothing else may.
+  // Only the app window may open a card (allowCard); a card window gets the same guard without it, so it cannot open further
+  // cards (or any own-origin window), cannot navigate away, and a foreign link still goes through openOutside.
+  const guard = (wc, { allowCard }) => {
+    wc.setWindowOpenHandler(({ url: u }) => {
+      const decision = windowOpenDecision(u, url, { allowCard })
+      if (decision === 'card') {
+        return {
+          action: 'allow',
+          overrideBrowserWindowOptions: {
+            width: 560, height: 800, minWidth: 375, minHeight: 480, title: 'Partner card', backgroundColor: '#0f111c', autoHideMenuBar: true,
+            webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+          },
+        }
+      }
+      if (decision === 'outside') openOutside(u)
+      return { action: 'deny' }
+    })
+    wc.on('will-navigate', (e, u) => { if (!own(u)) { e.preventDefault(); openOutside(u) } })
+    // SEC-D-12: a frame (the Python runner's) never navigates away from the app's own files
+    wc.on('will-frame-navigate', e => {
+      if (!e.isMainFrame && !own(e.url) && e.url !== 'about:blank' && e.url !== 'about:srcdoc') e.preventDefault()
+    })
+    wc.on('did-create-window', child => guard(child.webContents, { allowCard: false }))
+  }
+  guard(win.webContents, { allowCard: true })
   // Addendum 3: this window is the writer, as the old launcher's /#writer=<token> made it.
   win.loadURL(token ? `${url}/#writer=${token}` : `${url}/`)
 }

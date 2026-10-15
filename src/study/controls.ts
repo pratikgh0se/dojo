@@ -1,8 +1,7 @@
 // The study session's small controls (pause, resume, resume after a gap, "end it now"), kept apart from runner.ts so the
 // Shell's session pill and Today's NOW tile can use them without pulling the runner's data layer into the entry chunk.
 import { updateStudy, notifyStudy } from '../lib/studyStore'
-import { blockTimer } from '../lib/studyTimer'
-import { saveTimer } from '../lib/timer'
+import { blockTimer, saveTimer } from '../lib/timer'
 import { pauseStudy, phaseEnd, resumePausedStudy, resumeStudy } from '../rules/studySession'
 
 /**

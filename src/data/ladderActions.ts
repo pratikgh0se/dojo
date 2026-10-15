@@ -5,7 +5,6 @@ import { redoOutcome, type RedoEffect } from '../rules/redoQueue'
 import { closeSessionResult } from '../rules/session'
 import { ticketBaseXp } from '../rules/xp'
 import type { DojoDB } from './db'
-import { syncParentOf } from './splitActions'
 import { needsCheck } from '../rules/brief'
 import type { HelpRung, Outcome, Rung, RungUse, Session, Ticket, TicketAi } from './types'
 
@@ -162,7 +161,6 @@ export async function closeLadderSession(d: DojoDB, i: LadderCloseInput): Promis
     await d.tickets.put({ ...base.ticket, xp: net })
     const xpDelta = net - i.netAtStart
     await d.sessions.update(session.id, { xpDelta })
-    await syncParentOf(d, t.id, i.now)
     return { ok: true, session: { ...session, xpDelta }, xpDelta, net, effect }
   })
 }

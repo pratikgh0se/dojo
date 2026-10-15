@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { openApp, rows, ticket } from './briefs-helpers'
+import { learningCard, openApp, putTicket, rows } from './briefs-helpers'
 import { ServerHarness } from './harness'
 import { GO_VF } from '../../helpers/visualSolutions'
 
@@ -51,18 +51,21 @@ async function setCode(page: Page, id: string, code: string) {
   await expect.poll(async () => (await rows(srv, 'code')).find(r => r.ticketId === id)?.source, { timeout: 5000 }).toBe(code)
 }
 
-test('J3 (P3): the Do statement shows no repo path, and Today\'s watch line agrees with it', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv, '2026-10-05T10:00:00+05:30') // Monday: AI · watch, stage 00
-  const ts = await rows(srv, 'tickets')
-  const watch = ts.find(t => t.sprint === 1 && t.kind === 'stage' && t.session === 'watch')!
-  expect(watch.text).toContain('not code to type along with') // the plan says so
-  await expect(page.getByTestId('now-text')).not.toContainText('type along')
-  await expect(page.getByTestId('now-text')).toHaveText(/^Watch: /)
-  await page.goto(`/do/${watch.id}`)
-  const st = page.locator('.statement .st-text')
+test('J3 (P3): the ticket view\'s statement shows no repo path (the plan text says the references are videos)', async ({ browser }) => {
+  const { ctx, page } = await openApp(browser, srv)
+  // The plan's own tickets no longer carry the forge brief path (the 00-setup stage is gone), so the case is seeded the way the plan
+  // used to write it: the text ends with "The brief is forge/stages/00-setup/brief.md". Today's NOW line (`now-text`) is retired
+  // (README Retired "Old Today panels"); the ticket view's statement is the one place the text shows (TICKET-14, `ticket-statement`).
+  await putTicket(srv, {
+    ...learningCard('stage-00-watch', 'Watch the setup walkthroughs'),
+    text: 'Watch the three videos in order; these are videos, not code to type along with. The brief is forge/stages/00-setup/brief.md',
+  })
+  await page.goto('/do/stage-00-watch')
+  const st = page.getByTestId('ticket-statement')
   await expect(st).toContainText('these are videos, not code to type along with.')
   await expect(st).not.toContainText('brief.md')
   await expect(st).not.toContainText('forge/')
+  await expect(page.getByTestId('do-screen')).not.toContainText('brief.md')
   await ctx.close()
 })
 
@@ -138,31 +141,10 @@ test('J5 (P3, cu-r2 A2#24): the heap pane is the array then the tree, with no he
   await ctx.close()
 })
 
-test('J7 (P3): Back from a Do screen returns to the screen it was opened from (Week), else the Board', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.goto('/week')
-  await page.locator('main a[href^="/do/"]').first().click()
-  await page.waitForURL(/\/do\//)
-  await page.getByTestId('do-back').click()
-  await page.waitForURL(/\/week$/)
-  // Esc leaves the same way
-  await page.locator('main a[href^="/do/"]').first().click()
-  await page.waitForURL(/\/do\//)
-  await page.getByTestId('do-title').waitFor()
-  await page.keyboard.press('Escape')
-  await page.waitForURL(/\/week$/)
-  // a Do screen opened directly (a link, a reload) still goes to the Board
-  await page.goto('/do/p91')
-  await page.getByTestId('do-back').click()
-  await page.waitForURL(/\/board$/)
-  await ctx.close()
-})
-
-test('J3 (re-UAT P3): Pause → Resume moves nothing: Retreat beside the plain timer, the session buttons under "Focus · paused"', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
+/** Starts p200 and returns a box() of any control in page coordinates, once the entrance animations are over. */
+async function timerRow(page: Page) {
   // page coordinates (a click may scroll the page)
   const box = (sel: Locator) => sel.evaluate(e => { const b = e.getBoundingClientRect(); return [Math.round(b.x + scrollX), Math.round(b.y + scrollY), Math.round(b.width)] })
-  const near = (a: number[], b: number[]) => expect(a.every((v, i) => Math.abs(v - b[i]) <= 1), `${a} vs ${b}`).toBe(true)
   // Root cause of the old flake (40–50%): every .sr-panel mounts with the 160 ms `srin` entrance (translateY 4px → 0
   // in steps(4)). Playwright's stability check passes between two steps, so Start was clicked and `before` measured
   // while the Do panels were still up to 4 px low; the paused measurement came after the animation ended. Measure the
@@ -171,64 +153,31 @@ test('J3 (re-UAT P3): Pause → Resume moves nothing: Retreat beside the plain t
   await page.goto('/do/p200')
   await page.getByTestId('do-title').waitFor()
   await settled()
-  await page.getByTestId('do-timer-preset-25').click()
-  const retreat = page.getByRole('button', { name: 'Retreat' })
+  await page.getByTestId('ticket-start').click() // the one start (TICKET-03); "Retreat" and the Plan dialog are retired
+  await page.getByTestId('timer-pause').waitFor()
   await settled()
-  const before = await box(retreat)
+  return box
+}
+const near = (a: number[], b: number[]) => expect(a.every((v, i) => Math.abs(v - b[i]) <= 1), `${a} vs ${b}`).toBe(true)
+
+test('J3 (re-UAT P3): Pause → Resume moves nothing: End session stays put beside the one timer\'s button', async ({ browser }) => {
+  const { ctx, page } = await openApp(browser, srv)
+  const box = await timerRow(page)
+  const end = page.getByTestId('session-end')
+  const before = await box(end)
+  await page.getByTestId('timer-pause').click()
+  await expect(page.getByTestId('timer-resume')).toBeVisible()
+  near(await box(end), before)
+  await expect(page.getByTestId('timer-resume')).toHaveText('Resume')
+  await ctx.close()
+})
+
+test('J3 (re-UAT P3): Pause and Resume are one width (TicketTimer sizes both with Sized, as the pill does)', async ({ browser }) => {
+  const { ctx, page } = await openApp(browser, srv)
+  const box = await timerRow(page)
   const pauseW = (await box(page.getByTestId('timer-pause')))[2]
   await page.getByTestId('timer-pause').click()
   await expect(page.getByTestId('timer-resume')).toBeVisible()
-  near(await box(retreat), before)
   near([(await box(page.getByTestId('timer-resume')))[2]], [pauseW])
-  await expect(page.getByTestId('timer-resume')).toHaveText('Resume')
-  // the study session, in its narrow side column
-  await retreat.click()
-  await page.getByTestId('start-session').click()
-  await page.getByTestId('plan-start').click()
-  await page.getByTestId('session-timer').waitFor()
-  await settled() // the session panel's entrance animation (a few px of translate) is over
-  // UAT cu-4 P3-18: D3.6 has no Pause in the panel; Focus mode and End session are full width of the 220 px column, stacked
-  await expect(page.getByTestId('session-pause')).toHaveCount(0)
-  const focusBtn = await box(page.getByTestId('session-focus'))
-  const endBtn = await box(page.getByTestId('session-end'))
-  const side = await box(page.locator('.study-side'))
-  near([focusBtn[0], focusBtn[2]], [side[0], side[2]])
-  near([endBtn[0], endBtn[2]], [side[0], side[2]])
-  expect(endBtn[1]).toBeGreaterThan(focusBtn[1] + 30) // stacked: End session is under Focus mode
-  await ctx.close()
-})
-
-test('J7 (re-UAT P3): a mouse click on a Board card opens it; a drag still moves it', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.goto('/board')
-  // a drag moves the card and opens nothing (a card near the top: a drag across a scroll is a Playwright artefact,
-  // it scrolls to the target between press and move)
-  const top = page.getByTestId('col-todo').locator('article.card').filter({ hasNot: page.getByTestId('do-m1w1i1') }).first()
-  await top.waitFor()
-  const id = (await top.getAttribute('data-testid'))!.replace(/^card-/, '')
-  await top.dragTo(page.getByTestId('col-doing'), { sourcePosition: { x: 24, y: 12 }, targetPosition: { x: 40, y: 60 } })
-  await expect.poll(async () => (await ticket(srv, id)).status).toBe('doing')
-  await expect(page).toHaveURL(/\/board$/)
-  // a click opens it
-  await page.getByTestId('card-m1w1i1').locator('.card-title').click()
-  await page.waitForURL(/\/do\/m1w1i1$/)
-  await ctx.close()
-})
-
-test('J7 (re-UAT P3): hovering a Board card shows its rail without moving anything: the cards below keep their boxes', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv) // 1280 wide: the rail shows on hover only
-  await page.goto('/board')
-  const cards = page.getByTestId('col-todo').locator('article.card')
-  await cards.nth(3).waitFor()
-  const rects = () => cards.evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y + scrollY), Math.round(r.width), Math.round(r.height)] }))
-  await page.mouse.move(5, 5)
-  const before = await rects()
-  for (let i = 0; i < 3; i++) {
-    const card = cards.nth(i)
-    await expect(card.locator('.rail')).toBeHidden()
-    await card.hover({ position: { x: 20, y: 10 } })
-    await expect(card.locator('.rail')).toBeVisible()
-    expect(await rects(), `hovering card ${i}`).toEqual(before)
-  }
   await ctx.close()
 })

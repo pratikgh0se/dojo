@@ -1,0 +1,495 @@
+{
+  "planFormat": 2,
+  "planVersion": "fx-v2-2026-10-12",
+  "areas": [
+    {
+      "id": "llm",
+      "name": "How LLMs run",
+      "tag": "LM",
+      "why": "The base.",
+      "pre": []
+    },
+    {
+      "id": "measure",
+      "name": "Measuring things",
+      "tag": "ME",
+      "why": "Measure.",
+      "pre": [
+        "llm"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "p": 1,
+      "name": "Measure first",
+      "months": "Months 1-2",
+      "idea": "Measure before you optimise.",
+      "authored": true
+    },
+    {
+      "p": 2,
+      "name": "Batching",
+      "months": "Months 3-4",
+      "idea": "The batch is the scheduler.",
+      "authored": false
+    }
+  ],
+  "nodes": [
+    {
+      "id": "L1",
+      "area": "llm",
+      "phase": 1,
+      "kind": "lit",
+      "title": "Neural network basics",
+      "short": "Neural network basics",
+      "oneLiner": "Neural network basics in one line.",
+      "why": "Because Neural network basics.",
+      "pre": [],
+      "explain": [
+        "Explain Neural network basics?"
+      ],
+      "hours": 0.5
+    },
+    {
+      "id": "R1",
+      "area": "llm",
+      "phase": 1,
+      "kind": "real",
+      "title": "Run a real model",
+      "short": "Run a real model",
+      "oneLiner": "Run a real model in one line.",
+      "why": "Because Run a real model.",
+      "pre": [
+        "L1"
+      ],
+      "explain": [
+        "Explain Run a real model?"
+      ],
+      "hours": 0.75
+    },
+    {
+      "id": "T01",
+      "area": "llm",
+      "phase": 1,
+      "kind": "topic",
+      "title": "Memory and compute bounds",
+      "short": "Memory and compute bounds",
+      "oneLiner": "Memory and compute bounds in one line.",
+      "why": "Because Memory and compute bounds.",
+      "pre": [
+        "L1",
+        "R1"
+      ],
+      "explain": [
+        "Explain Memory and compute bounds?"
+      ],
+      "hours": 1.75
+    },
+    {
+      "id": "B1",
+      "area": "llm",
+      "phase": 1,
+      "kind": "build",
+      "title": "tokensim (Python)",
+      "short": "tokensim (Python)",
+      "oneLiner": "tokensim (Python) in one line.",
+      "why": "Because tokensim (Python).",
+      "pre": [],
+      "explain": [
+        "Explain tokensim (Python)?"
+      ],
+      "hours": 1.5
+    },
+    {
+      "id": "T02",
+      "area": "llm",
+      "phase": 2,
+      "kind": "topic",
+      "title": "Batching and KV cache",
+      "short": "Batching and KV cache",
+      "oneLiner": "Batching and KV cache in one line.",
+      "why": "Because Batching and KV cache.",
+      "pre": [
+        "T01"
+      ],
+      "explain": [
+        "Explain Batching and KV cache?"
+      ]
+    },
+    {
+      "id": "T07",
+      "area": "measure",
+      "phase": 1,
+      "kind": "topic",
+      "title": "Queues and tail latency",
+      "short": "Queues and tail latency",
+      "oneLiner": "Queues and tail latency in one line.",
+      "why": "Because Queues and tail latency.",
+      "pre": [
+        "R1"
+      ],
+      "explain": [
+        "Explain Queues and tail latency?"
+      ],
+      "hours": 0.67
+    }
+  ],
+  "builds": [
+    {
+      "id": "B1",
+      "name": "tokensim",
+      "lang": "python",
+      "repo": "ai-platform-lab",
+      "lab": "labs/b1-tokensim",
+      "gpu": "none"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "ai.l1.learn",
+      "kind": "watch",
+      "lane": "path",
+      "track": "ai",
+      "node": "L1",
+      "area": "llm",
+      "phase": 1,
+      "title": "Watch neural networks",
+      "text": "Watch neural networks.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 30,
+      "order": 1,
+      "explain": [
+        "Explain Neural network basics?"
+      ],
+      "explainAnswers": [
+        "The short answer for L1. It has two sentences."
+      ],
+      "asOf": "2026-10-11"
+    },
+    {
+      "id": "ai.r1.real",
+      "kind": "build",
+      "lane": "path",
+      "track": "ai",
+      "node": "R1",
+      "area": "llm",
+      "phase": 1,
+      "title": "Run a small model locally",
+      "text": "Run a small model locally.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 45,
+      "order": 2,
+      "explain": [
+        "Explain Run a real model?"
+      ],
+      "explainAnswers": [
+        "The short answer for R1. It has two sentences."
+      ],
+      "lab": {
+        "id": "r1",
+        "gpu": "none"
+      },
+      "asOf": "2026-10-11"
+    },
+    {
+      "id": "ai.t01.learn",
+      "kind": "read",
+      "lane": "path",
+      "track": "ai",
+      "node": "T01",
+      "area": "llm",
+      "phase": 1,
+      "title": "Read the roofline",
+      "text": "Read the roofline.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 45,
+      "order": 4,
+      "asOf": "2026-10-11"
+    },
+    {
+      "id": "ai.t01.build",
+      "kind": "build",
+      "lane": "path",
+      "track": "ai",
+      "node": "T01",
+      "area": "llm",
+      "phase": 1,
+      "title": "Write a roofline calculator",
+      "text": "Write a roofline calculator.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 60,
+      "order": 6,
+      "explain": [
+        "Explain Memory and compute bounds?"
+      ],
+      "explainAnswers": [
+        "The short answer for T01. It has two sentences."
+      ],
+      "lab": {
+        "id": "b1",
+        "gpu": "none"
+      },
+      "asOf": "2026-10-11"
+    },
+    {
+      "id": "ai.t07.learn",
+      "kind": "watch",
+      "lane": "path",
+      "track": "ai",
+      "node": "T07",
+      "area": "measure",
+      "phase": 1,
+      "title": "Watch a talk on latency",
+      "text": "Watch a talk on latency.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 40,
+      "order": 8,
+      "explain": [
+        "Explain Queues and tail latency?"
+      ],
+      "explainAnswers": [
+        "The short answer for T07. It has two sentences."
+      ],
+      "asOf": "2026-10-11"
+    },
+    {
+      "id": "ai.b1.learn",
+      "kind": "read",
+      "lane": "path",
+      "track": "ai",
+      "node": "B1",
+      "area": "llm",
+      "phase": 1,
+      "title": "Read the tokensim brief",
+      "text": "Read the tokensim brief.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 30,
+      "order": 9,
+      "asOf": "2026-10-11"
+    },
+    {
+      "id": "ai.b1.build",
+      "kind": "build",
+      "lane": "path",
+      "track": "ai",
+      "node": "B1",
+      "area": "llm",
+      "phase": 1,
+      "title": "Write the event engine",
+      "text": "Write the event engine.\nDone when it works.",
+      "links": [
+        {
+          "label": "Ref",
+          "url": "https://example.com/ref"
+        }
+      ],
+      "estMin": 60,
+      "order": 12,
+      "explain": [
+        "Explain tokensim (Python)?"
+      ],
+      "explainAnswers": [
+        "The short answer for B1. It has two sentences."
+      ],
+      "lab": {
+        "id": "b1",
+        "gpu": "none"
+      },
+      "asOf": "2026-10-11"
+    }
+  ],
+  "dsa_bank": [
+    {
+      "sprint": 1,
+      "topic": "Graphs: BFS and DFS",
+      "pattern": "Graphs; Island (Matrix Traversal)",
+      "note": "Templates first.",
+      "problems": [
+        {
+          "num": 200,
+          "name": "Number of Islands",
+          "url": "https://leetcode.com/problems/number-of-islands/",
+          "difficulty": "M",
+          "premium": false,
+          "order": 7
+        },
+        {
+          "num": 127,
+          "name": "Word Ladder",
+          "url": "https://leetcode.com/problems/word-ladder/",
+          "difficulty": "H",
+          "premium": false,
+          "order": 10
+        },
+        {
+          "num": 1,
+          "name": "Two Sum",
+          "url": "https://leetcode.com/problems/two-sum/",
+          "difficulty": "E",
+          "premium": false,
+          "order": 13
+        }
+      ]
+    }
+  ],
+  "design_bank": [
+    {
+      "tier": "Foundations (sprints 2 to 3)",
+      "skill": "sysd",
+      "items": [
+        {
+          "id": "d-method",
+          "title": "The method, on a whiteboard, in 45 minutes",
+          "difficulty": "M",
+          "deep_dives": [
+            "Requirements",
+            "API first",
+            "One deep dive",
+            "Failure modes"
+          ],
+          "refs": [
+            {
+              "label": "Hello Interview free guides",
+              "url": "https://example.com/hello"
+            }
+          ],
+          "order": 5
+        },
+        {
+          "id": "d-estimate",
+          "title": "Back-of-envelope sheet",
+          "difficulty": "M",
+          "deep_dives": [
+            "Latency",
+            "Throughput",
+            "Storage",
+            "Cost"
+          ],
+          "refs": [
+            {
+              "label": "System Design Primer",
+              "url": "https://example.com/sdp"
+            }
+          ],
+          "order": 11
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "m1w1i1",
+      "kind": "task",
+      "lane": "dsa",
+      "track": "interview",
+      "title": "Set the routine: 25 minutes per problem",
+      "text": "Set the routine: 25 minutes per problem",
+      "links": [
+        {
+          "label": "Tech Interview Handbook",
+          "url": "https://example.com/tih"
+        }
+      ],
+      "estMin": 50,
+      "order": 3,
+      "skill": "dsa"
+    },
+    {
+      "id": "m1w2i1",
+      "kind": "task",
+      "lane": "dsa",
+      "track": "interview",
+      "title": "Topological sort warm-up",
+      "text": "Topological sort warm-up",
+      "links": [
+        {
+          "label": "DSA bank tab",
+          "url": "#bank"
+        }
+      ],
+      "estMin": 50,
+      "order": 14,
+      "skill": "dsa"
+    },
+    {
+      "id": "m5w1i1",
+      "kind": "task",
+      "lane": "design",
+      "track": "interview",
+      "title": "Design a rate limiter",
+      "text": "Design a rate limiter",
+      "links": [],
+      "estMin": 50,
+      "order": 15,
+      "skill": "sysd"
+    },
+    {
+      "id": "m9w1i1",
+      "kind": "task",
+      "lane": "career",
+      "track": "interview",
+      "title": "Update the story bank",
+      "text": "Update the story bank",
+      "links": [],
+      "estMin": 50,
+      "order": 16,
+      "skill": "loops"
+    }
+  ],
+  "mix": {
+    "shares": {
+      "path": 58,
+      "dsa": 25,
+      "design": 17
+    },
+    "budgets": [
+      90,
+      60,
+      60,
+      60,
+      30,
+      30,
+      150
+    ]
+  },
+  "rituals": [
+    {
+      "id": "ai-pulse",
+      "title": "AI pulse",
+      "cadence": "daily",
+      "minutes": 15
+    }
+  ],
+  "idMap": {}
+}

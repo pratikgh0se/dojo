@@ -19,7 +19,9 @@
 .lang-switch { display: flex; gap: 0; width: max-content; max-width: 100%; border: 2px solid var(--sr-edge-mid); }
 .lang-option { position: relative; display: inline-flex; cursor: pointer; font-family: var(--sr-font-mono); font-size: var(--type-small); }
 .lang-option + .lang-option { border-left: 2px solid var(--sr-edge-mid); }
-.lang-option input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+/* GLOBAL-05: the radio is an invisible overlay on its label (the segment is the visible control); with the native look removed it has no
+ * round indicator in any engine, so its corners are square wherever they are read. */
+.lang-option input { position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius:0; background: transparent; -webkit-appearance: none; appearance: none; opacity: 0; cursor: pointer; }
 .lang-option span { padding: 6px 14px; color: var(--sr-text-secondary); font-family: var(--sr-font-mono); font-size: var(--type-small); font-weight: 400; text-transform: none; letter-spacing: 0; }
 .lang-option[data-checked='true'] span { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); font-weight: 700; }
 .lang-option:focus-within { outline: 2px solid var(--sr-focus); outline-offset: 2px; }

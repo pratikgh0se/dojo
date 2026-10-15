@@ -4,7 +4,7 @@ export function BankHeader({ tab, done, total, visible }: { tab: BankTabDef; don
   const pct = total ? Math.round((100 * done) / total) : 0
   return (
     <header className="banks-header sr-panel" data-testid="banks-header">
-      <h2 className="banks-bank-title">{tab.label}</h2>
+      <h2 className="banks-bank-title" data-content="plan">{tab.label}</h2>
       <div
         className="banks-progress" role="progressbar" aria-label={`${tab.label} progress`}
         aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} data-testid="banks-progress"

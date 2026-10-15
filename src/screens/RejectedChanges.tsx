@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { syncGate } from '../data/db'
 import { rejectedLabel, syncControls, useRejectedCount, type RejectedOp } from '../data/sync/status'
 import { Button, Panel, useToast } from '../ui/primitives'
 import { copy } from '../lib/platform'
@@ -38,7 +39,7 @@ export function RejectedChanges() {
         ))}
       </ul>
       <div className="bk-actions">
-        <Button onClick={() => void retry()} disabled={busy}>Retry</Button>
+        <Button onClick={() => void retry()} disabled={busy || syncGate.readOnly}>Retry</Button>
       </div>
     </Panel>
   )

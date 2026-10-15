@@ -11,6 +11,7 @@ import { validateOutput } from './validate'
 import { READ_ONLY_MESSAGE, writerHeaders } from '../data/writer'
 
 export const DEFAULT_HELPER_PORT = 8788
+export const FAKE_BANK_MORE_MIN_MS = 300
 
 export interface AiConfig { provider: ProviderName; helperUrl: string }
 
@@ -40,7 +41,9 @@ const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 
 async function runFake<J extends JobName>(job: J, req: JobRequest<J>, opts: RunOptions): Promise<JobOutput<J>> {
   const hooks = readFakeHooks(job, opts.storage, req.ticket?.id)
-  if (hooks.delayMs > 0) await sleep(hooks.delayMs)
+  // README "Fake AI provider": the bank_more job takes at least 300 ms, so that "disabled while the job runs" can be observed
+  const delayMs = job === 'bank_more' ? Math.max(hooks.delayMs, FAKE_BANK_MORE_MIN_MS) : hooks.delayMs
+  if (delayMs > 0) await sleep(delayMs)
   if (hooks.fail) throw new AiJobError(hooks.fail, `fake ${job} unavailable`)
   return fakeOutput(job, req, hooks.variant)
 }

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { GO_VF } from '../../helpers/visualSolutions'
-import { draftSprint1, learningCard, openApp, putTicket, rows, ticket } from './briefs-helpers'
+import { openApp, openApproaches, rows } from './briefs-helpers'
 import { ServerHarness } from './harness'
 
 // The do-dp-families rerun on 48cae36 (reports/ui/do-dp-families/findings.md, Controller ruling 10).
@@ -67,42 +67,7 @@ func uniquePaths(m int, n int) int {
 }
 `
 
-test('Q22: Split on a briefed learning card opens the dialog; the check stays on the parent and is taken once every part is done', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await putTicket(srv, { ...learningCard('w-big', 'Big reading'), estMin: 180 })
-  await page.reload()
-  await draftSprint1(page)
-  await page.goto('/do/w-big')
-  await page.getByRole('button', { name: 'Split into sessions' }).click()
-  const dlg = page.getByRole('dialog', { name: 'Split into sessions' })
-  await expect(dlg).toBeVisible()
-  await dlg.getByLabel('Parts').fill('2')
-  await dlg.getByRole('button', { name: 'Split', exact: true }).click()
-  await expect(dlg).toBeHidden()
-  await expect.poll(async () => (await ticket(srv, 'w-big')).children?.length).toBe(2)
-  const kids: string[] = (await ticket(srv, 'w-big')).children
-  for (const k of kids) expect((await ticket(srv, k)).brief).toBeUndefined()
-  // the parent offers its check only once every part is done
-  const card = page.getByTestId('card-brief')
-  await expect(card.getByRole('button', { name: 'Mark done' })).toHaveCount(0)
-  for (const k of kids) {
-    await page.goto(`/do/${k}`)
-    await page.getByTestId('do-outcome-solved').click()
-    await expect.poll(async () => (await ticket(srv, k)).status).toBe('done')
-  }
-  expect((await ticket(srv, 'w-big')).status).not.toBe('done')
-  await page.goto('/do/w-big')
-  await card.getByRole('button', { name: 'Mark done' }).click()
-  const check = page.getByRole('dialog', { name: 'Check your understanding' })
-  await check.getByRole('textbox', { name: 'Explain Big reading in your own words' }).fill('I can explain how big reading works')
-  await check.getByRole('radiogroup', { name: 'Which is Big reading?' }).getByRole('radio', { name: 'Big reading', exact: true }).check()
-  await check.getByRole('button', { name: 'Check answers' }).click()
-  await expect(check.getByText('Passed')).toBeVisible()
-  await expect.poll(async () => (await ticket(srv, 'w-big')).status).toBe('done')
-  await ctx.close()
-})
-
-test('F001 / F002 / F003 / F007 / W: rung 1 description 15, active gutter number secondary, select padding on the scale, phone language options 11 14, rail timer-readout + panel timer-panel-readout (ruling 12)', async ({ browser }) => {
+test('F001 / F002 / F003 / F007 / W: rung 1 description 15, active gutter number secondary, select padding on the scale, phone language options 11 14, exactly one timer-readout, in the sticky rail (TICKET-08)', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.goto('/do/p91')
   await page.getByTestId('code-editor').waitFor()
@@ -110,9 +75,9 @@ test('F001 / F002 / F003 / F007 / W: rung 1 description 15, active gutter number
   await page.getByRole('textbox', { name: 'Code' }).click()
   expect(await css(page, '.cm-gutterElement.cm-activeLineGutter', 'color')).toBe('rgb(180, 186, 208)')
   await expect(page.getByTestId('timer-readout')).toHaveCount(1)
-  expect(await page.getByTestId('timer-readout').evaluate(e => !!e.closest('[role="banner"]'))).toBe(true)
-  await expect(page.getByTestId('timer-panel-readout')).toHaveCount(1)
-  expect(await page.getByTestId('timer-panel-readout').evaluate(e => !!e.closest('.timer'))).toBe(true)
+  expect(await page.getByTestId('timer-readout').evaluate(e => !!e.closest('.do-rail'))).toBe(true)
+  // the panel's second reading (`timer-panel-readout`, ruling 12) is retired: one timer, one reading (TICKET-08)
+  await expect(page.getByTestId('timer-panel-readout')).toHaveCount(0)
   const pads = await page.evaluate(() => [...document.querySelectorAll('select')].map(s => getComputedStyle(s).paddingRight))
   for (const p of pads) expect(['4px', '8px', '12px', '14px', '16px', '24px']).toContain(p)
   await page.setViewportSize({ width: 393, height: 852 })
@@ -169,7 +134,7 @@ test('final F002: on the iPhone SE width "Compare with" fits inside the two-up',
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 375, height: 800 })
   await page.goto('/do/p91')
-  const strip = page.getByTestId('dsa-approaches')
+  const strip = await openApproaches(page)
   await strip.getByRole('button', { name: 'Pick two' }).click()
   const chips = strip.getByRole('button').filter({ hasNotText: /Pick two/ })
   await chips.nth(1).click()
@@ -229,6 +194,8 @@ func numDecodings(s string) int {
   await expect(cell).toHaveAttribute('aria-pressed', 'false')
   await expect(page).toHaveURL(/\/do\/p91$/)
   await page.keyboard.press('Escape')
-  await expect(page).toHaveURL(/\/board$/)
+  // a Do opened by a direct load has no earlier screen of the app: Esc leaves to Today (the Board is retired, SHELL-20)
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByTestId('screen-today')).toBeVisible()
   await ctx.close()
 })

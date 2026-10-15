@@ -5,8 +5,11 @@ import { isAtlasPattern } from '../content/patterns'
 import { PICTURE_LIMITS, SRALGO2_OPS, SRALGO2_TYPES, SRALGO_OPS, SRALGO_TYPES } from './engineSpec'
 
 export { PICTURE_LIMITS, SRALGO2_OPS, SRALGO2_TYPES, SRALGO_OPS, SRALGO_TYPES }
-import { SOLUTION_PSEUDOCODE_MAX_LINES, WORD_LIMITS, wordCount } from './guardrails'
-import { DAY_TYPES, DELIVERABLE_KINDS, LENSES, type JobName, type SrAlgoJson } from './types'
+import {
+  GRADE_EVIDENCE_MAX, GRADE_EVIDENCE_TARGET_MAX, GRADE_FEEDBACK_MAX_WORDS, MISSED_ANSWER_MAX_WORDS, MISSED_MAX, MISSED_QUESTION_MAX_WORDS,
+  MISSED_TOPIC_MAX_WORDS, SOLUTION_PSEUDOCODE_MAX_LINES, WORD_LIMITS, wordCount,
+} from './guardrails'
+import { DAY_TYPES, DELIVERABLE_KINDS, LENSES, NOTE_EVIDENCE_IDS, type JobName, type SrAlgoJson } from './types'
 
 export const DIAGRAM_KINDS = [
   'browser', 'phone', 'desktop', 'cli', 'cdn', 'dns', 'gateway', 'lb', 'webhook', 'service', 'function', 'worker', 'cron', 'process',
@@ -138,7 +141,46 @@ export function validateDiagram(j: unknown, maxNodes: number = DIAGRAM_MAX_NODES
   return e
 }
 
-const isReasonList = (v: unknown) => Array.isArray(v) && v.every(r => isObj(r) && isStr(r.id) && isStr(r.reason))
+const listErr = (v: unknown, name: string, max: number): string[] =>
+  v === undefined ? []
+    : !Array.isArray(v) || !v.every(x => typeof x === 'string') ? [`${name} must be a list of strings`]
+      : v.length > max ? [`${name} has ${v.length} items (max ${max})`] : []
+
+/** F3: a perItem entry's optional feedback and evidence (absent on a grade stored before F3). */
+function itemExtrasErr(p: Obj, i: number): string[] {
+  const e: string[] = []
+  const at = `perItem ${i + 1}`
+  if (p.feedback !== undefined) {
+    if (typeof p.feedback !== 'string') e.push(`${at}: feedback must be a string`)
+    else if (wordCount(p.feedback) > GRADE_FEEDBACK_MAX_WORDS) e.push(`${at}: feedback is ${wordCount(p.feedback)} words (max ${GRADE_FEEDBACK_MAX_WORDS})`)
+  }
+  if (p.evidence !== undefined) {
+    if (!Array.isArray(p.evidence)) e.push(`${at}: evidence must be a list`)
+    else {
+      if (p.evidence.length > GRADE_EVIDENCE_MAX) e.push(`${at}: evidence has ${p.evidence.length} items (max ${GRADE_EVIDENCE_MAX})`)
+      for (const ev of p.evidence) {
+        if (!isObj(ev) || (ev.source !== 'notes' && ev.source !== 'diagram') || !isStr(ev.target)) e.push(`${at}: evidence must be {source: notes|diagram, target}`)
+        else if (ev.target.length > GRADE_EVIDENCE_TARGET_MAX) e.push(`${at}: evidence target is over ${GRADE_EVIDENCE_TARGET_MAX} characters`)
+        else if (ev.source === 'notes' && !(NOTE_EVIDENCE_IDS as readonly string[]).includes(ev.target)) e.push(`${at}: unknown notes section ${ev.target}`)
+      }
+    }
+  }
+  return e
+}
+
+function missedErr(v: unknown): string[] {
+  if (v === undefined) return []
+  if (!Array.isArray(v)) return ['missed must be a list']
+  const e: string[] = v.length > MISSED_MAX ? [`missed has ${v.length} items (max ${MISSED_MAX})`] : []
+  v.forEach((m, i) => {
+    if (!isObj(m) || !isStr(m.topic) || !isStr(m.question) || !isStr(m.answer)) { e.push(`missed ${i + 1}: needs a topic, a question and an answer`); return }
+    for (const [k, max] of [['topic', MISSED_TOPIC_MAX_WORDS], ['question', MISSED_QUESTION_MAX_WORDS], ['answer', MISSED_ANSWER_MAX_WORDS]] as const) {
+      const n = wordCount(m[k] as string)
+      if (n > max) e.push(`missed ${i + 1}: ${k} is ${n} words (max ${max})`)
+    }
+  })
+  return e
+}
 
 function validateInterview(o: Obj): string[] {
   if (o.done === false) {
@@ -153,10 +195,14 @@ function validateInterview(o: Obj): string[] {
   if (typeof o.oneThingToStudy !== 'string') e.push('oneThingToStudy missing')
   if (!Array.isArray(o.deepDives) || o.deepDives.length !== 4 || !o.deepDives.every(is012)) e.push('deepDives must be four 0/1/2 scores')
   if (!isObj(o.lenses) || !LENSES.every(l => is012((o.lenses as Obj)[l]))) e.push('lenses must score all seven lenses 0/1/2')
+  e.push(...listErr(o.inconsistencies, 'inconsistencies', 5), ...listErr(o.stronger, 'stronger', 4), ...missedErr(o.missed))
+  if (Array.isArray(o.perItem)) o.perItem.forEach((p, i) => { if (isObj(p)) e.push(...itemExtrasErr(p, i)) })
   return e
 }
 
 function validateGrade(o: Obj): string[] {
+  // a design session's final grade comes through the grade job: it is the 0-20 rubric final, not the 0-5 artifact grade
+  if (o.done === true) return validateInterview(o)
   const e: string[] = []
   if (!isInt(o.score, 0, 5)) e.push('score must be 0–5')
   if (o.max !== 5) e.push('max must be 5')
@@ -202,8 +248,7 @@ function validateClassify(o: Obj): string[] {
 }
 
 const isHttpUrl = (v: unknown) => typeof v === 'string' && /^https?:\/\/\S+$/i.test(v)
-export const BRIEF_LIMITS = { steps: 12, minMinutes: 5, maxMinutes: 480, splitMin: 2, splitMax: 8, splitPartMin: 10, splitPartMax: 180 } as const
-export const REVIEW_MAX_WORDS = 250
+export const BRIEF_LIMITS = { steps: 12, minMinutes: 5, maxMinutes: 480 } as const
 
 export function validateBrief(o: Obj): string[] {
   const e: string[] = []
@@ -236,11 +281,6 @@ export function validateBrief(o: Obj): string[] {
     }
     if (isObj(d) && d.kind === 'answers' && qs.length === 0) e.push('an answers deliverable needs at least one question')
   }
-  if (o.split !== undefined) {
-    const sp = o.split
-    if (!Array.isArray(sp) || sp.length < BRIEF_LIMITS.splitMin || sp.length > BRIEF_LIMITS.splitMax) e.push(`split needs ${BRIEF_LIMITS.splitMin}-${BRIEF_LIMITS.splitMax} parts`)
-    else if (!sp.every(p => isObj(p) && isStr(p.title) && isInt(p.minutes, BRIEF_LIMITS.splitPartMin, BRIEF_LIMITS.splitPartMax))) e.push('every split part needs a title and minutes')
-  }
   return e
 }
 
@@ -252,6 +292,34 @@ function validateCheck(o: Obj): string[] {
     if (!isObj(r) || !isStr(r.id)) { e.push(`result ${i + 1}: id missing`); return }
     if (typeof r.verdict !== 'string' || !VERDICTS.includes(r.verdict)) e.push(`result ${i + 1}: verdict must be pass, partial or fail`)
     if (typeof r.correction !== 'string' || typeof r.pointer !== 'string') e.push(`result ${i + 1}: correction and pointer must be strings`)
+  })
+  return e
+}
+
+const BANK_TYPES = ['concept', 'estimate', 'tradeoff', 'design']
+/** The words and phrases no screen shows (contract GLOBAL-01, GLOBAL-02); an AI-made question is shown as the learner's own content. */
+const BANK_BANNED = [/\bSpar\b/i, /\bRetreat\b/i, /Dig in/i, /Load check/i, /Slid in/i, /Shift plan/i, /overdue/i, /\binterview/i, /\bmissed (a )?(day|days|session)/i, /\bbehind\b/i, /streak (lost|broken)/i, /you didn'?t/i, /days? (since|without)/i]
+/** BANK-19, BANK-20: exactly five questions in the qbank shape (no `source`), the answer at most 120 words, a checklist of 1 to 6, clean copy. */
+function validateBankMore(o: Obj): string[] {
+  if (!Array.isArray(o.questions) || o.questions.length !== 5) return ['questions must be a list of exactly 5']
+  const e: string[] = []
+  const seen = new Set<string>()
+  o.questions.forEach((q: unknown, i: number) => {
+    const w = `question ${i + 1}`
+    if (!isObj(q)) { e.push(`${w}: not an object`); return }
+    const allowed = ['type', 'difficulty', 'question', 'answer', 'checklist']
+    const extra = Object.keys(q).filter(k => !allowed.includes(k))
+    if (extra.length) e.push(`${w}: unexpected field ${extra.join(', ')} (no source, id or area)`)
+    if (typeof q.type !== 'string' || !BANK_TYPES.includes(q.type)) e.push(`${w}: type must be one of ${BANK_TYPES.join(', ')}`)
+    if (!Number.isInteger(q.difficulty) || (q.difficulty as number) < 1 || (q.difficulty as number) > 5) e.push(`${w}: difficulty must be an integer from 1 to 5`)
+    if (!isStr(q.question)) e.push(`${w}: question missing`)
+    else if (seen.has(q.question.trim())) e.push(`${w}: question repeats another`)
+    else seen.add(q.question.trim())
+    if (!isStr(q.answer)) e.push(`${w}: answer missing`)
+    else if (wordCount(q.answer) > 120) e.push(`${w}: answer is ${wordCount(q.answer)} words (max 120)`)
+    if (!Array.isArray(q.checklist) || q.checklist.length < 1 || q.checklist.length > 6 || !q.checklist.every(isStr)) e.push(`${w}: checklist must be 1 to 6 non-empty strings`)
+    const text = [q.question, q.answer, ...(Array.isArray(q.checklist) ? q.checklist : [])].filter((x): x is string => typeof x === 'string').join(' ')
+    for (const re of BANK_BANNED) if (re.test(text)) e.push(`${w}: uses a word the app never shows (${re})`)
   })
   return e
 }
@@ -269,23 +337,10 @@ export function validateOutput(job: JobName, output: unknown): string[] {
     case 'interview': return validateInterview(output)
     case 'grade': return validateGrade(output)
     case 'solution': return validateSolution(output)
-    case 'suggest_slide': {
-      const e: string[] = []
-      if (!isReasonList(output.slide)) e.push('slide must be a list of {id, reason}')
-      if (!isReasonList(output.keep)) e.push('keep must be a list of {id, reason}')
-      return e
-    }
     case 'classify': return validateClassify(output)
     case 'brief': return validateBrief(output)
     case 'check': return validateCheck(output)
-    case 'review_sprint': {
-      if (!isStr(output.prose)) return ['prose missing']
-      const e: string[] = []
-      const n = wordCount(output.prose)
-      if (n > REVIEW_MAX_WORDS) e.push(`prose is ${n} words (max ${REVIEW_MAX_WORDS})`)
-      if (output.doBetter !== undefined && !(Array.isArray(output.doBetter) && output.doBetter.every(isStr))) e.push('doBetter must be a list of strings')
-      return e
-    }
+    case 'bank_more': return validateBankMore(output)
     default: return [`unknown job ${String(job)}`]
   }
 }

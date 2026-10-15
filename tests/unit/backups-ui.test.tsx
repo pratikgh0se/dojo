@@ -1,13 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { Backups } from '../../src/screens/Backups'
+import { Backups, isoMinute } from '../../src/screens/Backups'
 import { registerSyncControls } from '../../src/data/sync/status'
 import { syncGate } from '../../src/data/db'
 import { ToastProvider } from '../../src/ui/primitives'
 
 const files = [
-  { file: 'dojo-2026-09-29-101010.db', bytes: 20480, at: '2026-09-29T10:10:10.000Z' },
-  { file: 'dojo-2026-09-29.db', bytes: 10240, at: '2026-09-29T08:00:00.000Z' },
+  { file: 'dojo-2026-09-29-101010.db', bytes: 20480, at: Date.parse('2026-09-29T10:10:10.000Z') },
+  { file: 'dojo-2026-09-29.db', bytes: 10240, at: Date.parse('2026-09-29T08:00:00.000Z') },
 ]
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status })
 
@@ -22,6 +22,12 @@ function setup(handler: (url: string, init?: RequestInit) => Response | Promise<
 /** Addendum 5: each backup row's button is named exactly "Restore"; find it within that row. */
 const restoreIn = (file: string) => within(screen.getByText(file).closest('li')!).getByRole('button', { name: 'Restore' })
 
+describe('isoMinute', () => {
+  it('formats an epoch-millisecond instant as local "YYYY-MM-DD HH:mm"', () => {
+    expect(isoMinute(new Date(2026, 8, 29, 22, 30, 15).getTime())).toBe('2026-09-29 22:30')
+  })
+})
+
 describe('Backups region', () => {
   it('lists backups with file names inside a region named Backups', async () => {
     setup(() => json({ backups: files }))
@@ -29,6 +35,24 @@ describe('Backups region', () => {
     await waitFor(() => expect(within(region).getAllByRole('listitem')).toHaveLength(2))
     expect(within(region).getByText('dojo-2026-09-29.db')).toBeInTheDocument()
     expect(within(region).getByRole('button', { name: 'Back up now' })).toBeInTheDocument()
+  })
+
+  it('MIG-16 hooks: each item carries data-file and backup-restore-<file>; the dialog confirm is backup-restore-confirm', async () => {
+    const order: string[] = []
+    registerSyncControls({ flush: async () => true, beginRestore: async () => { order.push('flush'); return async () => {} }, wipeLocal: async () => { order.push('wipe') } })
+    const { calls, reload } = setup((u, i) => (i?.method === 'POST' ? (order.push('restore'), json({ ok: true })) : json({ backups: files })))
+    await screen.findByText('dojo-2026-09-29.db')
+    for (const f of files) {
+      const item = screen.getByTestId(`backup-restore-${f.file}`).closest('li')!
+      expect(item).toHaveAttribute('data-file', f.file)
+    }
+    fireEvent.click(screen.getByTestId('backup-restore-dojo-2026-09-29.db'))
+    const dlg = screen.getByTestId('bk-dialog')
+    expect(calls).not.toContain('POST /db/restore')
+    fireEvent.click(within(dlg).getByTestId('backup-restore-confirm'))
+    await waitFor(() => expect(reload).toHaveBeenCalled())
+    expect(order).toEqual(['flush', 'restore', 'wipe'])
+    expect(calls.find(c => c === 'POST /db/restore')).toBeDefined()
   })
 
   it('Back up now posts and reloads the list', async () => {
@@ -53,7 +77,7 @@ describe('Backups region', () => {
   })
 
   it('UAT cu-8 P3-2: the pre-restore row reads as "Before restore" with the local time, the file name in its tooltip', async () => {
-    const pre = { file: 'pre-restore-2026-10-06T13-56-43-830Z.db', bytes: 20480, at: '2026-10-06T13:56:43.830Z' }
+    const pre = { file: 'pre-restore-2026-10-06T13-56-43-830Z.db', bytes: 20480, at: Date.parse('2026-10-06T13:56:43.830Z') }
     setup(() => json({ backups: [pre, ...files] }))
     const name = await screen.findByText('Before restore')
     expect(name).toHaveAttribute('title', pre.file)
@@ -75,9 +99,17 @@ describe('Backups region', () => {
     fireEvent.click(restoreIn('dojo-2026-09-29.db'))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Restore' }))
     await waitFor(() => expect(reload).toHaveBeenCalled())
-    expect(sessionStorage.getItem('dojo.restoredToast')).toMatch(/^Restored dojo-2026-09-29\.db · \d{4}-\d{2}-\d{2} \d{2}:\d{2}\./)
-    // the page that comes back shows it once
+    expect(JSON.parse(sessionStorage.getItem('dojo.restoredToast')!).text).toMatch(/^Restored dojo-2026-09-29\.db · \d{4}-\d{2}-\d{2} \d{2}:\d{2}\./)
+    // the wipe makes the screen remount before the reload lands: that remount (the same page) must not take the line
     cleanup()
+    setup(() => json({ backups: files }))
+    await screen.findByText('dojo-2026-09-29.db')
+    expect(screen.queryByText(/^Restored dojo-2026-09-29\.db/)).toBeNull()
+    expect(sessionStorage.getItem('dojo.restoredToast')).not.toBeNull()
+    // the page that comes back (another page load) shows it once
+    cleanup()
+    const left = JSON.parse(sessionStorage.getItem('dojo.restoredToast')!)
+    sessionStorage.setItem('dojo.restoredToast', JSON.stringify({ ...left, page: 'an-earlier-page' }))
     setup(() => json({ backups: files }))
     expect(await screen.findByText(/^Restored dojo-2026-09-29\.db/)).toBeInTheDocument()
     expect(sessionStorage.getItem('dojo.restoredToast')).toBeNull()
@@ -136,16 +168,16 @@ describe('Backups region', () => {
     expect(reload).not.toHaveBeenCalled()
   })
 
-  it('Addendum 3: in a read-only browser, Back up now and Restore refuse with the Read-only message', async () => {
+  it('Addendum 3 / SHELL-23: in a read-only browser, Back up now and Restore are disabled and nothing is sent', async () => {
     syncGate.readOnly = true
     try {
       const { calls } = setup(() => json({ backups: files }))
       await screen.findByText('dojo-2026-09-29.db')
+      expect(screen.getByRole('button', { name: 'Back up now' })).toBeDisabled()
+      expect(restoreIn('dojo-2026-09-29.db')).toBeDisabled()
       fireEvent.click(screen.getByRole('button', { name: 'Back up now' }))
-      expect(await screen.findByText(/^Read-only/)).toBeInTheDocument()
       fireEvent.click(restoreIn('dojo-2026-09-29.db'))
-      expect(screen.queryByRole('dialog')).toBeNull() // Addendum 9: the toast straight away, no confirm dialog
-      await waitFor(() => expect(screen.getAllByText(/^Read-only/).length).toBeGreaterThanOrEqual(2))
+      expect(screen.queryByRole('dialog')).toBeNull()
       expect(calls.filter(c => c.startsWith('POST'))).toEqual([])
     } finally {
       syncGate.readOnly = false
@@ -161,8 +193,18 @@ describe('Backups region', () => {
     expect(calls.some(c => c.includes('restore'))).toBe(false)
   })
 
+  it('GLOBAL-10: backups-down is in the page, hidden, while the server answers', async () => {
+    setup(() => json({ backups: files }))
+    await screen.findByText('dojo-2026-09-29.db')
+    const down = screen.getByTestId('backups-down')
+    expect(down).toHaveAttribute('hidden')
+    expect(down).not.toBeVisible()
+  })
+
   it('explains how to start Dojo when the server is unreachable', async () => {
     setup(() => { throw new TypeError('down') })
-    expect(await screen.findByTestId('backups-down')).toHaveTextContent(/Dock/)
+    const down = await screen.findByTestId('backups-down')
+    await waitFor(() => expect(down).toBeVisible())
+    expect(down).toHaveTextContent(/Dock/)
   })
 })

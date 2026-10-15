@@ -13,9 +13,9 @@ import { readProfile, resolveProjectRepo } from './profile.mjs'
 
 export const HOST = '127.0.0.1'
 export const MODEL = 'sonnet'
-export const JOBS = ['hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'suggest_slide', 'classify']
-// v2 part 3: served at /ai/:job like the rest, but NOT listed in GET /health.jobs, which ladder H-50 pins to the 8 above.
-export const EXTRA_JOBS = ['brief', 'check', 'review_sprint']
+export const JOBS = ['hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'classify']
+// v2 part 3: served at /ai/:job like the rest, but NOT listed in GET /health.jobs, which ladder H-50 pins to the 7 above.
+export const EXTRA_JOBS = ['brief', 'check', 'bank_more']
 const ALL_JOBS = [...JOBS, ...EXTRA_JOBS]
 export const STATUS = {
   bad_request: 400, path_not_allowed: 400, forbidden_host: 403, forbidden_origin: 403, guardrail: 403,
@@ -25,7 +25,7 @@ export const STATUS = {
 const FAKE_FAIL_CODES = ['claude_missing', 'claude_signed_out', 'timeout', 'claude_failed', 'busy', 'invalid_output', 'guardrail', 'bad_request', 'path_not_allowed', 'unknown_job']
 export const MAX_BODY_BYTES = 64 * 1024
 export const MAX_FAKE_DELAY_MS = 60_000
-const TICKET_OPTIONAL = new Set(['classify', 'suggest_slide', 'review_sprint'])
+const TICKET_OPTIONAL = new Set(['classify', 'bank_more'])
 
 // The Dojo app's own dev/preview ports (C-LADDER dev port, the parity worktrees' 8790-8796 range,
 // and the integration build 8797 plus its helper-mode build 8798).
@@ -121,20 +121,17 @@ export function validateRequest(job, body, cfg) {
     case 'solution':
       if (context.gave_up !== true) throw new JobError('guardrail', 'solution needs gave_up: true')
       break
-    case 'suggest_slide':
-      if (!Array.isArray(context.tickets) || !Number.isInteger(context.count) || context.count < 0) throw bad('context.tickets and context.count are required')
-      break
     case 'classify':
       if (typeof context.input !== 'string' || context.input.trim() === '') throw bad('context.input is required')
       break
     case 'brief':
-      if (typeof context.kind !== 'string' || typeof context.forge !== 'boolean') throw bad('context.kind and context.forge are required')
+      if (typeof context.kind !== 'string') throw bad('context.kind is required')
+      break
+    case 'bank_more':
+      if (typeof context.node !== 'string' || typeof context.nodeTitle !== 'string' || !Array.isArray(context.avoid)) throw bad('context.node, context.nodeTitle and context.avoid are required')
       break
     case 'check':
       if (!Array.isArray(context.questions) || context.questions.length === 0) throw bad('context.questions is required')
-      break
-    case 'review_sprint':
-      if (!context.stats || typeof context.stats !== 'object' || !Number.isInteger(context.stats.sprint)) throw bad('context.stats is required')
       break
     case 'grade':
       if (context.repoPath !== undefined) {
@@ -199,7 +196,8 @@ export function createHelperHandler(cfg) {
   })
 
   async function runFake(job, request, headers) {
-    const delay = Number(headers['x-dojo-fake-delay-ms'])
+    // README "Fake AI provider": the bank_more job takes at least 300 ms
+    const delay = Math.max(Number(headers['x-dojo-fake-delay-ms']) || 0, job === 'bank_more' ? 300 : 0)
     if (Number.isFinite(delay) && delay > 0) await new Promise(r => setTimeout(r, Math.min(delay, MAX_FAKE_DELAY_MS)))
     const failCode = String(headers['x-dojo-fake-fail'] ?? '').trim()
     if (failCode) throw new JobError(FAKE_FAIL_CODES.includes(failCode) ? failCode : 'claude_failed', `fake ${job} unavailable`)

@@ -4,16 +4,16 @@ import { moveTicket } from '../../src/data/boardActions'
 import { setNow } from '../../src/lib/clock'
 import { Designs } from '../../src/screens/Designs'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanProse } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
-// smallPlan: start 2026-09-07; one tier "Foundations (sprints 2 to 3)" with d-method (plan S2) and d-estimate (plan S3).
+// flatPlanProse: one tier "Foundations" with the design d-method first; the screen has no schedule, so the date does not matter.
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const S1 = ist('2026-09-08T10:00:00')
 const S2 = ist('2026-09-21T10:00:00')
 const S5 = ist('2026-11-02T10:00:00')
 
-async function setup(at: number, route = '/designs', plan = smallPlan) {
+async function setup(at: number, route = '/designs', plan = flatPlanProse) {
   setNow(() => at)
   const d = await seededDb(plan)
   renderWithApp(<Designs />, { db: d, plan, route, path: '/designs' })
@@ -22,24 +22,35 @@ async function setup(at: number, route = '/designs', plan = smallPlan) {
 }
 
 describe('Designs screen', () => {
-  it('before the bank window the callout says when it starts (Review Focus #5)', async () => {
+  it('with nothing done the callout names the first design, and no schedule wording shows', async () => {
     await setup(S1)
-    expect(screen.getByTestId('next-design-text')).toHaveTextContent('Design bank starts S2')
+    expect(screen.getByTestId('next-design-title')).toHaveTextContent('The method, on a whiteboard, in 45 minutes')
     expect(screen.getByTestId('designs-done')).toHaveTextContent('0/2')
     expect(screen.getByTestId('designs-dives')).toHaveTextContent('0')
+    expect(document.body.textContent ?? '').not.toMatch(/\bS\d+\b|Sunday|Sundays/)
   })
 
-  it('inside the window shows this Sunday’s design and opens its tier', async () => {
+  it('shows the next design and opens its tier', async () => {
     await setup(S2)
     expect(screen.getByTestId('next-design-title')).toHaveTextContent('The method, on a whiteboard, in 45 minutes')
     fireEvent.click(screen.getByTestId('open-next-tier'))
     const detail = await screen.findByTestId('tier-detail')
     expect(screen.getByTestId('location')).toHaveAttribute('data-search', '?tier=1')
-    expect(within(detail).getByTestId('row-d-method')).toHaveTextContent('plan S2')
+    expect(within(detail).getByTestId('row-d-method')).toBeInTheDocument()
     const dives = screen.getByTestId('dives-d-method')
     expect(dives).not.toHaveAttribute('open')
     expect(within(dives).getByText('Requirements')).toBeInTheDocument()
-    expect(within(dives).getByRole('link', { name: 'Hello Interview free guides ↗' })).toHaveAttribute('href', 'https://example.com/hello')
+    expect(within(dives).getByRole('link', { name: 'Hello Interview free guides' })).toHaveAttribute('href', 'https://example.com/hello')
+  })
+
+  it('a plain /designs shows the tier detail and its rows for the next design\'s tier, keeping the hint (GLOBAL-10)', async () => {
+    await setup(S2)
+    const detail = screen.getByTestId('tier-detail')
+    expect(within(detail).getByTestId('row-d-method')).toBeInTheDocument()
+    for (const h of ['do-d-method', 'design-start-d-method', 'dives-d-method']) expect(within(detail).getByTestId(h)).toBeInTheDocument()
+    expect(screen.getByTestId('designs-hint')).toBeInTheDocument()
+    expect(screen.getByTestId('tier-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('location')).toHaveAttribute('data-search', '')
   })
 
   it('selecting a ladder column opens that tier; the URL restores it', async () => {
@@ -81,7 +92,7 @@ describe('Designs screen', () => {
   })
 
   it('empty state when the plan has no design bank', async () => {
-    const plan = { ...smallPlan, design_bank: [] }
+    const plan = { ...flatPlanProse, design_bank: [] }
     setNow(() => S2)
     const d = await seededDb(plan)
     renderWithApp(<Designs />, { db: d, plan, route: '/designs', path: '/designs' })
@@ -106,11 +117,11 @@ describe('Designs screen', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/designs/session/d-method')
   })
 
-  it('shows the prototype chart row with the 48 Sundays line', async () => {
+  it('shows the chart row: designs per tier, designs done, difficulty', async () => {
     await setup(S2)
     expect(screen.getByRole('img', { name: /^Designs per tier: Foundations 0 of 2 done$/ })).toBeInTheDocument()
     expect(screen.getByTestId('designs-sundays')).toHaveTextContent('0 deep dives answered')
-    expect(screen.getByRole('heading', { name: '48 Sundays' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Designs done' })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /^Difficulty: / })).toBeInTheDocument()
   })
 

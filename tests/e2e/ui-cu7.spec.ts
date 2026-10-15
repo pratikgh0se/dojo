@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { IST, onboard } from './helpers'
-import { begin, completeS1, drawS1, endDrawing, fillClose, guard, pick, resumeAndGo, RL, RL_DIVES, scoreS1, startSession } from './design-helpers'
+import { begin, completeS1, drawS1, endDrawing, fillClose, guard, openPartner, pick, resumeAndGo, RL, RL_DIVES, scoreS1, startSession } from './design-helpers'
 
 // Findings of the computer-use UAT lane cu-7 (dojo-acceptance/reports/uat/cu-7.md, 47aa717: Designs, the design session, the AI
 // screen). Layout and scroll findings are measured here on the real page; the AI-output handling has its own vitest files.
@@ -16,10 +16,11 @@ test.describe('P2-2 · the design session stacks below 1100 (K3)', () => {
     await page.setViewportSize({ width: 834, height: 1000 })
     await begin(page)
     await startSession(page, 'Interviewer')
+    await openPartner(page)
     await drawS1(page)
     let canvas = await box(page, 'kit-canvas')
     let side = await box(page, 'session-interviewer')
-    expect(side.y, 'the Interviewer panel is below the canvas').toBeGreaterThanOrEqual(canvas.y + canvas.height - 1)
+    expect(side.y, 'the AI partner panel is below the canvas').toBeGreaterThanOrEqual(canvas.y + canvas.height - 1)
     expect(canvas.width, 'the canvas has the full width').toBeGreaterThan(700)
     await noPageScroll(page, 834)
     await page.clock.runFor(60_000)
@@ -56,6 +57,7 @@ test.describe('P2-2 · the design session stacks below 1100 (K3)', () => {
     await page.setViewportSize({ width: 1100, height: 900 })
     await begin(page)
     await startSession(page, 'Interviewer')
+    await openPartner(page)
     const canvas = await box(page, 'kit-canvas')
     const side = await box(page, 'session-interviewer')
     expect(side.x).toBeGreaterThanOrEqual(canvas.x + canvas.width - 1)
@@ -65,33 +67,10 @@ test.describe('P2-2 · the design session stacks below 1100 (K3)', () => {
   })
 })
 
-test.describe('P2-3 · /ai on a phone keeps Blank test on screen', () => {
-  for (const w of [375, 393]) {
-    test(`${w}: every row's button sits inside the window and its row`, async ({ page }) => {
-      await page.setViewportSize({ width: w, height: 812 })
-      await page.clock.setFixedTime(IST(TUE))
-      await onboard(page, '2026-10-05')
-      await page.goto('/ai')
-      await expect(page.getByTestId('ai-cube-ladder')).toBeVisible()
-      for (const nn of ['00', '05', '11']) {
-        const row = page.getByTestId(`ai-cube-row-${nn}`)
-        await row.scrollIntoViewIfNeeded()
-        const b = (await page.getByTestId(`ai-blank-${nn}`).boundingBox())!
-        const r = (await row.boundingBox())!
-        expect(b.x).toBeGreaterThanOrEqual(0)
-        expect(b.x + b.width).toBeLessThanOrEqual(w)
-        expect(b.x + b.width).toBeLessThanOrEqual(r.x + r.width + 1)
-        // the whole label shows, not a clipped "B"
-        expect(b.width).toBeGreaterThan(70)
-      }
-    })
-  }
-})
-
 test.describe('P3 · the design session', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 
-  test('P3-2 the JSON opens right under its button, in view, above the palette and the canvas', async ({ page }) => {
+  test('P3-2 the JSON opens right above its button (the footer under the canvas), in view', async ({ page }) => {
     await begin(page)
     await startSession(page, 'Solo')
     await drawS1(page)
@@ -99,10 +78,10 @@ test.describe('P3 · the design session', () => {
     const json = await box(page, 'kit-json')
     const btn = (await page.getByRole('button', { name: 'JSON', exact: true }).boundingBox())!
     const canvas = await box(page, 'kit-canvas')
-    expect(json.y).toBeGreaterThanOrEqual(btn.y + btn.height - 1)
-    expect(json.y - (btn.y + btn.height), 'the JSON starts within a few pixels of the toolbar').toBeLessThan(40)
-    expect(json.y + json.height).toBeLessThanOrEqual(800)
-    expect(json.y + json.height).toBeLessThanOrEqual(canvas.y + 1)
+    expect(json.y, 'the JSON is below the canvas').toBeGreaterThanOrEqual(canvas.y + canvas.height - 1)
+    expect(btn.y - (json.y + json.height), 'the JSON ends within a few pixels of the footer button').toBeLessThan(40)
+    expect(json.y + json.height).toBeLessThanOrEqual(btn.y + 1)
+    expect(btn.y + btn.height, 'the button stays in view').toBeLessThanOrEqual(800)
     expect(JSON.parse((await page.getByTestId('kit-json').textContent())!).layout).toBe('manual')
   })
 
@@ -111,14 +90,15 @@ test.describe('P3 · the design session', () => {
     await page.setViewportSize({ width: 393, height: 800 })
     await begin(page)
     await startSession(page, 'Interviewer')
+    await openPartner(page)
     const msgs = page.getByTestId('session-msg')
     for (let i = 1; i <= 6; i++) {
       const n = await msgs.count()
-      await page.getByRole('textbox', { name: 'Your answer' }).fill(`answer number ${i} with a few words so it wraps`)
-      await page.getByRole('button', { name: 'Send' }).click()
+      await page.getByTestId('session-chat-input').fill(`answer number ${i} with a few words so it wraps`)
+      await page.getByTestId('session-send').click()
       await expect(msgs).toHaveCount(n + 2)
     }
-    const log = page.getByRole('log', { name: 'Interview transcript' })
+    const log = page.getByRole('log', { name: 'Conversation' })
     const m = await log.evaluate(el => ({ top: el.scrollTop, h: el.scrollHeight, c: el.clientHeight }))
     expect(m.h, 'the transcript is longer than its box').toBeGreaterThan(m.c + 50)
     expect(m.top + m.c, 'the view is at the bottom').toBeGreaterThanOrEqual(m.h - 2)
@@ -128,64 +108,42 @@ test.describe('P3 · the design session', () => {
     check()
   })
 
-  test('P2-1 a closing line sent as done:true is taken; an unusable reply says so in plain words and Retry recovers', async ({ page }) => {
-    const check = guard(page)
+  test('P2-1 an unusable AI reply: a plain sentence, no validator words, Retry works and stores nothing meanwhile', async ({ page }) => {
     await begin(page)
     await startSession(page, 'Interviewer')
+    await openPartner(page)
     const msgs = page.getByTestId('session-msg')
-    const say = async (t: string) => {
+    for (let i = 1; i <= 3; i++) {
       const n = await msgs.count()
-      await page.getByRole('textbox', { name: 'Your answer' }).fill(t)
-      await page.getByRole('button', { name: 'Send' }).click()
-      return n
-    }
-    for (let i = 1; i <= 8; i++) await expect(msgs).toHaveCount((await say(`answer ${i}`)) + 2)
-    // the model closes with done:true: repaired, no error
-    await page.evaluate(() => localStorage.setItem('dojo:fake-ai-interview', 'closing-done'))
-    const n = await say('answer 9')
-    await expect(msgs).toHaveCount(n + 2)
-    await expect(page.getByTestId('session-ai-error')).toHaveCount(0)
-    await expect(page.getByTestId('session-interview-status')).toHaveText('Interview complete · 4 of 4 deep dives')
-    check()
-  })
-
-  test('P2-1 an unusable closing reply: a plain sentence, no validator words, Retry works', async ({ page }) => {
-    await begin(page)
-    await startSession(page, 'Interviewer')
-    const msgs = page.getByTestId('session-msg')
-    for (let i = 1; i <= 8; i++) {
-      const n = await msgs.count()
-      await page.getByRole('textbox', { name: 'Your answer' }).fill(`answer ${i}`)
-      await page.getByRole('button', { name: 'Send' }).click()
+      await page.getByTestId('session-chat-input').fill(`answer ${i}`)
+      await page.getByTestId('session-send').click()
       await expect(msgs).toHaveCount(n + 2)
     }
     await page.evaluate(() => localStorage.setItem('dojo:fake-ai-interview', 'malformed'))
-    await page.getByRole('textbox', { name: 'Your answer' }).fill('answer 9')
-    await page.getByRole('button', { name: 'Send' }).click()
+    await page.getByTestId('session-chat-input').fill('answer 4')
+    await page.getByTestId('session-send').click()
     const err = page.getByTestId('session-ai-error')
-    await expect(err).toContainText('closing line did not come through')
+    await expect(err).toContainText('reply did not come through')
     expect(await err.textContent()).not.toMatch(/must be|missing|lenses|perItem|oneThingToStudy/)
-    await page.getByRole('button', { name: 'Retry' }).click()
-    await expect(err).toContainText('closing line did not come through')
+    await page.getByTestId('ai-retry').click()
+    await expect(err).toContainText('reply did not come through')
     await page.evaluate(() => localStorage.removeItem('dojo:fake-ai-interview'))
-    await page.getByRole('button', { name: 'Retry' }).click()
+    await page.getByTestId('ai-retry').click()
     await expect(err).toHaveCount(0)
-    await expect(msgs.last()).toHaveAttribute('data-from', 'interviewer')
+    await expect(msgs.last()).toHaveAttribute('data-from', 'ai')
   })
 
   test('P3-9 a dialog is 640 wide (F6.6)', async ({ page }) => {
     await page.setViewportSize({ width: 1330, height: 900 })
     await begin(page)
     await startSession(page, 'Solo')
-    await page.getByRole('button', { name: 'End drawing' }).click()
-    const dlg = page.getByRole('dialog', { name: 'End drawing now?' })
-    expect((await dlg.boundingBox())!.width).toBe(640)
-    await dlg.getByRole('button', { name: 'Keep going' }).click()
-    await page.getByRole('button', { name: 'Discard session' }).click()
+    await page.getByTestId('session-discard').click()
     expect((await page.getByRole('dialog', { name: 'Discard this session?' }).boundingBox())!.width).toBe(640)
   })
 
   test('P3-7 / P3-12 / P3-15 the score form: each choice is one group that wraps as a unit; a bad rubric says why; a done session shows its length, not a clock', async ({ page }) => {
+    // two widths, each running a fake 12-minute drawing: with useNow polling every second this is ~36 s, over the 30 s default
+    test.setTimeout(90_000)
     for (const w of [1280, 393]) {
       await page.setViewportSize({ width: w, height: 900 })
       await begin(page)
@@ -210,8 +168,8 @@ test.describe('P3 · the design session', () => {
       await expect(page.getByTestId('session-rubric-error')).toHaveCount(0)
       if (w === 1280) {
         await scoreS1(page)
-        await page.getByRole('button', { name: 'Complete session' }).click()
-        await expect(page.getByTestId('session-phase')).toHaveText('done')
+        await page.getByTestId('session-complete').click()
+        await expect(page.getByTestId('session-phase')).toHaveText('Done')
         await expect(page.getByTestId('session-timer')).toHaveText('12 min')
         await expect(page.getByTestId('session-timer')).not.toHaveAttribute('role', 'timer')
       }
@@ -295,23 +253,5 @@ test.describe('P3 · Designs', () => {
     expect(m.b).toBeGreaterThanOrEqual(-1)
     expect(m.w, 'the drawing fills a useful part of its thumbnail').toBeGreaterThan(60)
     check()
-  })
-})
-
-test.describe('P3-8 · a dialog does not let the page scroll behind it', () => {
-  test('wheel over the Add artifact dialog leaves the page where it was', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 700 })
-    await page.clock.setFixedTime(IST(TUE))
-    await onboard(page, '2026-10-05')
-    await page.goto('/ai')
-    await page.getByTestId('artifact-add').scrollIntoViewIfNeeded()
-    await page.getByTestId('artifact-add').click()
-    const dlg = page.getByRole('dialog')
-    await expect(dlg).toBeVisible()
-    const y0 = await page.evaluate(() => window.scrollY)
-    await page.mouse.move(40, 300)
-    await page.mouse.wheel(0, 600)
-    await page.waitForTimeout(150)
-    expect(await page.evaluate(() => window.scrollY)).toBe(y0)
   })
 })

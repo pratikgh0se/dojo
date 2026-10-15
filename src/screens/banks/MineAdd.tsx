@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useDb } from '../../app/providers'
 import { callJob } from '../../data/aiActions'
 import { addMineItem, updateMineItem, type MineDraft } from '../../data/bankActions'
@@ -15,7 +15,7 @@ type Phase =
   | { kind: 'idle' }
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'suggest'; draft: MineDraft; note: string }
+  | { kind: 'suggest'; draft: MineDraft; note: ReactNode }
 
 export function MineAdd({ banks, refs, editRow, onEditDone }: {
   banks: Banks; refs: Map<string, PlanRef>; editRow: BankEntry | null; onEditDone: () => void
@@ -40,7 +40,7 @@ export function MineAdd({ banks, refs, editRow, onEditDone }: {
     if (known) {
       const e = known.entry
       setPhase({
-        kind: 'suggest', note: `Known item · ${known.label}`,
+        kind: 'suggest', note: <>Known item · <span data-content="plan">{known.label}</span></>,
         draft: {
           key: e.id, name: e.name, url: e.url ?? p.url, num: e.num, pattern: e.pattern, difficulty: mineDifficulty(e.difficulty),
           rating: typeof e.difficulty === 'number' ? e.difficulty : undefined,
@@ -107,7 +107,7 @@ export function MineAdd({ banks, refs, editRow, onEditDone }: {
         </div>
       )}
       {editDraft
-        ? <MineSuggestion key={`edit-${editDraft.key}`} mode="edit" initial={editDraft} note={`Editing ${editDraft.name}`} onSave={d2 => void save(d2)} onCancel={onEditDone} />
+        ? <MineSuggestion key={`edit-${editDraft.key}`} mode="edit" initial={editDraft} note={<>Editing <span data-content="learner">{editDraft.name}</span></>} onSave={d2 => void save(d2)} onCancel={onEditDone} />
         : phase.kind === 'suggest' && (
           <MineSuggestion key={`add-${phase.draft.key}`} mode="add" initial={phase.draft} note={phase.note} onAccept={d2 => void accept(d2)} onCancel={() => setPhase({ kind: 'idle' })} />
         )}

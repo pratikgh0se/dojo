@@ -2,7 +2,8 @@ import type { SqliteAdapter } from './adapter.mjs'
 import type { Store } from './store.mjs'
 export const KEEP_DATED_BACKUPS: number
 export function localDate(d: Date): string
-export interface BackupInfo { file: string; bytes: number; at: string }
+/** `at`: milliseconds since the epoch (the /db/backups contract). */
+export interface BackupInfo { file: string; bytes: number; at: number }
 export function ensureWriterToken(home: string): string
 export interface Dojo {
   writerToken: string

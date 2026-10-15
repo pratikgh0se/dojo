@@ -1,0 +1,72 @@
+/* The Board (board.md). Class prefix kb-. One panel: the sprint line, the lane chips and the six columns inside it. */
+.kb { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.kb-panel { background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark); box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark); min-width: 0; padding-bottom: 8px; }
+.kb-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: 16px 16px 8px; }
+.kb-sprint { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-m); font-weight: 400; line-height: 1.2; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; overflow-wrap: anywhere; }
+.kb-stats { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 0; font-size: var(--type-small); color: var(--sr-text-secondary); }
+.kb-stats .mono { font-family: var(--sr-font-mono); }
+.kb-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px 16px; border-bottom: 2px solid var(--sr-edge-mid); }
+.kb-chip { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-secondary); font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; line-height: 1; cursor: pointer; }
+.kb-chip[aria-pressed='true'] { background: var(--sr-surface-tile); border-color: var(--sr-energy-accent); color: var(--sr-text-primary); }
+.kb-chip .mono { font-family: var(--sr-font-mono); }
+.kb-dot { width: 10px; height: 10px; border: 2px solid var(--sr-edge-dark); box-sizing: content-box; display: inline-block; background: var(--sr-edge-mid); }
+.kb-dot[data-lane='path'] { background: var(--sr-lane-path); }
+.kb-dot[data-lane='dsa'] { background: var(--sr-lane-dsa); }
+.kb-dot[data-lane='design'] { background: var(--sr-lane-design); }
+.kb-dot[data-lane='career'] { background: var(--sr-lane-career); }
+
+/* The columns scroll sideways inside this box when they do not fit; the page never does (BOARD-46). */
+.kb-cols { display: grid; grid-auto-flow: column; grid-template-columns: minmax(172px, 1fr) 124px repeat(4, minmax(172px, 1fr)); gap: 8px; align-items: start; padding: 12px; overflow-x: auto; overscroll-behavior-x: contain; min-width: 0; }
+.kb-cols[data-backlog='open'] { grid-template-columns: repeat(6, minmax(190px, 1fr)); }
+.kb-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.kb-col[data-over='true'] { border-color: var(--sr-energy-accent); background: var(--sr-surface-tile); }
+.kb-colhead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); font-weight: 400; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.kb-colhead .mono { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); letter-spacing: 0; text-transform: none; }
+.kb-toggle { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-height: 28px; padding: 0; background: none; border: 0; color: inherit; font: inherit; font-family: var(--sr-font-body); font-size: var(--type-body); font-weight: 700; letter-spacing: .04em; text-transform: inherit; -webkit-font-smoothing: auto; text-rendering: auto; cursor: pointer; text-align: left; }  /* a button is never Silkscreen (GLOBAL-04): the Backlog toggle reads in the body face */
+.kb-toggle .mono { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); letter-spacing: 0; }
+.kb-warn { margin: 0; font-size: var(--type-small); color: var(--sr-text-secondary); }
+.kb-empty { margin: 0; font-size: var(--type-small); color: var(--sr-text-secondary); }
+.kb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
+.kb-more { align-self: start; }
+
+.kb-card {
+  position: relative; min-width: 0; display: grid; gap: 8px; padding: 8px 8px 8px 10px; cursor: grab; touch-action: pan-x pan-y;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); border-left: 6px solid var(--c, var(--sr-edge-mid));
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile), 0 4px 0 var(--sr-edge-dark);
+}
+.kb-card[data-lane='path'] { --c: var(--sr-lane-path); }
+.kb-card[data-lane='dsa'] { --c: var(--sr-lane-dsa); }
+.kb-card[data-lane='design'] { --c: var(--sr-lane-design); }
+.kb-card[data-lane='career'] { --c: var(--sr-lane-career); }
+.kb-card[data-column='done'] { cursor: default; }
+.kb-card[data-dragging='true'] { opacity: .45; }
+.kb-card:focus-visible { outline: 3px solid var(--sr-energy-accent); outline-offset: 2px; }
+.kb-card > * { min-width: 0; }
+.kb-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: start; }
+.kb-kind { display: inline-flex; color: var(--sr-text-secondary-ontile); }
+.kb-title { color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 600; line-height: 1.35; text-decoration: none; overflow-wrap: break-word; }
+.kb-title:hover { text-decoration: underline; }
+.kb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.kb-lane { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; line-height: 1; letter-spacing: .06em; }
+.kb-est { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary-ontile); }
+.kb-note { margin: 0; font-size: var(--type-small); line-height: 1.4; color: var(--sr-text-secondary-ontile); overflow-wrap: anywhere; user-select: text; }
+.kb-menu-btn { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-primary); cursor: pointer; }
+.kb-menu-btn:hover, .kb-menu-btn[aria-expanded='true'] { border-color: var(--sr-energy-accent); }
+.kb-menu { position: fixed; z-index: var(--sr-z-dropdown); display: grid; width: 220px; padding: 4px; background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark); box-shadow: 0 6px 0 var(--sr-edge-dark); }
+.kb-menu-item { display: flex; align-items: center; min-height: 44px; padding: 0 12px; background: none; border: 0; color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 600; text-align: left; cursor: pointer; }
+.kb-menu-item:hover, .kb-menu-item:focus-visible { background: var(--sr-surface-tile); outline: 2px solid var(--sr-energy-accent); outline-offset: -2px; }
+.kb-editor { display: grid; gap: 8px; }
+.kb-note-input { width: 100%; min-width: 0; height: 36px; padding: 0 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-small); user-select: text; }
+.kb-note-input:focus { border-color: var(--sr-energy-accent); outline: 0; }
+.kb-editor-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.kb-ghost { position: fixed; z-index: var(--sr-z-dropdown); max-width: 220px; padding: 8px 10px; pointer-events: none; background: var(--sr-surface-tile); border: 2px solid var(--sr-energy-accent); color: var(--sr-text-primary); font-size: var(--type-small); font-weight: 600; box-shadow: 0 4px 0 var(--sr-edge-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.kb-dragging { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+body.kb-dragging .kb-card { cursor: grabbing; }
+
+@media (max-width: 767px) {
+  .kb-head { padding: 12px 12px 8px; }
+  .kb-chips { padding: 8px 12px 12px; }
+  .kb-cols, .kb-cols[data-backlog='open'] { grid-template-columns: none; grid-auto-columns: minmax(240px, 240px); padding: 12px; }
+  .kb-menu-btn { width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); }
+}

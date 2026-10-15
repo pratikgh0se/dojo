@@ -5,14 +5,14 @@ import { safeWrite } from '../../data/safeWrite'
 import { CLOSE_QUESTIONS } from '../../content/tracking'
 import type { CloseAnswers, DesignSession, Tradeoff } from '../../data/types'
 import type { PlanDesignRef } from '../../rules/designs'
-import { closeComplete, EMPTY_CLOSE, NONE_OPTION } from '../../rules/designSession'
+import { closeComplete, EMPTY_CLOSE, NONE_OPTION, seedTradeoffs } from '../../rules/designSession'
 import { Button, useToast } from '../../ui/primitives'
 
-export function TextField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+export function TextField({ label, value, onChange, testId }: { label: string; value: string; onChange: (v: string) => void; testId?: string }) {
   return (
     <label className="ds-field">
       <span>{label}</span>
-      <input type="text" value={value} onChange={e => onChange(e.target.value)} />
+      <input type="text" data-testid={testId} value={value} onChange={e => onChange(e.target.value)} />
     </label>
   )
 }
@@ -26,8 +26,11 @@ const fromSession = (c: CloseAnswers | undefined): CloseAnswers => ({
  * pagehide/visibilitychange/unmount flush registered once at the top level (D-23, extended to
  * Close/Score) also covers a Close answer typed just before the tab closes. */
 export function CloseForm({
-  item, session, push, flush,
-}: { item: PlanDesignRef; session: DesignSession; push: (job: () => Promise<unknown>) => void; flush: () => Promise<void> }) {
+  item, session, push, flush, onAdvance,
+}: {
+  item: PlanDesignRef; session: DesignSession; push: (job: () => Promise<unknown>) => void; flush: () => Promise<void>
+  onAdvance?: (patch: Partial<DesignSession> & { phase: DesignSession['phase'] }, written: Promise<unknown>) => void
+}) {
   const d = useDb()
   const toast = useToast()
   const onError = useCallback((m: string) => toast(m, 'danger'), [toast])
@@ -40,48 +43,50 @@ export function CloseForm({
   const [q1, q2, q3, q4, q5] = CLOSE_QUESTIONS
   const next = async () => {
     await flush()
-    await safeWrite(() => enterScore(d, session.id, c), onError)
+    const written = safeWrite(() => enterScore(d, session.id, c), onError)
+    onAdvance?.({ phase: 'score', close: c, tradeoffs: seedTradeoffs(c, session.tradeoffs) }, written)
+    await written
   }
   const radio = `q4-${session.id}`
   return (
     <form className="sr-panel ds-close" data-testid="session-close" aria-label="Five-question close" noValidate onSubmit={e => e.preventDefault()}>
       <h2 className="sr-panel-title">Five-question close</h2>
-      <fieldset className="ds-q">
+      <fieldset className="ds-q" data-testid="session-close-q-1">
         <legend>{q1}</legend>
         <div className="ds-trade">
-          <TextField label="Chose" value={c.tradeoff.chose} onChange={v => setTrade('chose', v)} />
-          <TextField label="Over" value={c.tradeoff.over} onChange={v => setTrade('over', v)} />
-          <TextField label="Because" value={c.tradeoff.because} onChange={v => setTrade('because', v)} />
+          <TextField label="Chose" testId="session-close-chose" value={c.tradeoff.chose} onChange={v => setTrade('chose', v)} />
+          <TextField label="Over" testId="session-close-over" value={c.tradeoff.over} onChange={v => setTrade('over', v)} />
+          <TextField label="Because" testId="session-close-because" value={c.tradeoff.because} onChange={v => setTrade('because', v)} />
         </div>
       </fieldset>
-      <fieldset className="ds-q">
+      <fieldset className="ds-q" data-testid="session-close-q-2">
         <legend>{q2}</legend>
-        <textarea aria-label={q2} rows={2} value={c.breaksAt10x} onChange={e => update({ ...c, breaksAt10x: e.target.value })} />
+        <textarea data-testid="session-close-answer-2" aria-label={q2} rows={2} value={c.breaksAt10x} onChange={e => update({ ...c, breaksAt10x: e.target.value })} />
       </fieldset>
-      <fieldset className="ds-q">
+      <fieldset className="ds-q" data-testid="session-close-q-3">
         <legend>{q3}</legend>
-        <textarea aria-label={q3} rows={2} value={c.dataOwnership} onChange={e => update({ ...c, dataOwnership: e.target.value })} />
+        <textarea data-testid="session-close-answer-3" aria-label={q3} rows={2} value={c.dataOwnership} onChange={e => update({ ...c, dataOwnership: e.target.value })} />
       </fieldset>
-      <fieldset className="ds-q">
+      <fieldset className="ds-q" data-testid="session-close-q-4">
         <legend>{q4}</legend>
         <div role="radiogroup" aria-label={q4} className="ds-q4">
           {item.deepDives.map((q, i) => (
             <label key={i} className="sr-choice">
-              <input type="radio" name={radio} checked={c.couldNotAnswer === i} onChange={() => update({ ...c, couldNotAnswer: i as 0 | 1 | 2 | 3 })} />
+              <input type="radio" name={radio} data-testid={`session-close-q4-${i}`} checked={c.couldNotAnswer === i} onChange={() => update({ ...c, couldNotAnswer: i as 0 | 1 | 2 | 3 })} />
               {q}
             </label>
           ))}
           <label className="sr-choice">
-            <input type="radio" name={radio} checked={c.couldNotAnswer === 'none'} onChange={() => update({ ...c, couldNotAnswer: 'none' })} />
+            <input type="radio" name={radio} data-testid="session-close-q4-none" checked={c.couldNotAnswer === 'none'} onChange={() => update({ ...c, couldNotAnswer: 'none' })} />
             {NONE_OPTION}
           </label>
         </div>
       </fieldset>
-      <fieldset className="ds-q">
+      <fieldset className="ds-q" data-testid="session-close-q-5">
         <legend>{q5}</legend>
-        <input type="text" aria-label={q5} value={c.readNext} onChange={e => update({ ...c, readNext: e.target.value })} />
+        <input type="text" data-testid="session-close-answer-5" aria-label={q5} value={c.readNext} onChange={e => update({ ...c, readNext: e.target.value })} />
       </fieldset>
-      <Button variant="accent" disabled={!closeComplete(c)} onClick={() => void next()}>Next: score</Button>
+      <Button variant="accent" data-testid="session-close-next" data-accent="primary" disabled={!closeComplete(c)} onClick={() => void next()}>NEXT · SCORE</Button>
     </form>
   )
 }

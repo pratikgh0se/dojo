@@ -5,7 +5,7 @@ import { DIFFICULTIES, DIFFICULTY_LABELS } from '../../rules/dsa'
 import { SrChart } from '../../ui/engines/SrChart'
 import { Panel } from '../../ui/primitives'
 
-/** The prototype's three Designs panels: per tier (stackedBar), 48 Sundays (pictogram), difficulty (groupedColumn). */
+/** The prototype's three Designs panels: per tier (stackedBar), designs done (pictogram), difficulty (groupedColumn). */
 export function DesignCharts({ tiers, totals, answered }: { tiers: DesignTierView[]; totals: DesignTotals; answered: number }) {
   const accent = cssVar('--sr-energy-accent') || 'orange'
   const mid = cssVar('--sr-edge-mid') || 'gray'
@@ -23,7 +23,7 @@ export function DesignCharts({ tiers, totals, answered }: { tiers: DesignTierVie
           />
         </div>
       </Panel>
-      <Panel title="48 Sundays" className="dz-chart">
+      <Panel title="Designs done" className="dz-chart">
         <p className="dz-sub" data-testid="designs-sundays">{answered} deep dives answered</p>
         <div className="dz-well" role="img" aria-label={`${totals.done} of ${totals.total} designs done`}>
           <SrChart type="pictogram" decorative data={{ total: totals.total, value: totals.done }} opts={{ perRow: 12, colors: [accent] }} />

@@ -33,10 +33,10 @@ describe('backups', () => {
     const f = join(home, 'backups', 'dojo-2026-09-29.db')
     const taken = new Date(2026, 8, 29, 19, 53, 0)
     utimesSync(f, taken, taken)
-    expect(d.listBackups()[0].at).toBe(taken.toISOString())
+    expect(d.listBackups()[0].at).toBe(taken.getTime())
     const elsewhere = new Date(2026, 9, 2, 8, 0, 0) // copied in later: the name's day wins
     utimesSync(f, elsewhere, elsewhere)
-    expect(d.listBackups()[0].at).toBe(new Date(2026, 8, 29, 0, 0, 0).toISOString())
+    expect(d.listBackups()[0].at).toBe(new Date(2026, 8, 29, 0, 0, 0).getTime())
   })
 
   it('keeps the newest 30 dated snapshots and never prunes pre-restore files', () => {
@@ -182,11 +182,20 @@ describe('backup housekeeping', () => {
     expect(readdirSync(join(home, 'backups')).filter(f => /-\d{6}\.db$/.test(f))).toHaveLength(3)
   })
 
+  it('README: at is epoch milliseconds (a number); lastBackup is a number, or null with no dated backup', () => {
+    expect(d.health().lastBackup).toBeNull()
+    d.backup()
+    const [b] = d.listBackups()
+    expect(typeof b.at).toBe('number')
+    expect(Number.isInteger(b.at)).toBe(true)
+    expect(d.health().lastBackup).toBe(b.at)
+  })
+
   it('lastBackup ignores pre-restore files', () => {
     d.backup()
     utimesSync(join(home, 'backups', 'dojo-2026-09-29.db'), new Date(2026, 0, 1), new Date(2026, 0, 1))
     writeFileSync(join(home, 'backups', 'pre-restore-new.db'), 'x')
-    expect(d.health().lastBackup).toBe(new Date(2026, 8, 29).toISOString()) // from the name (Addendum 9), not the mtime
+    expect(d.health().lastBackup).toBe(new Date(2026, 8, 29).getTime()) // from the name (Addendum 9), not the mtime
   })
 })
 

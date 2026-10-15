@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useDb } from './dbContext'
 import { getSettings, type SettingsRow } from './db'
-import type { AtlasRun, BankItem, CheckAttemptRow, Redo, ReviewRow, RungUse, Session, StoredEvent, Ticket } from './types'
+import type { AtlasRun, BankExtraRow, BankGradeRow, BankItem, CheckAttemptRow, JournalRow, Pulse, Redo, RungUse, Session, StoredEvent, Ticket } from './types'
 
 export function useTickets(): Ticket[] | undefined {
   const d = useDb()
@@ -32,6 +32,34 @@ export function useSettings(): SettingsRow | undefined {
 export function useTicket(id: string): Ticket | null | undefined {
   const d = useDb()
   return useLiveQuery(async () => (await d.tickets.get(id)) ?? null, [d, id])
+}
+
+/** The AI pulse logged on a local day (`YYYY-MM-DD`): the row, null when none, undefined while loading. */
+export function usePulse(day: string): Pulse | null | undefined {
+  const d = useDb()
+  return useLiveQuery(async () => (await d.pulses.get(`pulse-${day}`)) ?? null, [d, day])
+}
+
+/** R1 W2: every journal row (one per local day; a few hundred at most), newest day last; undefined while loading. */
+export function useJournalRows(): JournalRow[] | undefined {
+  const d = useDb()
+  return useLiveQuery(() => d.journal.orderBy('day').toArray(), [d])
+}
+
+/** The journal row of a local day (`YYYY-MM-DD`): the row, null when none, undefined while loading. */
+export function useJournalRow(day: string): JournalRow | null | undefined {
+  const d = useDb()
+  return useLiveQuery(async () => (await d.journal.get(`journal-${day}`)) ?? null, [d, day])
+}
+
+/** R1 W6: every graded question, and every AI-made one (undefined while loading). */
+export function useBankGrades(): BankGradeRow[] | undefined {
+  const d = useDb()
+  return useLiveQuery(() => d.bankGrades.toArray(), [d])
+}
+export function useBankExtra(): BankExtraRow[] | undefined {
+  const d = useDb()
+  return useLiveQuery(() => d.bankExtra.toArray(), [d])
 }
 
 export function useAtlasRuns(): AtlasRun[] | undefined {
@@ -75,17 +103,4 @@ export function useBankItems(): BankItem[] | undefined {
 export function useCheckAttempts(ticketId: string): CheckAttemptRow[] | undefined {
   const d = useDb()
   return useLiveQuery(async () => (await d.checkAttempts.where('ticketId').equals(ticketId).toArray()).sort((a, b) => a.at - b.at), [d, ticketId])
-}
-
-/** Sprint reviews, newest first. */
-export function useReviews(): ReviewRow[] | undefined {
-  const d = useDb()
-  return useLiveQuery(async () => (await d.reviews.toArray()).sort((a, b) => b.at - a.at), [d])
-}
-
-/** The sessions a split card was cut into (empty for any other card). */
-export function useChildren(ids: readonly string[] | undefined): Ticket[] | undefined {
-  const d = useDb()
-  const key = (ids ?? []).join('|')
-  return useLiveQuery(async () => ((await d.tickets.bulkGet(key ? key.split('|') : [])).filter((t): t is Ticket => t !== undefined)), [d, key])
 }

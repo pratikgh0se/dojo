@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { reconcilePlan, resolveId } from '../../src/rules/reconcile'
 import { planToTickets } from '../../src/rules/planTickets'
 import type { Ticket } from '../../src/data/types'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { mkTicket } from '../helpers/tickets'
 
-const content = planToTickets(smallPlan)
+const content = planToTickets(flatPlanV2)
 const byId = (ts: Ticket[]) => Object.fromEntries(ts.map(t => [t.id, t]))
 const sorted = (ts: Ticket[]) => [...ts].sort((a, b) => a.id.localeCompare(b.id))
 const seeded = () => reconcilePlan([], content, {}).puts
@@ -61,7 +61,7 @@ describe('reconcilePlan', () => {
     const old = mkTicket({ id: 'old1', status: 'done', xp: 10, doneAt: 7, sprint: 4, slidFrom: [1, 2, 3], proof: { note: 'n' } })
     const r = reconcilePlan([old], content, { old1: 'm1w1t1' })
     const t = byId(r.puts).m1w1t1
-    expect(t).toMatchObject({ title: 'Rung 1, the API call', status: 'done', xp: 10, doneAt: 7, sprint: 1, slidFrom: [1, 2, 3], proof: { note: 'n' }, archived: false })
+    expect(t).toMatchObject({ title: 'Watch the tour', status: 'done', xp: 10, doneAt: 7, sprint: 1, slidFrom: [1, 2, 3], proof: { note: 'n' }, archived: false })
     expect(byId(r.puts).old1).toBeUndefined()
     expect(r.deletes).toEqual(['old1'])
     expect(r.renames).toEqual([{ from: 'old1', to: 'm1w1t1' }])
@@ -110,7 +110,7 @@ describe('idMap chains and re-added ids (Review Focus #6)', () => {
   it("(e) a brand-new target takes its planned sprint, not a vanished row's old sprint", () => {
     const old = mkTicket({ id: 'old2', status: 'todo', sprint: 9 })
     const r = reconcilePlan([old], content, { old2: 'm1w2t1' })
-    expect(byId(r.puts).m1w2t1.sprint).toBe(2)
+    expect(byId(r.puts).m1w2t1.sprint).toBe(content.find(c => c.id === 'm1w2t1')!.plannedSprint)
   })
 
   it('is deterministic regardless of existing-row order', () => {
@@ -166,5 +166,45 @@ describe('idMap chains and re-added ids (Review Focus #6)', () => {
     const r = reconcilePlan([weird], content, {})
     expect(r.archived).toEqual(['weird'])
     expect(byId(r.puts).weird).toMatchObject({ archived: true, xp: 10 })
+  })
+})
+
+describe('reconcilePlan with plan v2 content', () => {
+  const c2 = planToTickets(flatPlanV2)
+  it('a refresh updates plan content but keeps user state and orderOverride (PATH-30)', () => {
+    const seeded = reconcilePlan([], c2, {}).puts
+    const user = seeded.map(t => (t.id === 'p127' ? { ...t, status: 'done' as const, xp: 15, doneAt: 5, orderOverride: 0.25 } : t))
+    const changed = c2.map(x => (x.id === 'p127' ? { ...x, title: 'new title', order: 99 } : x))
+    const p127 = reconcilePlan(user, changed, {}).puts.find(t => t.id === 'p127')!
+    expect(p127).toMatchObject({ title: 'new title', order: 99, orderOverride: 0.25, status: 'done', xp: 15, doneAt: 5 })
+  })
+  it('content that drops a lab or explain removes it from the ticket', () => {
+    const seeded = reconcilePlan([], c2, {}).puts
+    const stripped = c2.map(x => { const { lab: _l, ...rest } = x; return rest })
+    expect(reconcilePlan(seeded, stripped, {}).puts.find(t => t.id === 'm1w2t1')!.lab).toBeUndefined()
+  })
+  it('explainAnswers is plan content: a refresh rewrites it (D10)', () => {
+    const seeded = reconcilePlan([], c2, {}).puts
+    const changed = c2.map(x => (x.id === 'm1w1t1' ? { ...x, explainAnswers: ['A better answer.'] } : x))
+    expect(reconcilePlan(seeded, changed, {}).puts.find(t => t.id === 'm1w1t1')!.explainAnswers).toEqual(['A better answer.'])
+  })
+  it('learner-owned fields survive a refresh and an idMap merge untouched (D11)', () => {
+    const seeded = reconcilePlan([], c2, {}).puts
+    const learner = { learnerNotes: 'my notes', explainResponses: ['a token is a word piece'], selfMark: 'partial' as const, learnerUpdatedAt: 7 }
+    const mine = seeded.map(t => (t.id === 'm1w1t1' ? { ...t, ...learner } : t))
+    const refreshed = reconcilePlan(mine, c2.map(x => (x.id === 'm1w1t1' ? { ...x, title: 'renamed' } : x)), {}).puts.find(t => t.id === 'm1w1t1')!
+    expect(refreshed).toMatchObject({ title: 'renamed', ...learner })
+    // the ticket the learner worked on is renamed in the plan: the notes follow it
+    const old = { ...mine.find(t => t.id === 'm1w1t1')!, id: 'old-id' }
+    const renamed = reconcilePlan([...mine.filter(t => t.id !== 'm1w1t1'), old], c2, { 'old-id': 'm1w1t1' }).puts.find(t => t.id === 'm1w1t1')!
+    expect(renamed).toMatchObject(learner)
+  })
+  it('an idMap merge onto an existing target keeps the target\'s own learner values over the vanished row\'s (D11)', () => {
+    const seeded = reconcilePlan([], c2, {}).puts
+    const target = { ...seeded.find(t => t.id === 'm1w1t1')!, learnerNotes: 'target notes', selfMark: 'done' as const, learnerUpdatedAt: 9 }
+    const vanished = { ...seeded.find(t => t.id === 'm1w1t1')!, id: 'old-id', learnerNotes: 'old notes', selfMark: 'partial' as const, learnerUpdatedAt: 3 }
+    const rest = seeded.filter(t => t.id !== 'm1w1t1')
+    const merged = reconcilePlan([...rest, target, vanished], c2, { 'old-id': 'm1w1t1' }).puts.find(t => t.id === 'm1w1t1')!
+    expect(merged).toMatchObject({ learnerNotes: 'target notes', selfMark: 'done', learnerUpdatedAt: 9 })
   })
 })

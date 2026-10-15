@@ -35,7 +35,7 @@ async function onboard(page: Page) {
   await date.or(page.getByTestId('now-headline')).first().waitFor({ timeout: 20_000 })
   if (await date.isVisible()) {
     await date.fill('2026-10-05')
-    await page.getByRole('button', { name: 'Start the plan ▸' }).click()
+    await page.getByRole('button', { name: 'START · PLAN' }).click()
   }
   await expect(page.getByTestId('now-headline')).toBeVisible()
 }
@@ -266,46 +266,6 @@ test('DK-11 Cmd-Q during a Go run leaves no orphan runner process', async () => 
 
 const DEV_WORDS = /\bbrowser\b|chrome|localhost|npm run|docs\/|the Dock launcher|reload this page/i
 
-test('DK-12 Mac copy: the app shows no browser, Chrome, localhost, npm or docs/ wording (Settings, Backups, save status help)', async () => {
-  const home = tmp('dojo-desk-home-')
-  const { app } = await launch(home)
-  try {
-    const page = await app.firstWindow()
-    await onboard(page)
-    for (const path of ['/', '/settings', '/progress', '/board']) {
-      await page.evaluate(p => { history.pushState(null, '', p); dispatchEvent(new PopStateEvent('popstate')) }, path)
-      await page.waitForTimeout(600)
-      const text = await page.locator('body').innerText()
-      expect(text, path).not.toMatch(DEV_WORDS)
-    }
-    expect(await page.evaluate(() => navigator.userAgent)).toMatch(/Electron\//)
-  } finally { await app.close() }
-})
-
-test('DK-13 AI through the app\'s own server: Draft briefs works (fake AI here), and with a bare GUI PATH the real helper finds claude', async () => {
-  const home = tmp('dojo-desk-home-')
-  const { app } = await launch(home)
-  try {
-    const page = await app.firstWindow()
-    await onboard(page)
-    await page.evaluate(() => { history.pushState(null, '', '/board'); dispatchEvent(new PopStateEvent('popstate')) })
-    await page.getByRole('button', { name: 'Draft briefs for Sprint 1' }).click()
-    await expect(page.getByTestId('brief-progress')).toHaveText('Done', { timeout: 60_000 })
-  } finally { await app.close() }
-  let hasClaude = true
-  try { execFileSync('/bin/zsh', ['-lc', 'command -v claude'], { stdio: 'ignore' }) } catch { hasClaude = false }
-  test.skip(!hasClaude, 'claude is not installed on this Mac')
-  const home2 = tmp('dojo-desk-home-')
-  const infoFile = join(home2, 'desktop-info.json')
-  const real = await electron.launch({ executablePath: exe, env: { HOME: process.env.HOME ?? '', SHELL: process.env.SHELL ?? '/bin/zsh', TMPDIR: process.env.TMPDIR ?? '/tmp', ...GUI_ENV, DOJO_HOME: home2, DOJO_DESKTOP_INFO: infoFile } })
-  try {
-    await real.firstWindow()
-    const { url } = JSON.parse(readFileSync(infoFile, 'utf8'))
-    const h = await (await fetch(`${url}/health`)).json() as { claude?: string }
-    expect(h.claude).toBe('found')
-  } finally { await real.close() }
-})
-
 test('DK-14 (ruling 23 K4) native menu: File › Close Window, Dojo › Settings… opens Settings, exactly one Toggle Full Screen; a Dock click restores a minimised window', async () => {
   const home = tmp('dojo-desk-home-')
   const { app } = await launch(home)
@@ -334,5 +294,36 @@ test('DK-14 (ruling 23 K4) native menu: File › Close Window, Dojo › Settings
     await expect.poll(minimised).toBe(true)
     await app.evaluate(({ app: a }) => { a.emit('activate') })
     await expect.poll(minimised).toBe(false)
+  } finally { await app.close() }
+})
+
+test('DK-15 the partner card opens in a second Dojo window; a foreign window.open does not', async () => {
+  test.setTimeout(120_000)
+  const { app } = await launch(tmp('dojo-dk15-'))
+  try {
+    const page = await app.firstWindow()
+    await onboard(page)
+    const origin = new URL(page.url()).origin
+    const [card] = await Promise.all([
+      app.waitForEvent('window'),
+      page.evaluate(o => { window.open(`${o}/#/partner/ds-none`, 'dojo-partner-ds-none', 'popup=yes,width=560,height=800') }, origin),
+    ])
+    await expect.poll(() => card.url()).toBe(`${origin}/#/partner/ds-none`)
+    await expect(card.getByText('That session was not found.')).toBeVisible()
+    expect(app.windows()).toHaveLength(2)
+    await page.evaluate(() => { window.open('https://example.com/', 'x') })
+    await page.waitForTimeout(500)
+    expect(app.windows()).toHaveLength(2)
+    // the card is sandboxed like the app window: no Node in the page
+    expect(await card.evaluate(() => typeof require)).toBe('undefined')
+    // a card cannot open another card, and a foreign link from the card opens no window of the app (it leaves for the browser policy)
+    await card.evaluate(o => { window.open(`${o}/#/partner/ds-other`, 'dojo-partner-ds-other') }, origin)
+    await card.evaluate(() => { window.open('https://example.com/', 'y') })
+    await page.waitForTimeout(500)
+    expect(app.windows()).toHaveLength(2)
+    // closing the app window takes the card with it
+    const cardClosed = card.waitForEvent('close')
+    await page.close()
+    await cardClosed
   } finally { await app.close() }
 })

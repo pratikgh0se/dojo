@@ -208,8 +208,8 @@ export async function hydrate(o: HydrateOptions): Promise<HydrateResult> {
     try {
       const res = await f(`${base}/db/backups`, { signal: AbortSignal.timeout(limit.health) })
       if (!res.ok) return true // cannot tell: keep waiting
-      const { backups } = (await res.json()) as { backups: { file: string; at: string }[] }
-      return backups.some(b => b.file.startsWith('pre-restore-') && Date.parse(b.at) > at)
+      const { backups } = (await res.json()) as { backups: { file: string; at: number }[] }
+      return backups.some(b => b.file.startsWith('pre-restore-') && b.at > at)
     } catch {
       return true
     }

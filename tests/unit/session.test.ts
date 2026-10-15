@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { closeSessionResult } from '../../src/rules/session'
-import { attributeSession } from '../../src/rules/sprint'
 import { mkTicket } from '../helpers/tickets'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -44,13 +43,12 @@ describe('closeSessionResult', () => {
     expect(r.session.xpDelta).toBe(8)
     expect(r.event).toEqual({ t: 'tick', id: 'p127', at: NOW, xp: 8 })
   })
-  it('keeps a midnight- and sprint-crossing session on its start day and sprint (Review Focus #3)', () => {
+  it('keeps a midnight-crossing session on its start time (Review Focus #3)', () => {
     const start = ist('2026-09-20T23:40:00')
     const end = ist('2026-09-21T00:30:00')
     const r = closeSessionResult({ ticket: p127, outcome: 'solved', sessionStart: start, now: end, sessionId: 's1' })
     expect(r.session.start).toBe(start)
     expect(r.session.minutes).toBe(50)
-    expect(attributeSession(r.session.start, '2026-09-07')).toEqual({ dayKey: '2026-09-20', sprint: 1 })
     expect(r.ticket.doneAt).toBe(end)
   })
 })

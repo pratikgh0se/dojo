@@ -30,6 +30,13 @@ const walks = (page: Page) => page.getByRole('list', exact('Walkthroughs')).getB
 /** The Walkthroughs list item whose title is exactly `title` ("Binary search" ≠ "Binary search on the answer"). */
 const item = (page: Page, title: string) => walks(page).filter({ has: page.getByText(title, { exact: true }) })
 
+/** TICKET-31: the Approaches chips and Pick two sit behind the one closed `dsa-approaches-more` disclosure; open it once. */
+async function openApproaches(strip: Locator) {
+  const more = strip.getByTestId('dsa-approaches-more')
+  if ((await more.getAttribute('open')) === null) await more.locator('summary').click()
+  await expect(more).toHaveAttribute('open', '')
+}
+
 async function ownInput(page: Page, title: string, fields: Record<string, string>) {
   await item(page, title).getByRole('button', exact('Own input')).click()
   const form = page.getByRole('form', exact(`Own input: ${title}`))
@@ -56,29 +63,8 @@ async function answerAll(page: Page, scope: Locator, wrongFirst = false) {
 }
 
 test.describe('Atlas navigation and matrix', () => {
-  test('S1/S2: the Atlas tab and its key open /atlas; typing the key in the search box does not navigate', async ({ page }) => {
-    const ok = watch(page)
-    await onboard(page, '2026-10-05')
-    await page.getByTestId('more-button').click()
-    const tab = page.getByRole('menuitem', exact('Atlas'))
-    const key = await tab.getAttribute('aria-keyshortcuts')
-    expect(key).toBeTruthy()
-    await tab.click()
-    await expect(page).toHaveURL(/\/atlas$/)
-    await expect(page.getByTestId('atlas-summary')).toHaveText('16 atoms · 36 patterns · you have predicted 0')
-    await expect(page.locator('[data-testid^="atlas-row-"]')).toHaveCount(36)
-    await expect(page.getByRole('progressbar', exact('Patterns predicted'))).toHaveAttribute('aria-valuenow', '0')
-    await page.goto('/')
-    await page.getByTestId('xp-total').waitFor({ state: 'attached' })
-    await page.locator('body').press(key!)
-    await expect(page).toHaveURL(/\/atlas$/)
-    await page.getByRole('searchbox', exact('Search patterns or problems')).press(key!)
-    await expect(page.getByRole('searchbox', exact('Search patterns or problems'))).toHaveValue(key!)
-    await expect(page).toHaveURL(/\/atlas$/)
-    ok()
-  })
 
-  test('S3/S4/S5/S6: deep link, reload, bad link, cells, a row without walkthroughs', async ({ page }) => {
+  test('S3/S4/S5/S6: deep link, reload, bad link, cells, a fixed-example row', async ({ page }) => {
     const ok = watch(page)
     await onboard(page, '2026-10-05')
     await page.goto('/atlas?pattern=shortest-path')
@@ -93,7 +79,8 @@ test.describe('Atlas navigation and matrix', () => {
     await expect(page.locator('[data-testid^="atlas-cell-binary-search-"][data-kind="main"]')).toHaveCount(2)
     await expect(page.getByTestId('atlas-cell-binary-search-NUMLN')).toHaveAttribute('data-kind', 'main')
     await page.getByRole('button', exact('Flow · matching')).click()
-    await expect(page.getByTestId('atlas-detail')).toContainText('No walkthrough yet')
+    await expect(page.getByTestId('atlas-detail')).not.toContainText('No walkthrough yet')
+    await expect(page.getByTestId('atlas-walk-1')).toContainText('Bipartite matching · augmenting paths')
     await expect(page.getByTestId('atlas-coverage')).toHaveText('Coverage: gap · edge labels show one number; needs cap/flow pairs')
     await expect(page.getByRole('button', exact('Trace my own input'))).toBeDisabled()
     await expect(page.getByTestId('atlas-last-picture')).toHaveText('No picture generated yet.')
@@ -334,7 +321,12 @@ test.describe('DSA warm-up and Do', () => {
     await onboard(page, '2026-10-05')
     await page.goto('/do/p743')
     const strip = page.getByRole('region', exact('Approaches'))
+    // closed by default: the strip is one control until it is wanted (TICKET-31), yet the two chips are in it
+    await expect(strip.getByTestId('dsa-approaches-more')).not.toHaveAttribute('open')
     await expect(strip.getByTestId('dsa-approach-chip')).toHaveCount(2)
+    await expect(strip.getByTestId('dsa-approach-chip').first()).toBeHidden()
+    await openApproaches(strip)
+    await expect(strip.getByTestId('dsa-approach-chip').first()).toBeVisible()
     await expect(strip.getByTestId('lab-player')).toHaveCount(0)
     await strip.getByRole('button', exact('Dijkstra · O(E log V) · best')).click()
     await expect(counter(strip)).toHaveText('STEP 0 / 51')
@@ -349,6 +341,7 @@ test.describe('DSA warm-up and Do', () => {
     await expect(strip.getByRole('button', exact('Pick two'))).toHaveAttribute('aria-pressed', 'false')
     await page.goto('/do/p322')
     const s2 = page.getByRole('region', exact('Approaches'))
+    await openApproaches(s2)
     await s2.getByRole('button', exact('Brute recursion · O(c^a)')).click()
     await expect(s2.getByRole('status')).toHaveText('No library picture for this approach yet.')
     await s2.getByRole('button', exact('Pick two')).click()
@@ -360,9 +353,9 @@ test.describe('DSA warm-up and Do', () => {
     await onboard(page, '2026-10-05')
     // tickets with approaches but no problem pack: a pack ticket's Solved waits for Submit 5/5 (runner §4)
     await page.goto('/do/p1976')
-    await page.getByRole('button', exact('Solved ✓')).click()
+    await page.getByRole('button', exact('Solved')).click()
     const q = page.getByRole('group', exact('Which approach did you use?'))
-    await expect(q.getByRole('button')).toHaveText(['DFS all paths · O(2^V)', 'Dijkstra + path count · O(E log V) · best', 'Other', 'Back to Board'])
+    await expect(q.getByRole('button')).toHaveText(['DFS all paths · O(2^V)', 'Dijkstra + path count · O(E log V) · best', 'Other', 'Back to Today'])
     await q.getByRole('button', exact('Dijkstra + path count · O(E log V) · best')).click()
     await expect(q.getByRole('button', exact('Dijkstra + path count · O(E log V) · best'))).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(async () => (await idbAll<{ approach?: string }>(page, 'sessions')).map(s => s.approach)).toEqual(['dijkstra'])
@@ -370,7 +363,7 @@ test.describe('DSA warm-up and Do', () => {
     await expect(page.getByTestId('atlas-approach-coverage')).toHaveText('Reached for 1 · best answer 1')
     await expect(page.getByTestId('atlas-row-shortest-path')).toHaveAttribute('data-coverage', 'ok')
     await page.goto('/do/p1514')
-    await page.getByRole('button', exact('Solved ✓')).click()
+    await page.getByRole('button', exact('Solved')).click()
     await page.getByRole('group', exact('Which approach did you use?')).getByRole('button', exact('Other')).click()
     await expect.poll(async () => (await idbAll<{ approach?: string }>(page, 'sessions')).length).toBe(2)
     await page.goto('/do/p253')
@@ -422,6 +415,7 @@ test.describe('Cross-cutting', () => {
     await flat()
     await page.goto('/do/p743')
     const strip = page.getByRole('region', exact('Approaches'))
+    await openApproaches(strip)
     await strip.getByRole('button', exact('Pick two')).click()
     await strip.getByRole('button', exact('Bellman-Ford · O(V·E)')).click()
     await strip.getByRole('button', exact('Dijkstra · O(E log V) · best')).click()

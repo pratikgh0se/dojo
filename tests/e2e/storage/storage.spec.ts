@@ -2,16 +2,14 @@ import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { IST } from '../helpers'
 import { ServerHarness } from './harness'
 
 test.describe.configure({ mode: 'serial' })
 
-// Live plan: sprint 1 starts Mon 2026-10-05; Today's drawer lists its 6 tasks.
+// Live plan: sprint 1 starts Mon 2026-10-05. The spec's writes are real work: start the Today quest and finish it (TODAY-24, TICKET-10).
 const NOW = IST('2026-10-05T21:10:00')
-const A = 'm1w1i1'
-const B = 'm1w1i2'
 let srv: ServerHarness
 // Every test reuses the same port, so a page left open by an earlier test would keep syncing (and,
 // meeting a database it never adopted, merge its data into this test's). Close them all.
@@ -38,26 +36,27 @@ async function newPage(browser: Browser): Promise<Page> {
 async function onboard(page: Page) {
   await page.goto('/')
   await page.getByLabel('Start date').fill('2026-10-05')
-  await page.getByRole('button', { name: 'Start the plan ▸' }).click()
-  await page.getByTestId('now-eyebrow').waitFor()
+  await page.getByRole('button', { name: 'START · PLAN' }).click()
+  await page.getByTestId('screen-today').waitFor()
 }
 const status = (page: Page) => page.getByTestId('save-status')
-/** The Today tick for a ticket, opening the "This sprint" drawer when it is collapsed. */
-async function tick(page: Page, id: string) {
-  const head = page.getByRole('button', { name: /This sprint · \d+ tasks/ })
-  if ((await head.getAttribute('aria-expanded')) === 'false') await head.click()
-  return page.getByTestId(`dig-tick-${id}`)
+/**
+ * Starts the Today quest (`start-button`, TODAY-24) and finishes it with `ticket-done` (TICKET-10); the page stays on `/do/<id>`. Returns the ticket id.
+ */
+async function finishQuest(page: Page): Promise<string> {
+  const id = await startQuest(page)
+  return finishStarted(page, id)
 }
-// The box flips optimistically on click; its row's "done" class comes from the STORED ticket, so
-// waiting on both means the write has committed (a reload right after would otherwise abort it).
-const row = (box: Locator) => box.locator('xpath=ancestor::*[starts-with(@data-testid, "dig-row-")][1]')
-const checked = async (box: Locator) => {
-  await expect(box).toHaveAttribute('aria-checked', 'true')
-  await expect(row(box)).toHaveClass(/\bdone\b/)
+/** Today's Start: opens the quest's ticket page (its lazy chunk loads now). Returns the ticket id. */
+async function startQuest(page: Page): Promise<string> {
+  await page.getByTestId('start-button').click()
+  await page.waitForURL(/\/do\/[^/?#]+/)
+  return decodeURIComponent(new URL(page.url()).pathname.split('/')[2])
 }
-const unchecked = async (box: Locator) => {
-  await expect(box).toHaveAttribute('aria-checked', 'false')
-  await expect(row(box)).not.toHaveClass(/\bdone\b/)
+async function finishStarted(page: Page, id: string): Promise<string> {
+  await page.getByTestId('ticket-done').click()
+  await expect(page.getByTestId('ticket-done-state')).toBeVisible()
+  return id
 }
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return (await fetch(`${srv.url}${path}`, init)).json() as Promise<T>
@@ -75,13 +74,13 @@ test('ST-01/05/09: health, append-only history, security, writes need the token'
   const page = await newPage(browser)
   await onboard(page)
   const ops0 = (await api<{ ops: number }>('/db/health')).ops
-  await (await tick(page, A)).click()
-  await expect(status(page)).toHaveText('Saved')
-  await (await tick(page, A)).click() // untick
+  await finishQuest(page) // start, then done: two writes
   await expect(status(page)).toHaveText('Saved')
   await expect.poll(async () => (await api<{ ops: number }>('/db/health')).ops).toBeGreaterThanOrEqual(ops0 + 2)
   const ops1 = (await api<{ ops: number }>('/db/health')).ops
-  await page.reload()
+  await page.reload() // a real reload on /do/<dotted id>: the disk server answers it with the app
+  await expect(page).toHaveURL(/\/do\/[^/?#]+$/)
+  await expect(page.getByTestId('ticket-done-state')).toBeVisible()
   await expect(status(page)).toHaveText('Saved')
   expect((await api<{ ops: number }>('/db/health')).ops).toBeGreaterThanOrEqual(ops1)
 
@@ -97,16 +96,16 @@ test('ST-01/05/09: health, append-only history, security, writes need the token'
 test('ST-02: survives a server restart and a wiped browser', async ({ browser }) => {
   const page = await newPage(browser)
   await onboard(page)
-  await (await tick(page, A)).click()
-  await checked(await tick(page, A))
+  const id = await finishQuest(page)
   await expect(status(page)).toHaveText('Saved')
+  await expect.poll(doneIds).toEqual([id]) // on disk before the server goes down
   await srv.restart()
 
   const fresh = await newPage(browser) // empty storage
   await fresh.goto('/')
   await expect(fresh.getByLabel('Start date')).toHaveCount(0) // onboarding skipped: the start date was restored
-  await expect(fresh.getByTestId('now-eyebrow')).toBeVisible()
-  await checked(await tick(fresh, A))
+  await expect(fresh.getByTestId('screen-today')).toBeVisible()
+  expect(await doneIds()).toEqual([id])
   await expect(status(fresh)).toHaveText('Saved')
 })
 
@@ -114,15 +113,19 @@ test('ST-03: offline shows "Not saved to disk", writes land when the server retu
   const page = await newPage(browser)
   await onboard(page)
   await expect(status(page)).toHaveText('Saved')
+  // the ticket page's lazy chunk is fetched from the server, so open it while the server is up, then lose the server before Done
+  const id = await startQuest(page)
+  await expect(status(page)).toHaveText('Saved')
   await srv.stop()
-  await (await tick(page, A)).click()
+  await finishStarted(page, id)
   await expect(status(page)).toHaveText('Not saved to disk', { timeout: 5000 })
-  await checked(await tick(page, A))
   await srv.start()
   await expect(status(page)).toHaveText('Saved', { timeout: 10_000 })
+  await expect.poll(doneIds).toEqual([id])
   const fresh = await newPage(browser)
   await fresh.goto('/')
-  await checked(await tick(fresh, A))
+  await expect(fresh.getByTestId('screen-today')).toBeVisible()
+  expect(await doneIds()).toEqual([id])
 })
 
 test('first run with the server down: the error card, never onboarding (R7, ruling 11 Q10); once it answers, the fresh start', async ({ browser }) => {
@@ -134,23 +137,21 @@ test('first run with the server down: the error card, never onboarding (R7, ruli
 
   await page.unroute('**/db/**') // "the server starts": it is empty
   await onboard(page)
-  await (await tick(page, A)).click()
-  await checked(await tick(page, A))
+  await finishQuest(page)
   await expect(status(page)).toHaveText('Saved')
   await expect.poll(async () => (await doneIds()).length).toBe(1)
 })
 
-test('ST-07/08/10: backups region, restore with a pre-restore file, export', async ({ browser }) => {
+test('ST-07/08/10: backups region, restore with a pre-restore file, export (db:export-pg against the scratch home)', async ({ browser }) => {
   const page = await newPage(browser)
   await onboard(page)
-  await (await tick(page, A)).click()
-  await checked(await tick(page, A))
+  const idA = await finishQuest(page)
   await expect(status(page)).toHaveText('Saved')
-  await expect.poll(doneIds).toHaveLength(1)
+  await expect.poll(doneIds).toEqual([idA])
   const idsWithA = await doneIds()
 
-  await page.getByTestId('more-button').click()
-  await page.getByRole('menuitem', { name: 'Settings' }).click()
+  // ST-07: Settings has a Backups region listing today's automatic backup; Back up now adds a manual one
+  await page.goto('/settings')
   const region = page.getByRole('region', { name: 'Backups' })
   const today = new Date()
   const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -160,14 +161,16 @@ test('ST-07/08/10: backups region, restore with a pre-restore file, export', asy
   const manual = (await api<{ backups: { file: string }[] }>('/db/backups')).backups.find(x => /-\d{6}\.db$/.test(x.file))!
   expect(manual).toBeTruthy()
 
-  await page.getByRole('link', { name: 'Today' }).click()
-  await (await tick(page, B)).click()
-  await checked(await tick(page, B))
+  // a second ticket is finished after the manual backup
+  await page.goto('/')
+  await page.getByTestId('screen-today').waitFor()
+  const idB = await finishQuest(page)
+  expect(idB).not.toBe(idA)
   await expect(status(page)).toHaveText('Saved')
   await expect.poll(doneIds).toHaveLength(2)
 
-  await page.getByTestId('more-button').click()
-  await page.getByRole('menuitem', { name: 'Settings' }).click()
+  // ST-08: restore the manual backup; a pre-restore file appears; after the reload only the first ticket is done
+  await page.goto('/settings')
   await region.getByRole('listitem').filter({ hasText: manual.file }).getByRole('button', { name: 'Restore' }).click()
   await Promise.all([
     page.waitForEvent('load'), // Settings reloads the page after the swap so the app re-hydrates
@@ -175,13 +178,13 @@ test('ST-07/08/10: backups region, restore with a pre-restore file, export', asy
   ])
   await expect.poll(async () => (await api<{ backups: { file: string }[] }>('/db/backups')).backups.some(x => x.file.startsWith('pre-restore-'))).toBe(true)
   await page.goto('/')
-  await checked(await tick(page, A))
-  await unchecked(await tick(page, B))
-  expect(await doneIds()).toEqual(idsWithA)
+  await page.getByTestId('screen-today').waitFor()
+  await expect.poll(doneIds).toEqual(idsWithA)
 
-  // ST-10: export
+  // ST-10: `npm run db:export-pg` against this scratch home (never ~/Dojo) writes the Postgres dump
   const out = execFileSync('npm', ['run', '--silent', 'db:export-pg'], { env: { ...process.env, DOJO_HOME: srv.home }, cwd: fileURLToPath(new URL('../../../', import.meta.url)) }).toString()
   expect(out).toContain('wrote')
+  expect(out).toContain(join(srv.home, 'export'))
   const file = readdirSync(join(srv.home, 'export')).find(f => f.endsWith('.sql'))!
   const sql = readFileSync(join(srv.home, 'export', file), 'utf8')
   expect(sql).toContain('CREATE SCHEMA IF NOT EXISTS dojo')
@@ -192,9 +195,8 @@ test('ST-07/08/10: backups region, restore with a pre-restore file, export', asy
 test('ST-12: a browser without the writer token is a read-only view', async ({ browser }) => {
   const writer = await newPage(browser)
   await onboard(writer)
-  await (await tick(writer, A)).click()
-  await checked(await tick(writer, A))
-  await expect.poll(doneIds).toEqual([A]) // on disk (the status can read Saved before the flush starts)
+  const id = await finishQuest(writer)
+  await expect.poll(doneIds).toEqual([id]) // on disk (the status can read Saved before the flush starts)
 
   const ctx = await browser.newContext({ baseURL: srv.url, timezoneId: 'Asia/Kolkata' }) // no token
   contexts.push(ctx)
@@ -202,18 +204,22 @@ test('ST-12: a browser without the writer token is a read-only view', async ({ b
   await view.clock.setFixedTime(NOW)
   await view.goto('/')
   await expect(view.getByTestId('readonly-banner')).toHaveText('Read-only: open Dojo from the Dojo app to make changes')
-  await checked(await tick(view, A))
+  // the view shows the writer's data, and the next quest's Start is disabled (SHELL-23)
+  await view.getByTestId('screen-today').waitFor()
+  await expect(view.getByTestId('start-button')).toBeDisabled()
   const ops0 = (await api<{ ops: number }>('/db/health')).ops
   const state0 = JSON.stringify(await api('/db/state'))
-  await (await tick(view, B)).click()
-  await expect(view.getByTestId('toast').filter({ hasText: /^Read-only/ })).toBeVisible()
-  await unchecked(await tick(view, B))
+  await view.keyboard.press('Enter') // Enter on the body starts the quest (TODAY-23); read-only does nothing
+  await expect(view).toHaveURL(/\/$/)
+  // R1 (SHELL-23): a control that would write is disabled, so the old Read-only toast on a click is gone; the Settings backup button is one
+  await view.goto('/settings')
+  await expect(view.getByRole('region', { name: 'Backups' }).getByRole('button', { name: 'Back up now' })).toBeDisabled()
   expect((await api<{ ops: number }>('/db/health')).ops).toBe(ops0)
   expect(JSON.stringify(await api('/db/state'))).toBe(state0)
   await expect(writer.getByTestId('readonly-banner')).toHaveCount(0)
 })
 
-test('Addendum 7: a read-only browser on onboarding shows the banner and refuses "Start the plan ▸"', async ({ browser }) => {
+test('Addendum 7: a read-only browser on onboarding shows the banner and refuses "START · PLAN"', async ({ browser }) => {
   const ctx = await browser.newContext({ baseURL: srv.url, timezoneId: 'Asia/Kolkata' }) // no token
   contexts.push(ctx)
   const page = await ctx.newPage()
@@ -222,7 +228,7 @@ test('Addendum 7: a read-only browser on onboarding shows the banner and refuses
   await expect(page.getByLabel('Start date')).toBeVisible()
   await expect(page.getByTestId('readonly-banner')).toHaveText('Read-only: open Dojo from the Dojo app to make changes')
   await page.getByLabel('Start date').fill('2026-10-05')
-  await page.getByRole('button', { name: 'Start the plan ▸' }).click()
+  await page.getByRole('button', { name: 'START · PLAN' }).click()
   await expect(page.getByTestId('toast').filter({ hasText: /^Read-only/ })).toBeVisible()
   await expect(page.getByLabel('Start date')).toBeVisible()
   expect((await api<{ ops: number; docs: number }>('/db/health'))).toMatchObject({ ops: 0, docs: 0 })
@@ -238,7 +244,7 @@ test('Addendum 8: an idle writer makes no writes after onboarding', async ({ bro
   expect((await api<{ ops: number }>('/db/health')).ops).toBe(ops0)
 })
 
-test('Addenda 8/9: read-only Settings shows the banner; Back up now and Restore toast with no dialog', async ({ browser }) => {
+test('Addenda 8/9: read-only Settings shows the banner; Back up now and Restore are disabled, with no dialog', async ({ browser }) => {
   const writer = await newPage(browser)
   await onboard(writer)
   await expect(status(writer)).toHaveText('Saved')
@@ -250,11 +256,10 @@ test('Addenda 8/9: read-only Settings shows the banner; Back up now and Restore 
   await expect(page.getByTestId('readonly-banner')).toBeVisible()
   const region = page.getByRole('region', { name: 'Backups' })
   const backups0 = (await api<{ backups: unknown[] }>('/db/backups')).backups.length
-  await region.getByRole('button', { name: 'Back up now' }).click()
-  await expect(page.getByTestId('toast').filter({ hasText: /^Read-only/ }).first()).toBeVisible()
-  await region.getByRole('listitem').first().getByRole('button', { name: 'Restore', exact: true }).click()
+  // R1 (SHELL-23): the write controls are disabled in a read-only browser (they used to toast on a click), so nothing opens and nothing is written
+  await expect(region.getByRole('button', { name: 'Back up now' })).toBeDisabled()
+  await expect(region.getByRole('listitem').first().getByRole('button', { name: 'Restore', exact: true })).toBeDisabled()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByTestId('toast').filter({ hasText: /^Read-only/ }).first()).toBeVisible()
   expect((await api<{ backups: unknown[] }>('/db/backups')).backups.length).toBe(backups0)
 })
 
@@ -264,7 +269,7 @@ test('ruling 16 Q22: while the server is unreachable, background retries never f
   await expect(status(page)).toHaveText('Saved')
   // an unreachable server that takes a moment to fail each request (a connect timeout), as the tester saw
   await page.route('**/db/**', async r => { await new Promise(res => setTimeout(res, 300)); await r.abort().catch(() => {}) })
-  await (await tick(page, A)).click()
+  await finishQuest(page)
   await expect(status(page)).toHaveText('Not saved to disk')
   // sample every frame across several retries (500 ms, 1 s, 2 s backoff)
   const seen = await page.evaluate(() => new Promise<string[]>(resolve => {

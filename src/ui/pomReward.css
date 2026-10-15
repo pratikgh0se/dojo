@@ -1,0 +1,12 @@
+/* the form-up celebration: a panel at the top centre, over everything but the white flash; no accent colour */
+.pom-formup {
+  position: fixed; top: 72px; left: 50%; transform: translateX(-50%); z-index: var(--sr-z-toast); pointer-events: none;
+  display: grid; justify-items: center; gap: 4px; min-width: 240px; max-width: calc(100vw - 32px); padding: 16px 32px;
+  color: var(--sr-text-primary); background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark);
+  box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark);
+  animation: srin var(--sr-motion-base) steps(4);
+}
+.pom-formup-cap { font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); }
+.pom-formup-name { font-family: var(--sr-font-pixel); font-size: var(--type-display-m); line-height: 1.2; letter-spacing: 1px; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+/* TODAY-55: the static notice moves nothing */
+.pom-formup[data-motion='static'], .pom-formup[data-motion='static'] * { animation: none; transition-duration: 0s; }

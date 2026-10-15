@@ -1,5 +1,13 @@
 .help-ladder { display: grid; gap: 12px; min-width: 0; }
 .ladder-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ladder-toggle, .approaches-toggle {
+  cursor: pointer; font-family: var(--sr-font-body); font-size: var(--type-small); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700;
+}
+.ladder-toggle:focus-visible, .approaches-toggle:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+.ladder-rungs > summary { margin-bottom: 12px; }
+.ladder-rungs > .rung + .rung { margin-top: 12px; }
+.approaches-more > summary { margin-bottom: 8px; }
+.approaches-more > * + *:not(summary) { margin-top: 8px; }
 .ladder-spent { font-family: var(--sr-font-mono); font-size:var(--type-meta); }
 .rung { display: grid; gap: 8px; min-width: 0; }
 /* the rung's button (not .rung-open: that is the open rung's state class, and the collision stripped rung 1's panel) */
@@ -24,8 +32,6 @@
 .rung-hint { margin: 0; }
 .rung-links { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .rung-why { margin: 0; font-size:var(--type-small); color: var(--sr-text-secondary); }
-.rung-why-link { margin-left: 6px; }
-.rung-why-link::after { content: 'See the honesty chart'; }
 .picture-player { margin: 0; display: grid; gap: 8px; padding: 8px; border: 2px solid var(--sr-edge-dark); background: var(--sr-surface-well); min-width: 0; }
 .picture-diagram { display: block; width: 100%; min-height: 240px; overflow: auto; }
 .ladder-solution { display: grid; gap: 8px; min-width: 0; }

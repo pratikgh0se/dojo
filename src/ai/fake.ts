@@ -2,12 +2,12 @@
 // (_common rules 2, 7, 8; design §7; projects §1; banks §5.5; ladder §9). Never change a string
 // here without the controller updating the contracts. Only client.ts calls this, and only when
 // the provider is 'fake'.
-import { TEACHBACK_DELIVERABLE_PROMPT } from './forgeConst'
+import { coachTurn, turnTopic, type CoachTopic } from './coachPlan'
 import {
   AiJobError, isAiErrorCode,
-  type AiErrorCode, type BriefContext, type BriefOutput, type CheckContext, type CheckOutput, type ReviewContext, type ReviewOutput, type ClassifyContext, type ClassifyOutput, type DiagramJson, type GradeContext, type GradeOutput, type HintContext,
-  type InterviewContext, type InterviewItem, type InterviewOutput, type JobName, type JobOutput, type JobRequest,
-  type SolutionOutput, type SrAlgoJson, type SrAlgoStep, type SuggestSlideContext, type SuggestSlideOutput,
+  type AiErrorCode, type BankMoreContext, type BankMoreOutput, type BriefContext, type BriefOutput, type CheckContext, type CheckOutput, type ClassifyContext, type ClassifyOutput, type DiagramJson, type GradeContext, type GradeOutput, type HintContext,
+  type InterviewContext, type InterviewFinal, type InterviewItem, type InterviewOutput, type JobName, type JobOutput, type JobRequest,
+  type SolutionOutput, type SrAlgoJson, type SrAlgoStep,
 } from './types'
 
 export const FAKE_FAIL_KEY = 'dojo-ai-fake-fail'
@@ -105,20 +105,87 @@ function picture(id: string): SrAlgoJson {
   }
 }
 
+const FAKE_QUESTIONS: Record<CoachTopic, readonly string[]> = {
+  requirements: ['Before drawing anything: who are the users and what do they do most', 'What are the two or three things this must do, and what is clearly out of scope', 'Which non-functional goal matters most here, and how would you tell it was met'],
+  estimates: ['What numbers will you design to, and how did you get them', 'How much data does that produce in a year, and where does it sit'],
+  design: ['Which part of the design carries the most risk, and why', 'Where does state live, and who owns it'],
+  tradeoffs: ['What did you give up with your main choice, and what would make you change it', 'What breaks first as the load grows, and how would you notice', 'Which decision would you test first, and what result would change your mind'],
+  challenge: ['You settled on one approach. What happens to it when traffic doubles', 'One of your numbers could be off by ten times. Which one hurts most', 'Pick the component you trust least. What happens when it fails'],
+}
+const FAKE_HINTS: Record<CoachTopic, string> = {
+  requirements: 'Think of one user and one action. What is the first thing they do',
+  estimates: 'Start from a single number you can defend. What would you multiply it by',
+  design: 'Pick one box you drew. What does it hold and who talks to it',
+  tradeoffs: 'Name one thing your choice makes harder. Who feels it first',
+  challenge: 'Take the smallest version of the change. What is the first thing that slows down',
+}
+
+/** A ticket title or id goes into one chat line that has exactly one `?` and never the word interview (DESIGN-45, GLOBAL-01). */
+const speakable = (s: string) => s.replace(/\?/g, '').replace(/\binterview\w*/gi, 'session').replace(/\s+/g, ' ').trim()
+
 /** Variants (localStorage `dojo:fake-ai-interview`), UAT cu-7 P2-1: 'closing-done' answers a turn with `done:true` and a line (repairable: the
  * real model did this on the closing turn), 'malformed' answers with a grade shape that has nothing to repair. */
-function interview(id: string, ctx: InterviewContext, variant = 'default'): InterviewOutput {
+function interview(id: string, title: string, ctx: InterviewContext, variant = 'default'): InterviewOutput {
   if (variant === 'malformed') return (ctx.final ? { done: true, score: 'high', perItem: 'none' } : { done: true }) as unknown as InterviewOutput
-  if (variant === 'closing-done' && !ctx.final) return { say: `[fake:interview] Turn ${ctx.turn} for ${id}: thanks, that is the interview.`, done: true } as unknown as InterviewOutput
-  if (!ctx.final) return { say: `[fake:interview] Turn ${ctx.turn} for ${id}: which trade-off did you choose, and why?`, done: false }
-  const note = `[fake:interview] ${id}`
+  if (variant === 'closing-done' && !ctx.final) return { say: `[fake:partner] Turn ${ctx.turn} for ${speakable(id)}: thanks, that is the session.`, done: true } as unknown as InterviewOutput
+  if (ctx.final) return sessionFinal(id, variant, ctx.design)
+  const topic = turnTopic(coachTurn(ctx.turn))
+  const qs = FAKE_QUESTIONS[topic]
+  const name = `${speakable(title)} (${speakable(id)})`
+  if (ctx.hint) return { say: `[fake:partner] Hint for ${speakable(id)}: ${FAKE_HINTS[topic]}?`, done: false }
+  return { say: `[fake:partner] ${name}, turn ${ctx.turn}: ${qs[ctx.turn % qs.length]}?`, done: false }
+}
+
+/** The final session grade, from the interview job (final) and the grade job (sessionGrade). Variant `findings` adds three inconsistencies; `malformed` is unusable. */
+/** The labels of the drawn nodes in a design digest ("nodes:" lines, `- Label [kind] ...`), in drawn order: the fake cites the real canvas. */
+function digestNodeLabels(design: string | undefined): string[] {
+  if (!design) return []
+  const out: string[] = []
+  let inNodes = false
+  for (const l of design.split('\n')) {
+    if (l === 'nodes:') { inNodes = true; continue }
+    if (inNodes && !l.startsWith('- ')) break
+    const m = inNodes ? /^- (.+?) \[[^\]]*\]/.exec(l) : null
+    if (m) out.push(m[1])
+  }
+  return out
+}
+/** The notes section each rubric item reads most, for the fake's evidence. */
+const FAKE_NOTE_FOR_ITEM = ['requirements', 'api', 'assumptions', 'tradeoffs', 'open'] as const
+
+function sessionFinal(id: string, variant: string, design?: string): InterviewFinal {
+  // variant `malformed` (grade job, UAT cu-7 P2-1): a grade shape that has nothing to repair
+  if (variant === 'malformed') return { done: true, score: 'high', perItem: 'none' } as unknown as InterviewFinal
+  const note = `[fake:partner] ${speakable(id)}`
+  const labels = digestNodeLabels(design)
+  const perItem = FAKE_INTERVIEW_ITEMS.map((p, i) => ({
+    ...p, note,
+    feedback: `${note}: ${p.item.toLowerCase()} scored ${p.points}. The notes and the diagram name what is covered and what is still missing.`,
+    evidence: [
+      { source: 'notes' as const, target: FAKE_NOTE_FOR_ITEM[i] },
+      ...(labels.length > 0 ? [{ source: 'diagram' as const, target: labels[i % labels.length] }] : []),
+    ],
+  }))
   return {
     done: true,
-    score: 15,
-    perItem: FAKE_INTERVIEW_ITEMS.map(p => ({ ...p, note })),
+    score: perItem.reduce((a, p) => a + p.points, 0),
+    perItem,
     oneThingToStudy: note,
     deepDives: [2, 1, 2, 1],
     lenses: { load: 2, data: 1, consistency: 1, failure: 1, latency: 1, cost: 0, evolution: 1 },
+    stronger: [`${note}: names a partition key and shows how many partitions the numbers call for.`, `${note}: gives every box a line in the notes with its API call and its failure case.`],
+    missed: [
+      { topic: 'partition key', question: `${note}: what makes a good partition key for a write queue?`, answer: `${note}: it spreads writes evenly and keeps the items that need an order on one partition.` },
+      { topic: 'tile fetch API', question: `${note}: how does a client fetch one tile, and who writes it?`, answer: `${note}: a read call by tile id, written by the service that renders it.` },
+      { topic: 'conflict rule', question: `${note}: what does last-writer-wins cost a user?`, answer: `${note}: the earlier edit is lost without a warning, so say who loses.` },
+    ],
+    ...(variant === 'findings' ? {
+      inconsistencies: [
+        `${note}: the notes plan 20,000 requests a second but the diagram has one unreplicated database.`,
+        `${note}: the data model has a table no drawn store holds.`,
+        `${note}: the API lists no call for the box labelled Render engine.`,
+      ],
+    } : {}),
   }
 }
 
@@ -156,14 +223,6 @@ function solution(id: string): SolutionOutput {
   }
 }
 
-function suggestSlide(ctx: SuggestSlideContext): SuggestSlideOutput {
-  const n = Number.isFinite(ctx.count) ? Math.max(0, Math.min(ctx.tickets.length, Math.floor(ctx.count))) : 0
-  return {
-    slide: ctx.tickets.slice(0, n).map(t => ({ id: t.id, reason: `[fake:suggest_slide] Slide ${t.id}: fewest slides so far.` })),
-    keep: ctx.tickets.slice(n).map(t => ({ id: t.id, reason: `[fake:suggest_slide] Keep ${t.id}: fits this sprint.` })),
-  }
-}
-
 function classify(id: string): ClassifyOutput {
   return {
     title: 'Fake classified item',
@@ -183,19 +242,16 @@ export function slugOf(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 }
 
-/** contracts/briefs.md "Fake AI outputs": answers only for a plain (non-forge) task; everything else is code, except a teach-back card (an explanation, UAT cu-5 P2-2). */
+/** contracts/briefs.md "Fake AI outputs": answers for a watch or read ticket; everything else hands in code. */
 function brief(title: string, ctx: BriefContext, variant = 'default'): BriefOutput {
-  const answers = (ctx.learning ?? (ctx.kind === 'watch' || ctx.kind === 'read')) && !ctx.forge
+  const answers = ctx.learning ?? (ctx.kind === 'watch' || ctx.kind === 'read')
   const out = briefDefault(title, ctx, answers)
-  // Addendum 4: `invalid` misses its steps (unusable); `forge-code` carries a fenced block in step 1 (a forge brief must not)
+  // `invalid` misses its steps (unusable)
   if (variant === 'invalid') { const { steps: _s, ...rest } = out; return rest as unknown as BriefOutput }
-  if (variant === 'forge-code') return { ...out, steps: [{ ...out.steps[0], text: `${out.steps[0].text}\n\`\`\`py\nprint('hello')\n\`\`\`` }, ...out.steps.slice(1)], deliverable: { kind: 'code', prompt: 'Paste your code, typed by hand' }, questions: [] }
   return out
 }
 
-function briefDefault(title: string, ctx: BriefContext, answers: boolean): BriefOutput {
-  // UAT cu-5 P2-2: a teach-back card hands in an explanation, not code
-  const teachback = ctx.teachback === true && !answers
+function briefDefault(title: string, _ctx: BriefContext, answers: boolean): BriefOutput {
   return {
     goal: `Understand ${title}`,
     steps: [
@@ -208,7 +264,7 @@ function briefDefault(title: string, ctx: BriefContext, answers: boolean): Brief
     outcome: `You can explain ${title} in your own words`,
     deliverable: answers
       ? { kind: 'answers', prompt: 'Answer the questions' }
-      : teachback ? { kind: 'explanation', prompt: TEACHBACK_DELIVERABLE_PROMPT } : { kind: 'code', prompt: 'Paste your code, typed by hand' },
+      : { kind: 'code', prompt: 'Paste your code, typed by hand' },
     questions: answers
       ? [
           { id: 'q1', kind: 'open', q: `Explain ${title} in your own words`, keyIdeas: [title] },
@@ -231,16 +287,16 @@ function check(title: string, ctx: CheckContext): CheckOutput {
   }
 }
 
-function reviewSprint(ctx: ReviewContext): ReviewOutput {
-  const s = ctx.stats
-  return {
-    prose: `Review for Sprint ${s.sprint}: ${s.done}/${s.planned} cards done.`,
-    // Controller ruling 8 S4: the fake carries items so the "Do better next sprint" list is reachable.
-    doBetter: [
-      `Start Sprint ${s.sprint + 1}'s hardest card on day one.`,
-      'Close each session with a written next step.',
-    ],
-  }
+/** R1 W6 (BANK-19): five fixed, valid questions about the node in the context. The node title is in every question so two nodes never repeat. */
+function bankMore(ctx: BankMoreContext): BankMoreOutput {
+  const t = ctx.nodeTitle || ctx.node
+  const mk = (type: BankMoreOutput['questions'][number]['type'], difficulty: number, k: number): BankMoreOutput['questions'][number] => ({
+    type, difficulty,
+    question: `[fake:bank_more] ${t}, question ${k}: what is the ${type === 'estimate' ? 'rough size' : type === 'tradeoff' ? 'main trade-off' : type === 'design' ? 'first design move' : 'key idea'} here?`,
+    answer: `For ${t}, a strong answer names the ${type === 'estimate' ? 'quantity, the unit and the order of magnitude' : type === 'tradeoff' ? 'two options and what each costs' : type === 'design' ? 'components, the data they hold and the failure to plan for' : 'idea in one sentence and one example'}. It then says why it matters in practice.`,
+    checklist: [`Names the idea for ${t}`, 'Gives a concrete example or number', 'Says why it matters'],
+  })
+  return { questions: [mk('concept', 2, 1), mk('estimate', 3, 2), mk('tradeoff', 3, 3), mk('design', 4, 4), mk('concept', 1, 5)] }
 }
 
 /** Pure: the fake output for one job and variant. Throws AiJobError for 'error' and input triggers. */
@@ -257,14 +313,13 @@ export function fakeOutput<J extends JobName>(job: J, req: JobRequest<J>, varian
       break
     case 'picture': out = picture(id); break
     case 'diagram': out = clone(FAKE_DIAGRAM); break
-    case 'interview': out = interview(id, req.context as InterviewContext, variant); break
-    case 'grade': out = grade(id, variant, req.context as GradeContext); break
+    case 'interview': out = interview(id, req.ticket?.title ?? id, req.context as InterviewContext, variant); break
+    case 'grade': out = (req.context as GradeContext)?.sessionGrade ? sessionFinal(id, variant, (req.context as GradeContext).design) : grade(id, variant, req.context as GradeContext); break
     case 'solution': out = solution(id); break
-    case 'suggest_slide': out = suggestSlide(req.context as SuggestSlideContext); break
     case 'classify': out = classify(id); break
     case 'brief': out = brief(req.ticket?.title ?? id, req.context as BriefContext, variant); break
     case 'check': out = check(req.ticket?.title ?? id, req.context as CheckContext); break
-    case 'review_sprint': out = reviewSprint(req.context as ReviewContext); break
+    case 'bank_more': out = bankMore(req.context as BankMoreContext); break
     default: throw new AiJobError('unknown_job', `fake ${String(job)} unavailable`)
   }
   return out as JobOutput<J>

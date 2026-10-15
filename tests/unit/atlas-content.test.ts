@@ -31,15 +31,13 @@ describe('Atlas content (labs contract §2)', () => {
     expect(PATTERNS.map(p => p.slug)).toEqual(SLUGS)
   })
 
-  it('keeps the nine rows without a walkthrough honest (D-3)', () => {
-    expect(PATTERNS.filter(p => p.walkthroughs.length === 0).map(p => p.slug)).toEqual([
-      'prefix-sum', 'dp-bitmask', 'trie', 'segment-fenwick', 'string-match', 'scc-bridges', 'flow-matching', 'combinatorics', 'simulation',
-    ])
-    expect(PATTERNS.find(p => p.slug === 'flow-matching')).toMatchObject({ status: 'gap', how: 'edge labels show one number; needs cap/flow pairs' })
+  it('gives every row a walkthrough (ATLAS-05) and keeps the Flow row honest about max flow (D-3)', () => {
+    expect(PATTERNS.filter(p => p.walkthroughs.length === 0).map(p => p.slug)).toEqual([])
+    expect(PATTERNS.find(p => p.slug === 'flow-matching')).toMatchObject({ status: 'gap', how: 'edge labels show one number; needs cap/flow pairs', walkthroughs: ['matching'] })
   })
 
-  it('has 45 walkthroughs whose title and complexity are what the engine header shows', () => {
-    expect(WALKTHROUGHS).toHaveLength(45)
+  it('has 54 walkthroughs (45 + the nine of W7) whose title and complexity are what the engine header shows', () => {
+    expect(WALKTHROUGHS).toHaveLength(54)
     expect(WALKTHROUGHS.filter(w => w.source === 'library').map(w => w.key).sort()).toEqual(Object.keys(g().SRAlgo!.library).sort())
     for (const w of WALKTHROUGHS) {
       const r = resolveWalk(w.key, undefined, g())

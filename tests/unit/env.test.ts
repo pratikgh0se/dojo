@@ -13,6 +13,6 @@ describe('test environment', () => {
 
   it('ships plan.json in public/data', () => {
     const plan = JSON.parse(readFileSync('public/data/plan.json', 'utf8'))
-    expect(plan.sprints).toHaveLength(72)
+    expect(plan.planFormat).toBe(2)
   })
 })

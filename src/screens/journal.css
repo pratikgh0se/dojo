@@ -1,0 +1,78 @@
+/* R1 W2: the daily journal. One accent: SAVE · ENTRY. Toggles use the quiet pressed look; the strip and the hard list stay neutral. */
+.jr { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.jr-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.jr-panel { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.jr-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.jr-day { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-m); font-weight: 400; line-height: 1.25; letter-spacing: 1px; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.jr-h { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); font-weight: 400; line-height: 1.25; letter-spacing: 1px; color: var(--sr-label-accent); -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.jr-date { display: grid; gap: 4px; }
+.jr-date input { height: var(--sr-size-control-h); box-sizing: border-box; color-scheme: dark; }
+.jr-cap { font-size: var(--type-meta); font-weight: 700; letter-spacing: .02em; color: var(--sr-text-secondary); line-height: 1.3; }
+.jr-meta { font-size: var(--type-meta); color: var(--sr-text-secondary); }
+
+/* the contract's copy is read as written (innerText and the accessible name follow the CSS): labels and quiet buttons stay in sentence case */
+.jr label { text-transform: none; letter-spacing: 0; font-size: var(--type-small); }
+.jr .sr-btn:not(.sr-btn-accent) { text-transform: none; letter-spacing: 0; }
+
+/* the seven-day strip: seven equal cells, no count and no run */
+.jr-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.jr-cell { display: block; white-space: pre-line; text-align: center; line-height: 1.2; min-height: 56px; min-width: 0; padding: 6px 2px; box-sizing: border-box; cursor: pointer; font-family: var(--sr-font-body); color: var(--sr-text-secondary); background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.jr-cell:hover { border-color: var(--sr-text-secondary); }
+.jr-cell-day { font-size: var(--type-small); font-weight: 700; color: var(--sr-text-primary); }
+.jr-cell-word { font-size: var(--type-meta); line-height: 1.2; }
+.jr-cell[data-state='written'] { border-color: var(--sr-label-ok); }
+.jr-cell[data-state='written'] .jr-cell-word { color: var(--sr-label-ok); }
+.jr-cell[data-state='none'] { border-style: dashed; border-color: var(--sr-text-secondary); }
+.jr-cell[aria-current='true'] { outline: 2px solid var(--sr-text-primary); outline-offset: 1px; }
+
+/* the pulse line, read-only */
+.jr-pulse { display: grid; gap: 4px; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.jr-pulse-text { margin: 0; font-size: var(--type-body); line-height: 1.4; overflow-wrap: anywhere; }
+
+.jr-mode { display: flex; }
+.jr-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.jr-item { display: grid; gap: 10px; padding: 12px 14px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); min-width: 0; }
+.jr-item-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.jr-item-title { font-size: var(--type-body); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; min-width: 0; }
+.jr-choice { display: grid; gap: 6px; }
+.jr-choice-label { font-size: var(--type-meta); font-weight: 700; letter-spacing: .02em; color: var(--sr-text-secondary); line-height: 1.3; }
+.jr-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.jr-opt { min-width: 64px; }
+.jr-field { display: grid; gap: 6px; }
+.jr-field textarea, .jr-field input { font-size: var(--type-body); line-height: 1.5; min-height: 0; box-sizing: border-box; width: 100%; }
+.jr-field textarea { min-height: 84px; padding: 10px 12px; }
+.jr-field input { height: var(--sr-size-control-h); }
+.jr-field textarea:focus, .jr-field input:focus, .jr-date input:focus { border-color: var(--sr-energy-accent); outline: 0; }
+.jr-none { display: grid; gap: 16px; }
+.jr-empty { margin: 0; padding: 12px 14px; color: var(--sr-text-secondary); font-size: var(--type-body); background: var(--sr-surface-well); border: 2px dashed var(--sr-edge-mid); }
+
+.jr-save { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+.jr-saved { font-size: var(--type-small); font-weight: 700; letter-spacing: .02em; color: var(--sr-label-ok); }
+/* a Save with nothing to save keeps the accent fill, dimmed by the shared .sr-btn:disabled opacity (GLOBAL-03: only journal-save may look like the accent) */
+
+/* came up hard */
+.jr-hard-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.jr-hard-row { display: grid; gap: 8px; justify-items: start; padding-bottom: 14px; border-bottom: 2px solid var(--sr-edge-mid); min-width: 0; }
+.jr-hard-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.jr-hard-what { display: grid; gap: 2px; min-width: 0; max-width: 100%; }
+.jr-hard-title { font-size: var(--type-body); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.jr-added { font-size: var(--type-small); font-weight: 700; letter-spacing: .02em; color: var(--sr-label-ok); }
+
+@media (max-width: 1099px) { .jr-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) {
+  .jr { gap: 16px; }
+  .jr-day { font-size: var(--type-display-s); }
+  /* seven cells in 343 px: "written" must fit one line at 14 px, so the cells give up their padding and a pixel of border */
+  .jr-strip { gap: 3px; }
+  .jr-cell { min-height: 56px; padding: 6px 0; border-width: 1px; }
+  .jr-cell-word { letter-spacing: -.5px; }
+  .jr-cell[aria-current='true'] { outline-offset: 0; }
+  .jr-opt { flex: 1 1 calc(25% - 8px); min-width: 0; padding: 0 6px; height: var(--sr-size-hit-touch); }
+  .jr-seg { gap: 6px; }
+  .jr-seg[data-n='5'] .jr-opt { flex-basis: calc(33.333% - 6px); }
+  .jr-date input { height: var(--sr-size-hit-touch); }
+  .jr-field input { height: var(--sr-size-hit-touch); }
+  .jr-save { position: static; }
+  .jr-save .sr-btn { flex: 1 1 auto; }
+  .jr-hard-row { grid-template-columns: minmax(0, 1fr); }
+}

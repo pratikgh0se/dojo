@@ -1,0 +1,34 @@
+{
+  "planFormat": 2, "planVersion": "fx-v2-1", "generated": "2026-10-11",
+  "areas": [{ "id": "a1", "name": "Serving", "tag": "SV", "why": "w", "pre": [] }],
+  "phases": [
+    { "p": 1, "name": "Foundations", "months": "M1-M3", "idea": "i", "authored": true },
+    { "p": 2, "name": "Serving", "months": "M4-M6", "idea": "j", "authored": false }
+  ],
+  "nodes": [
+    { "id": "t01", "area": "a1", "phase": 1, "kind": "topic", "title": "T1", "oneLiner": "o", "why": "w", "pre": [], "explain": ["q"], "hours": 4 },
+    { "id": "t20", "area": "a1", "phase": 2, "kind": "topic", "title": "T20", "oneLiner": "o", "why": "w", "pre": ["t01"], "explain": [], "hours": 10 }
+  ],
+  "builds": [],
+  "tickets": [
+    { "id": "m1w1t1", "kind": "watch", "lane": "path", "track": "ai", "node": "t01", "area": "a1", "phase": 1, "title": "Watch the tour", "text": "Watch the tour.", "links": [{ "label": "Tour", "url": "https://example.com/tour" }], "estMin": 45, "order": 1, "explain": ["What is a token?"], "explainAnswers": ["The unit of text a model reads and writes."], "asOf": "2026-10-11" },
+    { "id": "m1w2t1", "kind": "build", "lane": "path", "track": "ai", "node": "t01", "area": "a1", "phase": 1, "title": "Build the counter", "text": "Build the counter.", "links": [], "estMin": 75, "order": 3, "lab": { "id": "b1", "gpu": "none" } },
+    { "id": "m1w3t1", "kind": "read", "lane": "path", "track": "ai", "node": "t01", "area": "a1", "phase": 1, "title": "Read the paper", "text": "Read it.", "links": [], "estMin": 40, "order": 6 }
+  ],
+  "dsa_bank": [{ "sprint": 1, "topic": "Graphs", "pattern": "graphs", "note": "n", "problems": [
+    { "num": 200, "name": "Number of Islands", "url": "https://example.com/200", "difficulty": "M", "order": 2 },
+    { "num": 127, "name": "Word Ladder", "url": "https://example.com/127", "difficulty": "H", "order": 4 },
+    { "num": 1, "name": "Two Sum", "url": "https://example.com/1", "difficulty": "E", "order": 7 }
+  ] }],
+  "design_bank": [{ "tier": "Foundations (sprints 2 to 3)", "skill": "sysd", "items": [
+    { "id": "d-method", "title": "Method", "difficulty": "M", "deep_dives": ["x"], "refs": [], "order": 5 },
+    { "id": "d-estimate", "title": "Estimation", "difficulty": "M", "deep_dives": ["y"], "refs": [], "order": 8 }
+  ] }],
+  "tasks": [
+    { "id": "m1w1i1", "kind": "task", "lane": "dsa", "track": "interview", "title": "Write the BFS template from memory", "text": "Write it.", "links": [], "estMin": 30, "order": 9 },
+    { "id": "m1w2i1", "kind": "task", "lane": "career", "track": "interview", "title": "Set up the target list", "text": "List them.", "links": [], "estMin": 30, "order": 10 }
+  ],
+  "mix": { "shares": { "path": 58, "dsa": 25, "design": 17 }, "budgets": [90, 60, 60, 60, 30, 30, 150] },
+  "rituals": [],
+  "idMap": {}
+}

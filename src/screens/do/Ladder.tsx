@@ -1,5 +1,4 @@
-import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { DiagramJson, SolutionOutput, SrAlgoJson } from '../../ai/types'
 import type { Link as PlanLink } from '../../data/types'
 import { HINT_UNLOCK_SECONDS, spentText, whyText, type RungName, type RungView } from '../../rules/ladderView'
@@ -40,6 +39,8 @@ export interface LadderProps {
   onCheckQuiz: (answers: string[]) => void
   /** seconds this attempt's timer has run, for the Hint's "n min to go" */
   elapsedSec?: number
+  /** a read-only browser: no rung can be opened (SHELL-23) */
+  readOnly?: boolean
 }
 
 /** cu-r2 A2#6: what a click on a locked (or unavailable) rung says, since the button itself cannot act */
@@ -149,6 +150,11 @@ function Body({ r, p }: { r: RungView; p: LadderProps }) {
 /** PLATFORM "Do" → right column: the five-rung help ladder (C-LADDER §3.2). */
 export function Ladder(p: LadderProps) {
   const [why, setWhy] = useState<RungName | null>(null)
+  // TICKET-31: the five rungs sit behind one closed disclosure, so the ladder counts one control until it is wanted. It
+  // opens by itself when a help rung is open, loading or failed (a rung opened from the Stuck? dialog, or a reload mid-ladder).
+  const rungsRef = useRef<HTMLDetailsElement>(null)
+  const inUse = p.rungs.some(r => r.name !== 'attempt' && r.state === 'open') || p.busy !== null || Object.values(p.errors).some(Boolean)
+  useEffect(() => { if (inUse && rungsRef.current) rungsRef.current.open = true }, [inUse])
   return (
     // "help-ladder", not "ladder": screens/designs.css already owns the bare .ladder class
     // (an unrelated skill-ladder grid) — colliding class names caused a real, visible layout
@@ -159,6 +165,8 @@ export function Ladder(p: LadderProps) {
         <span className="ladder-spent" data-testid="ladder-spent" data-xp={p.spent}>{spentText(p.spent)}</span>
       </header>
       <p className="ladder-announcer vh" role="status" aria-live="polite" data-testid="ladder-announcer">{p.announce}</p>
+      <details ref={rungsRef} className="ladder-rungs" data-testid="ladder-rungs">
+      <summary className="ladder-toggle" data-testid="ladder-toggle">Help rungs · 5</summary>
       {p.rungs.map(r => {
         const showBody = r.state === 'open' || p.busy === r.name || p.errors[r.name] !== undefined
         const paid = p.spentByRung[r.name]
@@ -176,7 +184,7 @@ export function Ladder(p: LadderProps) {
               // nothing to do here" state to assistive tech while keeping it in the tab order -
               // openRung's own state check (r.state === 'unlocked') already makes a click on an
               // open rung a safe no-op, so there's no risk of a double-open.
-              disabled={(r.state !== 'unlocked' && r.state !== 'open') || p.busy !== null}
+              disabled={(r.state !== 'unlocked' && r.state !== 'open') || p.busy !== null || p.readOnly === true}
               aria-disabled={r.state === 'open' || undefined}
               onClick={() => p.onOpen(r.name)}
             >
@@ -191,13 +199,12 @@ export function Ladder(p: LadderProps) {
             {r.state === 'open' && paid > 0 && (
               <p className="rung-why" data-testid={`ladder-why-${r.name}`}>
                 {whyText(r.label, paid)}
-                {/* Visible link text is CSS generated content so the line's text is exactly the sentence (C-LADDER §3.2). */}
-                <Link to="/progress#help-ladder" className="rung-why-link" aria-label="See the honesty chart" />
               </p>
             )}
           </div>
         )
       })}
+      </details>
     </section>
   )
 }

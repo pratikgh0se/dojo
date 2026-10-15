@@ -4,12 +4,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { AppProviders } from '../../src/app/providers'
 import { Shell } from '../../src/app/Shell'
 import type { DojoDB } from '../../src/data/db'
+import { safeWrite } from '../../src/data/safeWrite'
 import { setNow } from '../../src/lib/clock'
 import { loadStudy } from '../../src/lib/studyStore'
 import { loadTimer } from '../../src/lib/timer'
 import { beginStudy, finishStudy, runTick } from '../../src/study/runner'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 
 // Ruling 24 S1 (computer-use UAT cu-2 P2-1): a running study session is visible on every screen, the NOW tile shows its
 // running state, End ends the session itself, and a session is never left running out of sight.
@@ -36,13 +37,13 @@ async function shellAt(route: string, opts: { session?: string } = {}) {
   if (opts.session) await startOn(d, opts.session)
   const view = render(
     <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[route]}>
-      <AppProviders db={d} plan={smallPlan}>
+      <AppProviders db={d} plan={flatPlanV2}>
         <Shell />
         <Where />
       </AppProviders>
     </MemoryRouter>,
   )
-  await screen.findByTestId(route.startsWith('/do/') ? 'do-screen' : 'more-button')
+  await screen.findByTestId(route.startsWith('/do/') ? 'do-screen' : 'shell-rail')
   return { d, view }
 }
 const at = () => screen.getByTestId('where').textContent
@@ -54,12 +55,12 @@ async function elapse(min: number, then: () => void) {
 
 describe('the session pill (header strip)', () => {
   it('is not there while no session is stored', async () => {
-    await shellAt('/board')
+    await shellAt('/path')
     expect(screen.queryByTestId('session-pill')).toBeNull()
     expect(screen.queryByTestId('session-strip')).toBeNull()
   })
 
-  it.each(['/board', '/dsa', '/settings'])('shows phase · time left · card title on %s', async route => {
+  it.each(['/path', '/dsa', '/settings'])('shows phase · time left · card title on %s', async route => {
     await shellAt(route, { session: 'p127' })
     const pill = await screen.findByTestId('session-pill')
     expect(within(pill).getByTestId('session-pill-phase')).toHaveTextContent(/^Focus$/)
@@ -69,7 +70,7 @@ describe('the session pill (header strip)', () => {
   })
 
   it('counts down with the clock and names the break and the long break', async () => {
-    await shellAt('/board', { session: 'p127' })
+    await shellAt('/path', { session: 'p127' })
     await screen.findByTestId('session-pill')
     await elapse(10, () => expect(screen.getByTestId('session-pill-time')).toHaveTextContent('15:00'))
     await elapse(15, () => expect(screen.getByTestId('session-pill-phase')).toHaveTextContent(/^Break$/))
@@ -77,7 +78,7 @@ describe('the session pill (header strip)', () => {
   })
 
   it('Pause holds the clock and the button reads Resume; Resume runs it on', async () => {
-    await shellAt('/week', { session: 'p127' })
+    await shellAt('/guide', { session: 'p127' })
     await screen.findByTestId('session-pill')
     await elapse(5, () => expect(screen.getByTestId('session-pill-time')).toHaveTextContent('20:00'))
     fireEvent.click(screen.getByTestId('session-pill-pause'))
@@ -96,26 +97,27 @@ describe('the session pill (header strip)', () => {
   })
 
   it('a click on the pill returns to that card\'s Do', async () => {
-    await shellAt('/board', { session: 'p127' })
-    fireEvent.click(await screen.findByTestId('session-pill-link'))
-    await waitFor(() => expect(at()).toBe('/do/p127'))
+    await shellAt('/path', { session: 'p127' })
+    const link = await screen.findByTestId('session-pill-link')
+    void safeWrite(() => new Promise<void>(() => {}), () => {}) // a write that never settles must not hold the click (R18)
+    fireEvent.click(link)
+    expect(at()).toBe('/do/p127') // same event: no waiting navigation
   })
 
-  it('on the session card\'s own Do page the pill docks under the rail with Pause and Resume (UAT cu-2p P3-6)', async () => {
+  it('on the session card\'s own Do page the one timer holds Pause and Resume, and no pill docks beside it (UAT cu-2p P3-6, one timer)', async () => {
     await shellAt('/do/p127', { session: 'p127' })
     await screen.findByTestId('session-panel')
-    const dock = await screen.findByTestId('session-dock')
-    expect(screen.getAllByTestId('session-pill')).toHaveLength(1)
-    // the panel has no Pause of its own (ruling 26 D3.6): the pill's is the one
+    expect(screen.queryByTestId('session-dock')).toBeNull()
+    expect(screen.queryByTestId('session-pill')).toBeNull()
     expect(within(screen.getByTestId('session-panel')).queryByRole('button', { name: /^(Pause|Resume)$/ })).toBeNull()
-    fireEvent.click(within(dock).getByTestId('session-pill-pause'))
-    await waitFor(() => expect(within(screen.getByTestId('session-dock')).getByTestId('session-pill-resume')).toBeInTheDocument())
-    fireEvent.click(within(screen.getByTestId('session-dock')).getByTestId('session-pill-resume'))
-    await waitFor(() => expect(within(screen.getByTestId('session-dock')).getByTestId('session-pill-pause')).toBeInTheDocument())
+    fireEvent.click(screen.getByTestId('timer-pause'))
+    await waitFor(() => expect(screen.getByTestId('timer-state')).toHaveTextContent('paused'))
+    fireEvent.click(screen.getByTestId('timer-resume'))
+    await waitFor(() => expect(screen.getByTestId('timer-state')).toHaveTextContent('running'))
   })
 
   it('on another card\'s Do page the pill docks under the rail', async () => {
-    await shellAt('/do/m1w1t1', { session: 'p127' })
+    await shellAt('/do/p200', { session: 'p127' })
     const dock = await screen.findByTestId('session-dock')
     expect(within(dock).getByTestId('session-pill-time')).toHaveTextContent(/^\d\d:\d\d$/)
     expect(within(dock).getByTestId('session-pill-link')).toHaveAttribute('href', '/do/p127')
@@ -124,7 +126,7 @@ describe('the session pill (header strip)', () => {
   })
 
   it('a session parked as away says so and offers no pause', async () => {
-    const { d } = await shellAt('/board', { session: 'p127' })
+    const { d } = await shellAt('/path', { session: 'p127' })
     await screen.findByTestId('session-pill')
     clock += 300 * MIN
     await act(async () => { await runTick(d, clock, fx()) })
@@ -136,7 +138,7 @@ describe('the session pill (header strip)', () => {
   })
 
   it('goes away when the session ends', async () => {
-    const { d } = await shellAt('/board', { session: 'p127' })
+    const { d } = await shellAt('/path', { session: 'p127' })
     await screen.findByTestId('session-pill')
     expect(await finishStudy({ d, log: { done: '', stuckOn: '', nextStep: '' }, nowMs: clock, ...fx() })).toBe(true)
     await waitFor(() => expect(screen.queryByTestId('session-pill')).toBeNull())
@@ -144,13 +146,13 @@ describe('the session pill (header strip)', () => {
   })
 
   it('comes back after a reload with the clock still right', async () => {
-    const { d, view } = await shellAt('/board', { session: 'p127' })
+    const { d, view } = await shellAt('/path', { session: 'p127' })
     await screen.findByTestId('session-pill')
     clock += 8 * MIN
     view.unmount() // a reload: the stored session is all that is left
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/progress']}>
-        <AppProviders db={d} plan={smallPlan}><Shell /><Where /></AppProviders>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/skills']}>
+        <AppProviders db={d} plan={flatPlanV2}><Shell /><Where /></AppProviders>
       </MemoryRouter>,
     )
     expect(await screen.findByTestId('session-pill-time')).toHaveTextContent('17:00')

@@ -3,13 +3,11 @@ import type { Page } from '@playwright/test'
 
 export const IST = (s: string): Date => new Date(`${s}+05:30`)
 
-const LEGACY_PLAN_PATH = new URL('../fixtures/plan.legacy-2026-09-05.json', import.meta.url)
+const LEGACY_PLAN_PATH = new URL('../fixtures/plan.flat.v2.json', import.meta.url)
 
 /**
- * Frozen pre-forge plan (planVersion '2026-09-05', 533 tickets), the one these
- * specs were written against. Routes /data/plan.json to it so mechanics tests
- * (drag, timers, XP, undo, …) keep testing behavior rather than today's live
- * capstone plan content.
+ * The ten-ticket flat plan v2 fixture. (These specs were written against a frozen v1 plan, which the app no longer loads.)
+ * Routes /data/plan.json to it so mechanics tests keep testing behavior rather than today's live plan content.
  */
 export async function serveLegacyPlan(page: Page): Promise<void> {
   const body = readFileSync(LEGACY_PLAN_PATH, 'utf8')
@@ -95,6 +93,6 @@ export async function idbPatch(page: Page, store: string, ids: string[], patch: 
 export async function onboard(page: Page, startDate = '2026-09-07'): Promise<void> {
   await page.goto('/')
   await page.getByLabel('Start date').fill(startDate)
-  await page.getByRole('button', { name: 'Start the plan ▸' }).click()
-  await page.getByTestId('now-eyebrow').waitFor()
+  await page.getByRole('button', { name: 'START · PLAN' }).click()
+  await page.locator('[data-testid="screen-today"][data-ready="true"]').waitFor()
 }

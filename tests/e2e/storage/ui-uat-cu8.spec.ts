@@ -42,14 +42,3 @@ test('cu-8 P3-2 / P3-3 / P3-4: Back up now and a restore say so; the pre-restore
   expect(wide).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(393)
 })
-
-test('cu-8 P3-5: a failed Draft briefs run says it once, in the failure line; the status stays for assistive tech', async ({ browser }) => {
-  const { page } = await openApp(browser, srv, undefined, c => c.addInitScript(() => { localStorage.setItem('dojo-ai-fake-fail', 'brief:claude_signed_out') }))
-  await page.goto('/board')
-  await page.getByRole('button', { name: 'Draft briefs for Sprint 1' }).click()
-  await expect(page.getByTestId('brief-failed')).toBeVisible()
-  const tag = page.getByTestId('brief-progress')
-  await expect(tag).toHaveText('Failed')
-  const b = (await tag.boundingBox())!
-  expect(b.width * b.height, 'the Failed tag is not drawn').toBeLessThanOrEqual(4)
-})

@@ -3,7 +3,7 @@ import type { HelperConfig } from './helper.mjs'
 import type { Dojo } from './db/manager.mjs'
 export const MAX_OPS_BODY_BYTES: number
 export const MAX_RUN_BODY_BYTES: number
-export interface DojoServerConfig extends HelperConfig { dist: string | null; dojoPort: number; dbOrigins: Set<string>; linkcheckAllowLoopback: boolean; runEnv: Record<string, string | undefined>; cspReportFile?: string | null; runnerAllowRawImports?: boolean }
+export interface DojoServerConfig extends HelperConfig { dist: string | null; dojoPort: number; planFile: string | null; dbOrigins: Set<string>; linkcheckAllowLoopback: boolean; runEnv: Record<string, string | undefined>; cspReportFile?: string | null; runnerAllowRawImports?: boolean }
 export function readServerConfig(argv?: string[], env?: Record<string, string | undefined>): DojoServerConfig
 export function createDojoServer(cfg: DojoServerConfig, clock?: () => Date): {
   server: Server; readonly dojo: Dojo; runner: import('./runner/runner.mjs').Runner; logger: { file: string; log(l: string): void }

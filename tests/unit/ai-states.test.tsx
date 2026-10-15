@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { AI_ERRORS } from '../../src/ai/types'
 import { AiError, AiLoader, aiHeading } from '../../src/ui/ai/AiStates'
-import { Drawer } from '../../src/ui/Drawer'
 import { ToastProvider, useToast } from '../../src/ui/primitives'
 
 describe('AI states', () => {
@@ -66,18 +65,5 @@ describe('Toast tone', () => {
     const toasts = screen.getAllByTestId('toast')
     expect(toasts.map(t => t.getAttribute('data-tone'))).toEqual(['help', 'ok'])
     expect(toasts[0]).toHaveClass('tone-help')
-  })
-})
-
-describe('Drawer test ids', () => {
-  it('accepts a custom root and toggle test id', () => {
-    render(<Drawer id="redo" testId="today-redo-drawer" toggleTestId="today-redo-toggle" title="Redo · 1" sub="" cubes={[false]} done={0} total={1} tone="rival" open={false} onToggle={() => {}}>x</Drawer>)
-    expect(screen.getByTestId('today-redo-drawer')).toBeInTheDocument()
-    expect(screen.getByTestId('today-redo-toggle')).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByTestId('today-redo-toggle')).toHaveAccessibleName(/Redo · 1/)
-  })
-  it('keeps drawer-{id} by default', () => {
-    render(<Drawer id="dsa" title="DSA" sub="" cubes={[]} done={0} total={0} tone="rival" open={false} onToggle={() => {}}>x</Drawer>)
-    expect(screen.getByTestId('drawer-dsa')).toBeInTheDocument()
   })
 })

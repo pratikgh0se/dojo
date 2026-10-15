@@ -48,7 +48,7 @@ test('D-39…D-44 reference beside yours, diff, cache, flows, two PNGs', async (
 
   await page.evaluate(() => localStorage.removeItem('dojo-ai-fake-delay-ms'))
   await resumeAndGo(page, () => page.reload())
-  await expect(page.getByTestId('session-phase')).toHaveText('done')
+  await expect(page.getByTestId('session-phase')).toHaveText('Done')
   await expect(page.getByTestId('session-reference-loading')).toHaveCount(0)
   await page.getByTestId('session-reference').getByRole('button', { name: 'JSON' }).click()
   expect(JSON.parse((await page.getByTestId('session-reference-json').textContent()) ?? '{}')).toEqual(json)

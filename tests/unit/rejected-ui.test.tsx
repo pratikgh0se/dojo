@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RejectedChanges } from '../../src/screens/RejectedChanges'
+import { syncGate } from '../../src/data/db'
 import { registerSyncControls, setRejectedCount, syncControls } from '../../src/data/sync/status'
 import { Backups } from '../../src/screens/Backups'
 import { ToastProvider } from '../../src/ui/primitives'
@@ -29,6 +30,19 @@ describe('I2: Settings lists changes that could not be saved', () => {
     await waitFor(() => expect(retry).toHaveBeenCalled())
   })
 
+  it('SHELL-23: Retry is disabled in a read-only browser', async () => {
+    syncGate.readOnly = true
+    try {
+      registerSyncControls({ ...base, listRejected: async () => parked })
+      setRejectedCount(2)
+      render(<ToastProvider><RejectedChanges /></ToastProvider>)
+      const region = await screen.findByRole('region', { name: "Changes that couldn't be saved" })
+      expect(within(region).getByRole('button', { name: 'Retry' })).toBeDisabled()
+    } finally {
+      syncGate.readOnly = false
+    }
+  })
+
   it('renders nothing when there are none', async () => {
     registerSyncControls({ ...base, listRejected: async () => [] })
     render(<ToastProvider><RejectedChanges /></ToastProvider>)
@@ -43,7 +57,7 @@ describe('I2: restore is blocked while changes are parked', () => {
     const calls: string[] = []
     const fetcher = (async (u: RequestInfo | URL, i?: RequestInit) => {
       calls.push(`${i?.method ?? 'GET'} ${String(u)}`)
-      return new Response(JSON.stringify({ backups: [{ file: 'dojo-2026-09-29.db', bytes: 1, at: '2026-09-29T00:00:00.000Z' }] }))
+      return new Response(JSON.stringify({ backups: [{ file: 'dojo-2026-09-29.db', bytes: 1, at: Date.parse('2026-09-29T00:00:00.000Z') }] }))
     }) as typeof fetch
     const reload = vi.fn()
     render(<ToastProvider><Backups fetcher={fetcher} reload={reload} /></ToastProvider>)

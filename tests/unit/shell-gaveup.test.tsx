@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { Shell } from '../../src/app/Shell'
 import { loadGaveUp, saveGaveUp, type GaveUp } from '../../src/lib/cycle'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const g: GaveUp = {
@@ -15,13 +15,13 @@ const g: GaveUp = {
 describe('Shell and the given-up state', () => {
   it('clears it once the location is not /do/<that ticket>', async () => {
     saveGaveUp(g)
-    renderWithApp(<Shell />, { db: await seededDb(), plan: smallPlan, route: '/settings' })
+    renderWithApp(<Shell />, { db: await seededDb(), plan: flatPlanV2, route: '/settings' })
     await waitFor(() => expect(loadGaveUp()).toBeNull())
   })
 
   it('keeps it on that ticket\'s Do route (a reload stays given up, H-24)', async () => {
     saveGaveUp(g)
-    renderWithApp(<Shell />, { db: await seededDb(), plan: smallPlan, route: '/do/p200' })
+    renderWithApp(<Shell />, { db: await seededDb(), plan: flatPlanV2, route: '/do/p200' })
     await new Promise(r => setTimeout(r, 50))
     expect(loadGaveUp()).toEqual(g)
   })

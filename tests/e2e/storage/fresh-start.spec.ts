@@ -39,8 +39,8 @@ test('ST-13: a fresh DOJO_HOME shows onboarding; the start date lands on disk; o
   const date = page.getByLabel('Start date')
   await expect(date).toBeVisible() // onboarding: the old start date was not imported
   await date.fill('2026-10-05')
-  await page.getByRole('button', { name: 'Start the plan ▸' }).click()
-  await page.getByTestId('now-eyebrow').waitFor()
+  await page.getByRole('button', { name: 'START · PLAN' }).click()
+  await page.getByTestId('screen-today').waitFor()
   await expect(page.getByTestId('save-status')).toHaveText('Saved')
   await expect.poll(async () => {
     const st = await (await fetch(`${srv.url}/db/state`)).json() as { tables: { settings?: { id: string; startDate: string }[] } }

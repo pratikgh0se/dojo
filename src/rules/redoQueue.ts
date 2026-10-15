@@ -1,8 +1,10 @@
 import type { DesignSession, Outcome, Redo, RedoSource, Session, Ticket } from '../data/types'
-import { localDayKey, localDaysBetween, parseLocalDate } from '../lib/dates'
+import { DAY_MS, localDayKey, localDaysBetween, parseLocalDate } from '../lib/dates'
 import { redesignQueue } from './designEvidence'
 import type { PlanDesignRef } from './designs'
 import { RUBRIC_MAX } from './designSession'
+import { bankPieceOf } from './bankQuestions'
+import { missedPieceOf } from './keepMissed'
 import { needsRedo, passesRedo, REDO_DAYS, redoDue, redoRefund } from './ladder'
 import { xpSavedText } from './ladderView'
 
@@ -76,28 +78,83 @@ export function redoOutcome(i: RedoOutcomeInput): RedoEffect {
   return { kind: 'created', days: REDO_DAYS[0], redo: { id: i.newRedoId, ticketId: i.ticketId, createdAt: i.end, ...fresh } }
 }
 
+export type DesignRedoEffect =
+  | { kind: 'none' }
+  | { kind: 'created' | 'closed' | 'rescheduled'; redo: Redo }
+
+/** review.md Preconditions / REVIEW-15a: what a completed design session does to the design ticket's `design_rubric` redo.
+ * `open` is the ticket's open redo (or null); `redesignDue` is the completed session's own (undefined when it needs none).
+ * A redesign (`redesignOf` set) closes or reschedules an open `design_rubric` redo; any other completion with a redesign due
+ * writes one redo only when the ticket has no open redo at all (at most one open redo per ticket). Pure. */
+export function designRedoEffect(i: {
+  open: Redo | null
+  session: Pick<DesignSession, 'designId' | 'redesignOf'>
+  redesignDue: number | undefined
+  nowMs: number
+  newRedoId: string
+}): DesignRedoEffect {
+  const r = i.open
+  if (r && r.source === 'design_rubric' && i.session.redesignOf) {
+    return i.redesignDue === undefined
+      ? { kind: 'closed', redo: { ...r, passed: [...r.passed, true], closedAt: i.nowMs } }
+      : { kind: 'rescheduled', redo: { ...r, passed: [...r.passed, false], due: i.redesignDue } }
+  }
+  if (r || i.redesignDue === undefined) return { kind: 'none' }
+  return {
+    kind: 'created',
+    redo: { id: i.newRedoId, ticketId: i.session.designId, source: 'design_rubric', createdAt: i.nowMs, stage: 0, due: i.redesignDue, passed: [], helpCost: 0, refunded: 0 },
+  }
+}
+
+/** Whole local calendar days from the redo's `due` day to the clock day (README "A redo's age"); 0 when due today.
+ * Calendar arithmetic on the local day keys, so a DST day of 23 or 25 hours still counts as one day.
+ * `review-oldest` must use `redoAgeDays` (not `RedoRow.days`, which counts days since the first try). */
+export function redoAgeDays(r: Pick<Redo, 'due'>, nowMs: number): number {
+  const dayNo = (key: string): number => {
+    const [y, m, d] = key.split('-').map(Number)
+    return Date.UTC(y, m - 1, d) / DAY_MS
+  }
+  return Math.max(0, Math.round(dayNo(localDayKey(nowMs)) - dayNo(localDayKey(dueMs(r.due)))))
+}
+
 export interface RedoRow { ticketId: string; title: string; days?: number; refund?: number; text: string; to: string }
 
-/** PL "Today": the Redo · N drawer lists redos due today or earlier. */
-export function redoRows(redos: Redo[], tickets: Ticket[], sessions: Session[], nowMs: number): RedoRow[] {
+/** Open redos due today or earlier on live (unarchived) tickets, oldest due first: the earliest local `due` day, ties broken by
+ * `createdAt`, then ticket id (README "Oldest due"). The one filter and order behind Today's Redo drawer (`redoRows`) and Review's
+ * queue (`reviewCards`), so the two can never disagree on what is due or in what order.
+ * A `bank_q` redo (a question bank's Add to Review, BANK-14) has no ticket: its `ticketId` is a question id, it counts as not archived,
+ * and its entry carries `ticket: null`. */
+export function dueRedos(redos: readonly Redo[], tickets: readonly Ticket[], nowMs: number): { redo: Redo; ticket: Ticket | null; dueDay: string }[] {
   const byId = new Map(tickets.map(t => [t.id, t]))
+  return redos
+    .flatMap((redo): { redo: Redo; ticket: Ticket | null; dueDay: string }[] => {
+      if (redo.source === 'bank_q') return bankPieceOf(redo) && isRedoDue(redo, nowMs) ? [{ redo, ticket: null, dueDay: localDayKey(dueMs(redo.due)) }] : []
+      const ticket = byId.get(redo.ticketId)
+      return ticket && !ticket.archived && isRedoDue(redo, nowMs) ? [{ redo, ticket, dueDay: localDayKey(dueMs(redo.due)) }] : []
+    })
+    .sort((a, b) => a.dueDay.localeCompare(b.dueDay) || a.redo.createdAt - b.redo.createdAt || a.redo.ticketId.localeCompare(b.redo.ticketId))
+}
+
+/** PL "Today": the Redo · N drawer lists redos due today or earlier, oldest due first (see `dueRedos`). */
+export function redoRows(redos: Redo[], tickets: Ticket[], sessions: Session[], nowMs: number): RedoRow[] {
   const firstStart = new Map<string, number>()
   for (const s of sessions) {
     const f = firstStart.get(s.ticketId)
     if (f === undefined || s.start < f) firstStart.set(s.ticketId, s.start)
   }
-  return redos
-    .filter(r => isRedoDue(r, nowMs))
-    .flatMap(r => {
-      const t = byId.get(r.ticketId)
-      if (!t || t.archived) return []
-      const title = displayTitle(t)
-      const days = localDaysBetween(firstStart.get(t.id) ?? r.createdAt, nowMs)
-      const refund = refundWaiting(r)
-      return [{ due: dueMs(r.due), row: { ticketId: t.id, title, days, refund, text: `${title} · ${days}d since first try · +${refund} xp waiting`, to: `/do/${t.id}` } }]
-    })
-    .sort((a, b) => a.due - b.due || a.row.title.localeCompare(b.row.title))
-    .map(x => x.row)
+  return dueRedos(redos, tickets, nowMs).map(({ redo: r, ticket: t }): RedoRow => {
+    // W6 (BANK-15): a bank question is a Review card, not a ladder redo: it reads as its question and opens Review
+    const bank = t === null ? bankPieceOf(r) : null
+    if (t === null) return { ticketId: r.ticketId, title: bank?.topic ?? r.ticketId, text: `${bank?.topic ?? ''} · ${bank?.question ?? ''}`, to: '/review' }
+    const title = displayTitle(t)
+    // F3 (REVIEW-23): a kept weak spot is a Review card, not a ladder redo: it reads as its question and opens Review
+    // W2: a `journal_hard` redo with a piece reads the same way (JOURNAL-23)
+    const piece = r.source === 'design_missed' || r.source === 'journal_hard' ? missedPieceOf(r) : null
+    if (piece) return { ticketId: t.id, title, text: `${title} · ${piece.question}`, to: '/review' }
+    const days = localDaysBetween(firstStart.get(t.id) ?? r.createdAt, nowMs)
+    const refund = refundWaiting(r)
+    return { ticketId: t.id, title, days, refund, text: `${title} · ${days}d since first try · +${refund} xp waiting`, to: `/do/${t.id}` }
+  })
 }
 
 export interface DesignRedoRow { designId: string; title: string; due: number; text: string; to: string }

@@ -9,3 +9,8 @@ export function useDesignSessions(designId?: string): DesignSession[] | undefine
     [d, designId],
   )
 }
+
+export function useDesignSession(id: string): DesignSession | null | undefined {
+  const d = useDb()
+  return useLiveQuery(async () => (await d.designSessions.get(id)) ?? null, [d, id])
+}

@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test'
 import { idbAll, idbPatch, IST, onboard } from './helpers'
 
 // Findings of the final real-cursor pass (dojo-acceptance/reports/uat/cu-final.md): each assertion is what the tester measured.
+// R1: the Consistency grid and Retreat are retired (README "Retired hooks"); the tooltip finding runs on the Banks chips, the one place `data-tip` is left.
+// A session is the ticket's one timer, started with `ticket-start` (TICKET-03); the Plan-this-session dialog and the Board are gone.
 const TUE = '2026-10-06T10:00:00'
 async function open(page: Page, path: string, ready: string) {
   await page.clock.setFixedTime(IST(TUE))
@@ -16,82 +18,31 @@ const overlaps = (a: { x: number; y: number; width: number; height: number }, b:
 test.describe('rows 1 / 4 / 9 · one tooltip: the app\'s own, never beside a native title, and clear of the controls', () => {
   test.use({ viewport: { width: 1280, height: 900 } })
 
-  test('no element carries both data-tip and title (Today, Board, Do), and the Do timer bubble does not cover Start', async ({ page }) => {
-    await open(page, '/', 'today')
-    const both = () => page.evaluate(() => document.querySelectorAll('[data-tip][title]').length)
-    expect(await both()).toBe(0)
-    await page.goto('/board')
-    await expect(page.getByTestId('screen-board')).toHaveAttribute('data-ready', 'true')
-    expect(await both()).toBe(0)
-    await page.goto('/do/p200')
-    await expect(page.getByTestId('screen-do')).toHaveAttribute('data-ready', 'true')
-    expect(await both()).toBe(0)
-    for (const target of [page.locator('.timer-row'), page.getByTestId('do-timer-elapsed')]) {
-      await target.hover()
-      const tip = page.getByTestId('tip')
-      await expect(tip).toBeVisible()
-      const tb = (await tip.boundingBox())!
-      for (const id of ['do-timer-preset-25', 'do-timer-preset-50', 'start-session']) {
-        expect(overlaps(tb, (await page.getByTestId(id).boundingBox())!), `${id} stays uncovered`).toBe(false)
-      }
-      await page.mouse.move(5, 5)
-      await expect(tip).toBeHidden()
-    }
-  })
-
-  test('the consistency grid and Retreat each show one bubble and no title', async ({ page }) => {
-    await open(page, '/', 'today')
-    const cell = page.locator('.consistency [data-tip]').first()
-    await expect(cell).not.toHaveAttribute('title', /.+/)
-    await cell.hover()
+  test('an empty Banks chip shows one bubble and no native title', async ({ page }) => {
+    await open(page, '/banks?bank=hellointerview', 'banks')
+    const chip = page.locator('[data-testid="bank-item-difficulty"][data-empty="true"], [data-testid="bank-item-pattern"][data-empty="true"]').first()
+    await expect(chip).toHaveAttribute('data-tip', /No (difficulty|pattern) for this item/)
+    await expect(chip).not.toHaveAttribute('title', /.+/)
+    await chip.hover()
     await expect(page.getByTestId('tip')).toHaveCount(1)
-  })
-})
-
-test.describe('row 3 · scope tooltips', () => {
-  test.use({ viewport: { width: 1280, height: 900 } })
-  test('every Board column head (Done too) and the Today "This sprint" tile say their scope', async ({ page }) => {
-    await open(page, '/board', 'board')
-    for (const c of ['slid', 'todo', 'doing', 'done']) await expect(page.getByTestId(`head-${c}`)).toHaveAttribute('data-tip', /in .*, Sprint \d+/)
-    await expect(page.getByTestId('head-done')).toHaveAttribute('data-tip', /^\d+ cards? in Done/)
-    await page.goto('/')
-    await expect(page.getByTestId('now-eyebrow')).toBeVisible()
-    const tile = page.getByTestId('health-stat').filter({ hasText: 'This sprint' })
-    await expect(tile).toHaveAttribute('data-tip', /plan tasks done this sprint/)
-    await tile.hover()
-    await expect(page.getByTestId('tip')).toContainText('plan tasks done this sprint')
-  })
-})
-
-test.describe('row 10 · the brief chip leads the chip row', () => {
-  test.use({ viewport: { width: 1280, height: 900 } })
-  test('on a card that also has a resource chip, brief is the first chip and the row is one line', async ({ page }) => {
-    await open(page, '/board', 'board')
-    const withSrc = page.locator('article.card:has(.chip-src)').first()
-    await expect(withSrc).toBeVisible()
-    const id = (await withSrc.getAttribute('data-testid'))!.replace('card-', '')
-    await idbPatch(page, 'tickets', [id], { brief: BRIEF })
-    await page.reload()
-    await expect(page.getByTestId('screen-board')).toHaveAttribute('data-ready', 'true')
-    const chips = page.getByTestId(`card-${id}`).locator('.card-chips > .chip')
-    await expect(chips.first()).toHaveText('brief · draft')
-    const tops = await chips.evaluateAll(cs => cs.filter(c => !c.classList.contains('pin-ghost')).map(c => Math.round(c.getBoundingClientRect().top)))
-    expect(tops.length).toBeGreaterThanOrEqual(2)
-    expect(tops[0], 'brief is on the first row of the chips').toBe(Math.min(...tops))
-    expect(await chips.evaluateAll(cs => cs.slice(1).some(c => c.classList.contains('chip-brief'))), 'brief appears once, first').toBe(false)
+    await expect(page.getByTestId('tip')).toContainText(/No (difficulty|pattern) for this item/)
   })
 })
 
 test.describe('row 21 · a session closed with 0 focus blocks keeps its Earlier sessions row', () => {
-  test('Start session, Solved at once on DSA 200: the row is there after the approach question and on reopening', async ({ page }) => {
-    await open(page, '/do/p200', 'do')
-    await page.getByRole('button', { name: 'Start session' }).click()
-    await page.getByRole('dialog', { name: 'Plan this session' }).getByRole('button', { name: 'Start' }).click()
-    await expect(page.getByTestId('session-timer')).toBeVisible()
-    await page.getByRole('button', { name: 'Solved ✓' }).click()
-    await expect(page.getByTestId('session-history')).toContainText('Ended by: Solved ✓')
-    await page.getByRole('button', { name: /Back to Board/ }).click()
-    await page.goto('/do/p200')
+  test('Start, Solved at once on a problem: the row is there after the approach question and on reopening', async ({ page }) => {
+    await open(page, '/', 'today')
+    // a problem that has an approach question (labs §7.3), not yet started
+    const id = (await idbAll<{ id: string; kind: string; status: string }>(page, 'tickets')).find(t => t.kind === 'problem' && t.status === 'todo' && /^p\d+$/.test(t.id))!.id
+    await page.goto(`/do/${id}`)
+    await expect(page.getByTestId('do-screen')).toBeVisible()
+    await page.getByTestId('ticket-start').click()
+    await expect(page.getByTestId('timer-state')).toHaveText('running')
+    await page.getByTestId('do-outcome-solved').click()
+    await expect(page.getByTestId('dsa-approach-used')).toBeVisible() // the approach question (labs §7.3) is up, and the row is already there
+    await expect(page.getByTestId('session-history').getByTestId('hist-ended-by')).toHaveText('Ended by: Solved')
+    await page.getByTestId('do-back').click()
+    await page.goto(`/do/${id}`)
     await expect(page.getByTestId('session-history')).toContainText('0 min focus')
     expect((await idbAll<{ focusMinutes?: number }>(page, 'sessions'))[0]!.focusMinutes).toBe(0)
   })

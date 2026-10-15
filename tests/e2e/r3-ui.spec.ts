@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { expect, test, type Locator, type Page } from './fixtures'
 import { onboard } from './helpers'
 
@@ -87,9 +88,11 @@ test('r5 J6 (P3): Memoization · fib(5): at every step the lit code line, the st
   expect([...sizes], 'the stage keeps one size').toHaveLength(1)
 })
 
-const tab = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true })
+// ruling 9: a screen that is still reading shows "Loading…" only after 300 ms. R1 walks the four destinations (the AI and Board screens are retired).
+const DESTINATIONS = ['today', 'path', 'skills', 'review'] as const
+const path = (id: string) => (id === 'today' ? /:\d+\/$/ : new RegExp(`/${id}$`))
 
-test('r3 J2 (P3): switching to Today and AI never flashes "Loading…" (ruling 9: only after 300 ms)', async ({ page }) => {
+test('r3 J2 (P3): switching between Today, Path, Skills and Review never flashes "Loading…" (ruling 9: only after 300 ms)', async ({ page }) => {
   await onboard(page, '2026-10-05')
   await page.evaluate(() => {
     const w = window as unknown as { __flash: string[] }
@@ -99,8 +102,9 @@ test('r3 J2 (P3): switching to Today and AI never flashes "Loading…" (ruling 9
     }).observe(document.body, { childList: true, subtree: true, characterData: true })
   })
   for (let i = 0; i < 3; i++) {
-    for (const [name, id] of [['AI', 'ai'], ['Today', 'today'], ['Board', 'board'], ['Today', 'today']] as const) {
-      await tab(page, name).click()
+    for (const id of [...DESTINATIONS].reverse().concat('today')) {
+      await page.getByTestId('shell-rail').getByTestId(`shell-nav-${id}`).click()
+      await expect(page).toHaveURL(path(id))
       await expect(page.getByTestId(`screen-${id}`)).toHaveAttribute('data-ready', 'true')
     }
   }
@@ -130,72 +134,25 @@ test('r3 J2 / r4 #10 (P3): clicking a DSA topic brings its detail into view, and
   }
 })
 
-test('r3 J7 (P3): source chips show the whole name; only CSS may ellipsise it, and the tooltip is the full label', async ({ page }) => {
-  await onboard(page, '2026-10-05')
-  await page.goto('/board')
-  const chips = page.locator('.card .chip-src')
-  await expect(chips.first()).toBeVisible()
-  const all = await chips.evaluateAll(els => els.map(e => ({ text: e.textContent ?? '', title: e.getAttribute('title') ?? '', overflow: getComputedStyle(e).textOverflow, clipped: e.scrollWidth > e.clientWidth })))
-  expect(all.length).toBeGreaterThan(3)
-  for (const c of all) {
-    expect(c.title, c.text).not.toBe('')
-    expect(c.text).toBe(c.title.split(/[:·]/)[0].replace(/\([^)]*\)/g, '').trim())
-    expect(c.overflow).toBe('ellipsis')
-  }
-  expect(all.map(c => c.text)).toContain('Tech Interview Handbook') // UAT r3: was "Tech Interview Handboo"
-})
-
-test('r3 J9 (P3): Map skill-tree labels are whole and inside their nodes (ruling 1)', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 860 })
-  await onboard(page, '2026-10-05')
-  await page.goto('/map')
-  const nodes = await page.locator('svg.skill-tree').evaluate(svg => [...svg.querySelectorAll('g.tree-node')].map(g => {
-    const texts = [...g.querySelectorAll('text.node-label')] as SVGTextElement[]
-    return {
-      label: g.querySelector('title')?.textContent ?? '',
-      text: texts.map(t => t.textContent).join(' '),
-      right: Math.max(...texts.map(t => t.getBBox().x + t.getBBox().width)),
-      width: (g.querySelector('rect.node-box') as SVGRectElement).getBBox().width,
-    }
-  }))
-  expect(nodes.length).toBeGreaterThan(10)
-  for (const n of nodes) {
-    expect(n.text, n.label).toBe(n.label)
-    expect(n.right, n.label).toBeLessThanOrEqual(n.width - 2)
-  }
-})
-
-test('r3 J3 (P3): Retreat says what it does; a statement\'s repo files are file references', async ({ page }) => {
+// R1: "Retreat" is a banned word and its Stop-the-timer tooltip left with the timer presets (README Retired `do-timer-preset-25`; GLOBAL-01);
+// the surviving half is that a statement's repo files are file references (UI primitive FileRefs, now drawn by the build ticket's statement).
+test('r3 J3 (P3): a build statement\'s repo files are file references', async ({ page }) => {
+  // the flat plan fixture with the repo files named in the build ticket's text (the app reads ticket text from the plan)
+  const plan = JSON.parse(readFileSync(new URL('../fixtures/plan.flat.v2.json', import.meta.url), 'utf8')) as { tickets: Array<{ id: string; text: string }> }
+  plan.tickets.find(t => t.id === 'm1w2t1')!.text =
+    'Read forge/labs/00-black-box/README.md, then log questions in QUESTIONS.md.\nSaturday 2: finish forge/stages/00-setup/tests/core, then one break-it lab.'
+  await page.route('**/data/plan.json', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(plan) }))
   await page.clock.install({ time: new Date('2026-10-05T21:10:00+05:30') })
   await onboard(page, '2026-10-05')
-  await page.goto('/do/stage-00-setup-w1-build')
-  const refs = page.locator('.st-text code.file-ref')
+  await page.goto('/do/m1w2t1')
+  const statement = page.getByTestId('ticket-statement')
+  await expect(statement).toBeVisible()
+  const refs = statement.locator('code.file-ref')
   await expect(refs).toHaveText(['forge/labs/00-black-box/README.md', 'QUESTIONS.md', 'forge/stages/00-setup/tests/core'])
-  await expect(page.locator('.st-text')).toContainText('Saturday 2: finish forge/stages/00-setup/tests/core, then one break-it lab')
-  await page.getByTestId('do-timer-preset-25').click()
-  const retreat = page.getByRole('button', { name: 'Retreat: stop the timer' })
-  await expect(retreat).toHaveText('Retreat')
-  await expect(retreat).toHaveAttribute('data-tip', 'Stop the timer')
-})
-
-test('r3 J7 (P3): a column move (Shift+→, a drag) is one Undo step, and Undo puts the card back', async ({ page }) => {
-  await onboard(page, '2026-10-05')
-  await page.goto('/board')
-  const card = page.getByTestId('col-todo').locator('article').first()
-  const id = (await card.getAttribute('data-testid'))!
-  await expect(page.getByTestId('undo')).toHaveText('Undo (0)')
-  await expect(page.getByTestId('undo')).toBeDisabled()
-  await card.focus()
-  await page.keyboard.press('Shift+ArrowRight')
-  await expect(page.getByTestId('col-doing').getByTestId(id)).toBeVisible()
-  await expect(page.getByTestId('undo')).toHaveText('Undo (1)')
-  await page.getByTestId('undo').click()
-  await expect(page.getByTestId('col-todo').getByTestId(id)).toBeVisible()
-  await expect(page.getByTestId('undo')).toHaveText('Undo (0)')
-  await expect(page.getByTestId('undo')).toBeDisabled()
-  await page.getByTestId('col-todo').getByTestId(id).dragTo(page.getByTestId('col-doing'))
-  await expect(page.getByTestId('col-doing').getByTestId(id)).toBeVisible()
-  await expect(page.getByTestId('undo')).toHaveText('Undo (1)')
-  await page.getByTestId('undo').click()
-  await expect(page.getByTestId('col-todo').getByTestId(id)).toBeVisible()
+  await expect(statement).toContainText('Saturday 2: finish forge/stages/00-setup/tests/core, then one break-it lab')
+  // trailing punctuation stays outside the chip, and a chip is a pressable control with a name that says what it does
+  await expect(statement.locator('p').first()).toContainText('README.md, then log questions in QUESTIONS.md.')
+  await expect(refs.first()).toHaveAttribute('role', 'button')
+  await expect(refs.first()).toHaveAccessibleName(/forge\/labs\/00-black-box\/README\.md/)
+  await expect(page.getByTestId('screen-do')).not.toContainText(/retreat/i)
 })

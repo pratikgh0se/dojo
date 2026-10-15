@@ -85,7 +85,7 @@ describe('announcer and texts', () => {
   })
 
   it('texts', () => {
-    expect(whyText('Hint', 2)).toBe('Why did I pay for this? Hint cost 2 xp.')
+    expect(whyText('Hint', 2)).toBe('Hint cost 2 xp: help is paid for so a solve shows what you did alone.')
     expect(spentText(13)).toBe('Help spent: 13 xp')
     expect(xpSavedText(8)).toBe('+8 xp · Saved')
     expect(xpSavedText(0)).toBe('+0 xp · Saved')

@@ -1,16 +1,15 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { fakeOutput } from '../../src/ai/fake'
-import type { DiagramJson, SolutionOutput } from '../../src/ai/types'
-import { draftBrief } from '../../src/data/briefActions'
+import type { SolutionOutput } from '../../src/ai/types'
 import type { DojoDB } from '../../src/data/db'
 import { setNow } from '../../src/lib/clock'
 import { loadCycle } from '../../src/lib/cycle'
 import { saveTimer } from '../../src/lib/timer'
-import { CheckGate } from '../../src/screens/brief/CheckGate'
+import { noteScreen, resetOrigin } from '../../src/app/origin'
 import { Do } from '../../src/screens/Do'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 import { mkTicket } from '../helpers/tickets'
 
@@ -31,7 +30,7 @@ function timerFrom(id: string, start: number) {
 async function open(id: string, opts: { d?: DojoDB; at?: number } = {}) {
   setNow(() => opts.at ?? T)
   const d = opts.d ?? (await seededDb())
-  const view = renderWithApp(<Do />, { db: d, plan: smallPlan, route: `/do/${id}`, path: '/do/:ticketId' })
+  const view = renderWithApp(<Do />, { db: d, plan: flatPlanV2, route: `/do/${id}`, path: '/do/:ticketId' })
   await screen.findByTestId('ladder')
   return { d, view }
 }
@@ -47,9 +46,9 @@ describe('Do ladder', () => {
     await open('p200')
     expect(screen.getByRole('main')).toHaveAttribute('data-testid', 'do-screen')
     expect(screen.getByTestId('do-title')).toHaveTextContent('200 · Number of Islands')
-    expect(screen.getByTestId('do-back')).toHaveAccessibleName('‹ Back')
-    expect(screen.getByTestId('do-timer-preset-25')).toHaveAccessibleName('Start 25 min')
-    expect(screen.getByTestId('do-timer-preset-50')).toHaveAccessibleName('Start 50 min')
+    expect(screen.getByTestId('do-back')).toHaveAccessibleName('Back')
+    expect(screen.getByTestId('ticket-start')).toHaveAccessibleName('START · PROBLEM')
+    for (const gone of ['do-timer-preset-25', 'do-timer-preset-50', 'do-custom-minutes', 'start-session', 'timer-panel-readout']) expect(screen.queryByTestId(gone)).toBeNull()
     expect(screen.getByTestId('do-timer-elapsed')).toHaveAttribute('data-seconds', '0')
     expect(screen.getByTestId('do-attempt-log')).toHaveAccessibleName('What is the invariant? What did you try?')
     expect(screen.getByTestId('do-ticket-xp')).toHaveTextContent('Net 0 xp')
@@ -80,44 +79,29 @@ describe('Do ladder', () => {
     await openRung('hint', '2')
     expect(screen.getByTestId('ladder-hint-1').textContent).toMatch(/^\[fake:hint\].*p200/)
     expect(rung('hint').dataset.state).toBe('open')
-    expect(screen.getByTestId('ladder-why-hint').textContent).toBe('Why did I pay for this? Hint cost 2 xp.')
+    expect(screen.getByTestId('ladder-why-hint').textContent).toBe('Hint cost 2 xp: help is paid for so a solve shows what you did alone.')
     expect(screen.getByTestId('ladder-announcer')).toHaveTextContent('Picture unlocked, costs 3 xp')
     expect(screen.getByTestId('do-outcome-solved')).toBeDisabled()
     expect(screen.getByTestId('do-outcome-help')).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByTestId('do-outcome-help'))
     // p200 has approaches (labs §7.3, D-16): Solved/Solved with help stays to ask which one, rather than
-    // navigating straight to the Board; "Back to Board" (I4) is what actually leaves.
+    // navigating straight to Today; "Back to Today" (I4) is what actually leaves.
     await screen.findByTestId('dsa-approach-used')
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Board' }))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/board'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Today' }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/))
     expect(screen.getByTestId('toast')).toHaveTextContent('+8 xp · Saved')
     expect(screen.getByTestId('toast')).toHaveAttribute('data-tone', 'help')
     expect((await d.tickets.get('p200'))!.xp).toBe(8)
     expect(await d.redos.count()).toBe(0)
   })
 
-  it('Addendum 11: on a briefed learning card, Hint disables Solved ✓ and Solved with help opens the check', async () => {
-    timerFrom('w1', T - 10 * MIN)
-    const d = await seededDb()
-    await d.tickets.put(mkTicket({ id: 'w1', kind: 'watch', track: 'interview', title: 'Hash maps', sprint: 1, order: -1, status: 'doing' }))
-    await draftBrief(d, 'w1', T)
-    setNow(() => T)
-    renderWithApp(<><Do /><CheckGate /></>, { db: d, plan: smallPlan, route: '/do/w1', path: '/do/:ticketId' })
-    await screen.findByTestId('ladder')
-    expect(screen.getByTestId('do-outcome-solved')).toBeEnabled()
-    await openRung('hint', '2')
-    expect(screen.getByTestId('do-outcome-solved')).toBeDisabled()
-    fireEvent.click(screen.getByTestId('do-outcome-help'))
-    expect(await screen.findByRole('dialog', { name: 'Check your understanding' })).toBeInTheDocument()
-  })
-
-  it('H-14 Solved ✓ without help: +10, ok tone, flash', async () => {
+  it('H-14 Solved without help: +10, ok tone, flash', async () => {
     const flashes = Number(document.documentElement.dataset.flashes ?? '0')
     await open('p200')
     fireEvent.click(screen.getByTestId('do-outcome-solved'))
     await screen.findByTestId('dsa-approach-used')
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Board' }))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/board'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Today' }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/))
     expect(screen.getByTestId('toast')).toHaveTextContent('+10 xp · Saved')
     expect(screen.getByTestId('toast')).toHaveAttribute('data-tone', 'ok')
     expect(Number(document.documentElement.dataset.flashes)).toBe(flashes + 1)
@@ -155,7 +139,7 @@ describe('Do ladder', () => {
     expect(rung('solution').dataset.state).toBe('unlocked')
   })
 
-  it('H-44 a failed Hint charges nothing, keeps Solved ✓ enabled, and Retry recovers', async () => {
+  it('H-44 a failed Hint charges nothing, keeps Solved enabled, and Retry recovers', async () => {
     localStorage.setItem('dojo-ai-fake-fail', 'hint:claude_missing')
     timerFrom('p200', T - 10 * MIN)
     await open('p200')
@@ -203,8 +187,8 @@ describe('Do ladder', () => {
     await openRung('hint', '2')
     fireEvent.click(screen.getByTestId('do-outcome-help'))
     await screen.findByTestId('dsa-approach-used')
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Board' }))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/board'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Today' }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/))
     first.view.unmount()
     const next = await open('p200', { d: first.d, at: T + DAY })
     expect(NAMES.map(n => rung(n).dataset.state)).toEqual(['open', 'locked', 'locked', 'locked', 'locked'])
@@ -237,7 +221,7 @@ describe('Do ladder', () => {
     // timer readout would keep showing the closed session's countdown while "asking" is up.
     expect(screen.getByTestId('timer-readout')).toHaveTextContent('--:--')
 
-    // Stay mounted (no Back to Board, no unmount) and let the original timer's end time pass -
+    // Stay mounted (no Back to Today, no unmount) and let the original timer's end time pass -
     // real wall-clock time, so useNow's setInterval(1000ms) actually ticks and re-renders.
     setNow(() => T + 16 * MIN)
     await new Promise(resolve => setTimeout(resolve, 1200))
@@ -249,21 +233,6 @@ describe('Do ladder', () => {
     expect(NAMES.map(n => rung(n).dataset.state)).toEqual(['open', 'locked', 'locked', 'locked', 'locked'])
     expect(spent()).toBe('0')
     next.view.unmount()
-  })
-
-  it('H-12/I-06 design Picture draws the reference diagram; Video lists the refs', async () => {
-    timerFrom('d-method', T - 10 * MIN)
-    await open('d-method')
-    await openRung('hint', '3')
-    await openRung('picture', '7')
-    const dia = fakeOutput('diagram', { ticket: { id: 'd-method', title: 'x', track: 'design' }, context: { deepDives: [] } } as never) as DiagramJson
-    const fig = screen.getByRole('figure', { name: 'Picture for The method, on a whiteboard, in 45 minutes' })
-    expect(fig).toHaveAttribute('data-nodes', String(dia.nodes.length))
-    expect(fig).toHaveTextContent(`Reference architecture · ${dia.nodes.length} nodes · ${dia.links.length} links`)
-    expect(within(fig).getByTestId('ladder-picture-diagram')).toHaveAccessibleName('Reference architecture for The method, on a whiteboard, in 45 minutes')
-    expect(within(within(fig).getByRole('list', { name: 'Nodes' })).getAllByRole('listitem').map(li => li.textContent)).toEqual(dia.nodes.map(n => n.label ?? n.id))
-    await openRung('video', '10')
-    expect(within(screen.getByTestId('ladder-video-links')).getByRole('link', { name: 'Hello Interview free guides' })).toHaveAttribute('target', '_blank')
   })
 
   it('H-13 task Picture lists the paired watch links with no AI; Video reads No video, costs 0, no why-line', async () => {
@@ -288,7 +257,7 @@ describe('Do ladder', () => {
     expect(screen.queryByTestId('ladder-why-video')).toBeNull()
   })
 
-  it('H-27/H-28 a due redo is a redo session: banner, doubled costs; Solved ✓ refunds floor(C/2)', async () => {
+  it('H-27/H-28 a due redo is a redo session: banner, doubled costs; Solved refunds floor(C/2)', async () => {
     const d = await seededDb()
     await d.rungUses.put({ id: 'u0', ticketId: 'p200', attemptStart: T - 3 * DAY, cycleId: 'old-cyc', rung: 5, at: T - 3 * DAY, cost: 10, applied: 10, refunded: 0 })
     await d.redos.put({ id: 'r1', ticketId: 'p200', source: 'gave_up', createdAt: T - 3 * DAY, stage: 0, due: T - MIN, passed: [], helpCost: 10, refunded: 0 })
@@ -299,8 +268,8 @@ describe('Do ladder', () => {
     expect(NAMES.map(n => rung(n).dataset.cost)).toEqual(['0', '2', '6', '6', '10'])
     fireEvent.click(screen.getByTestId('do-outcome-solved'))
     await screen.findByTestId('dsa-approach-used')
-    fireEvent.click(screen.getByRole('button', { name: 'Back to Board' }))
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/board'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Today' }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/))
     expect(screen.getByTestId('toast')).toHaveTextContent('+5 xp refunded')
     expect((await d.tickets.get('p200'))!.xp).toBe(5)
     expect(await d.redos.get('r1')).toMatchObject({ stage: 1 })
@@ -350,7 +319,7 @@ describe('Do ladder', () => {
     expect(within(replay).getByTestId('lab-player')).toHaveAttribute('data-record', 'false')
     expect(spent()).toBe('0')
     expect(screen.getByTestId('do-outcome-solved')).toBeEnabled()
-    fireEvent.click(screen.getByTestId('do-timer-preset-25'))
+    fireEvent.click(screen.getByTestId('ticket-start'))
     await waitFor(() => expect(screen.queryByTestId('redo-replay')).toBeNull())
   })
 
@@ -360,5 +329,19 @@ describe('Do ladder', () => {
     await open('p200', { d })
     expect(screen.getByTestId('redo-banner')).toBeInTheDocument()
     expect(screen.queryByTestId('redo-replay')).toBeNull()
+  })
+})
+
+describe('Do: approach question Back', () => {
+  it('leaves through the origin the screen was opened from, like the Back control, not always to /', async () => {
+    noteScreen('/path')
+    try {
+      await open('p200')
+      fireEvent.click(screen.getByTestId('do-outcome-solved'))
+      fireEvent.click(await screen.findByRole('button', { name: 'Back to Today' }))
+      await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/path'))
+    } finally {
+      resetOrigin()
+    }
   })
 })

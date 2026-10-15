@@ -1,4 +1,7 @@
 // @vitest-environment node
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { openSqlite, runMigrations, type SqliteAdapter } from '../../server/db/adapter.mjs'
 import { createStore, type Store } from '../../server/db/store.mjs'
@@ -59,6 +62,34 @@ describe('applyOps', () => {
   it('a failing op rolls back the whole batch', () => {
     expect(() => s.applyOps({ clientId: 'c', ops: [put('a', '1', { id: '1' }), { tbl: 'a', op: 'nope' }] })).toThrow()
     expect(s.health().ops).toBe(0)
+  })
+
+  it('one poison op in a batch of many leaves the store exactly as it was (the premise of outbox groups), on a real file in a scratch home', () => {
+    const home = mkdtempSync(join(tmpdir(), 'dojo-store-atomic-'))
+    const fa = openSqlite(join(home, 'dojo.db'))
+    try {
+      runMigrations(fa)
+      const fs = createStore(() => fa)
+      fs.applyOps({ clientId: 'c', ops: [put('tickets', 'keep', { id: 'keep', v: 1 }, 'op-keep'), put('a', '1', { id: '1' }, 'op-a1')] })
+      const before = JSON.stringify({ state: fs.state(), ops: fs.health().ops })
+      const batch = (poison: object) => ({
+        clientId: 'c',
+        ops: [put('tickets', 'new1', { id: 'new1' }, 'op-n1'), put('tickets', 'keep', { id: 'keep', v: 2 }, 'op-k2'), { tbl: 'a', op: 'clear', at: 'x', opId: 'op-clr' }, put('tickets', 'new2', { id: 'new2' }, 'op-n2'), poison],
+      })
+      // a malformed op (400) and an append-only collision (409) both roll the whole batch back
+      expect(() => fs.applyOps(batch({ tbl: 'tickets', op: 'nope', id: 'x', at: 'x', opId: 'op-bad' }))).toThrow()
+      expect(JSON.stringify({ state: fs.state(), ops: fs.health().ops })).toBe(before)
+      fs.applyOps({ clientId: 'c', ops: [{ tbl: 'events', op: 'put', id: 'k:1', doc: { t: 'tick' }, at: 'x', create: true }] })
+      const mid = JSON.stringify({ state: fs.state(), ops: fs.health().ops })
+      expect(() => fs.applyOps(batch({ tbl: 'events', op: 'put', id: 'k:1', doc: { t: 'other' }, at: 'x', create: true, opId: 'op-col' }))).toThrowError(expect.objectContaining({ status: 409 }))
+      expect(JSON.stringify({ state: fs.state(), ops: fs.health().ops })).toBe(mid)
+      // none of the batch's opIds were recorded, so the same ops apply once the poison is removed
+      const ok = fs.applyOps({ ...batch(put('tickets', 'last', { id: 'last' }, 'op-last')) })
+      expect(ok.applied).toBe(5)
+    } finally {
+      fa.close?.()
+      rmSync(home, { recursive: true, force: true })
+    }
   })
 
   it('rejects malformed bodies and reserved tables', () => {

@@ -15,21 +15,10 @@ const REQ: { [J in JobName]: JobRequest<J> } = {
   interview: { ticket: { id: 'd-ratelimit', title: 'Rate limiter', track: 'design' }, context: { turn: 0, answers: [], deepDives: ['a', 'b', 'c', 'd'] } },
   grade: { ticket: { id: 'art-stage-00', title: 'Setup', track: 'ai' }, context: { repoUrl: 'https://github.com/u/forge', commit: 'c0ffee1' } },
   solution: { ticket: T, context: { gave_up: true } },
-  suggest_slide: {
-    ticket: null,
-    context: {
-      count: 2,
-      tickets: [
-        { id: 'a', title: 'A', track: 'ai', estMin: 50, slidCount: 0 },
-        { id: 'b', title: 'B', track: 'ai', estMin: 50, slidCount: 1 },
-        { id: 'c', title: 'C', track: 'interview', estMin: 30, slidCount: 0 },
-      ],
-    },
-  },
   classify: { ticket: null, context: { input: 'https://leetcode.com/problems/maximum-number-of-robots-within-budget/' } },
-  brief: { ticket: T, context: { kind: 'task', forge: false, estMin: 50, sprint: 1 } },
+  brief: { ticket: T, context: { kind: 'task', estMin: 50 } },
   check: { ticket: T, context: { questions: [{ id: 'q1', kind: 'open', q: 'x', answer: 'number of islands' }] } },
-  review_sprint: { ticket: null, context: { stats: { sprint: 1, planned: 2, done: 1, focusDays: [], longestStreak: 0, gaps: [], slipped: [], redoPassRate: null, checkPassRate: null } } },
+  bank_more: { ticket: null, context: { area: 'design', node: 'SD01', nodeTitle: 'Estimation', nodeAbout: 'Numbers.', avoid: [], count: 5 } },
 }
 
 describe('fake outputs (spec §4.6; contracts pin these strings)', () => {
@@ -76,25 +65,76 @@ describe('fake outputs (spec §4.6; contracts pin these strings)', () => {
     expect(FAKE_DIAGRAM.nodes).toHaveLength(4)
   })
 
-  it('interview turns and the final grade', () => {
-    expect(fakeOutput('interview', REQ.interview)).toEqual({
-      say: '[fake:interview] Turn 0 for d-ratelimit: which trade-off did you choose, and why?', done: false,
-    })
+  it('interview final grade (the closing-grade shape)', () => {
     const final = fakeOutput('interview', { ...REQ.interview, context: { ...REQ.interview.context, turn: 10, final: true } })
-    expect(final).toEqual({
+    // F3 adds feedback, evidence and missed (tests/unit/f3-grade-schema.test.ts); the closing-grade shape below is what it always was
+    const { missed, ...rest } = final as unknown as { missed: unknown[]; perItem: Record<string, unknown>[] }
+    expect(missed).toHaveLength(3)
+    expect({ ...rest, perItem: rest.perItem.map(({ feedback, evidence, ...p }) => (feedback && evidence ? p : null)) }).toEqual({
       done: true,
       score: 15,
       perItem: [
-        { item: 'Requirements and numbers', points: 4, note: '[fake:interview] d-ratelimit' },
-        { item: 'API and data model', points: 2, note: '[fake:interview] d-ratelimit' },
-        { item: 'High-level design that meets the numbers', points: 3, note: '[fake:interview] d-ratelimit' },
-        { item: 'Two deep dives with real trade-offs', points: 4, note: '[fake:interview] d-ratelimit' },
-        { item: 'Failure modes and operations', points: 2, note: '[fake:interview] d-ratelimit' },
+        { item: 'Requirements and numbers', points: 4, note: '[fake:partner] d-ratelimit' },
+        { item: 'API and data model', points: 2, note: '[fake:partner] d-ratelimit' },
+        { item: 'High-level design that meets the numbers', points: 3, note: '[fake:partner] d-ratelimit' },
+        { item: 'Two deep dives with real trade-offs', points: 4, note: '[fake:partner] d-ratelimit' },
+        { item: 'Failure modes and operations', points: 2, note: '[fake:partner] d-ratelimit' },
       ],
-      oneThingToStudy: '[fake:interview] d-ratelimit',
+      oneThingToStudy: '[fake:partner] d-ratelimit',
       deepDives: [2, 1, 2, 1],
       lenses: { load: 2, data: 1, consistency: 1, failure: 1, latency: 1, cost: 0, evolution: 1 },
+      stronger: [
+        '[fake:partner] d-ratelimit: names a partition key and shows how many partitions the numbers call for.',
+        '[fake:partner] d-ratelimit: gives every box a line in the notes with its API call and its failure case.',
+      ],
     })
+  })
+
+  it('the partner fake: one question ending in ?, no banned word, the title, and a Hint', () => {
+    const ticket = { id: 'd-method', title: 'Design a photo editor', track: 'design' as const }
+    for (let turn = 0; turn < 20; turn++) {
+      const out = fakeOutput('interview', { ticket, context: { turn, answers: [], deepDives: ['a', 'b', 'c', 'd'] } }) as { say: string; done: false }
+      expect(out.say, `turn ${turn}`).toMatch(/^\[fake:partner\]/)
+      expect(out.say.match(/\?/g)).toHaveLength(1)
+      expect(out.say.endsWith('?')).toBe(true)
+      expect(out.say).not.toMatch(/interview|you could|you should|I suggest|consider using|the answer is|^\s*([-*]|\d+\.)\s/im)
+      expect(validateOutput('interview', out)).toEqual([])
+    }
+    const first = fakeOutput('interview', { ticket, context: { turn: 0, answers: [], deepDives: [] } }) as { say: string }
+    expect(first.say).toContain('Design a photo editor')
+    const hint = fakeOutput('interview', { ticket, context: { turn: 4, answers: [], deepDives: [], hint: true } }) as { say: string }
+    expect(hint.say).toMatch(/^\[fake:partner\] Hint/)
+    expect(hint.say.match(/\?/g)).toHaveLength(1)
+  })
+
+  it('a title or id with a ? or the banned word still gives exactly one ? and no banned word (DESIGN-45)', () => {
+    const ticket = { id: 'd-ddia', title: 'Design a limiter? (the interview kind)', track: 'design' as const }
+    for (const hint of [false, true]) for (let turn = 0; turn < 14; turn++) {
+      const out = fakeOutput('interview', { ticket, context: { turn, answers: [], deepDives: [], hint } }) as { say: string }
+      expect(out.say.match(/\?/g), `turn ${turn} hint ${hint}`).toHaveLength(1)
+      expect(out.say).not.toMatch(/interview/i)
+    }
+    const first = fakeOutput('interview', { ticket, context: { turn: 0, answers: [], deepDives: [] } }) as { say: string }
+    expect(first.say).toContain('Design a limiter')
+  })
+
+  it('the closing-done variant says done:true without the banned word', () => {
+    const out = fakeOutput('interview', REQ.interview, 'closing-done') as unknown as { say: string; done: boolean }
+    expect(out.done).toBe(true)
+    expect(out.say).not.toMatch(/interview/i)
+  })
+
+  it('the session grade fake: five items summing to the score, stronger always, inconsistencies on variant findings', () => {
+    const req = { ticket: { id: 'd-method', title: 'D', track: 'design' as const }, context: { sessionGrade: true, deepDives: ['a', 'b', 'c', 'd'] } }
+    const base = fakeOutput('grade', req) as unknown as { score: number; perItem: { points: number; note: string }[]; stronger: string[]; inconsistencies?: string[] }
+    expect(base.perItem).toHaveLength(5)
+    expect(base.perItem.reduce((a, p) => a + p.points, 0)).toBe(base.score)
+    expect(base.stronger).toHaveLength(2)
+    expect(base.inconsistencies ?? []).toEqual([])
+    expect(base.perItem[0].note).toMatch(/^\[fake:partner\]/)
+    const found = fakeOutput('grade', req, 'findings') as unknown as { inconsistencies: string[] }
+    expect(found.inconsistencies).toHaveLength(3)
+    expect(validateOutput('grade', found)).toEqual([])
   })
 
   it('grade default and low (projects contract §1)', () => {
@@ -120,20 +160,6 @@ describe('fake outputs (spec §4.6; contracts pin these strings)', () => {
         { q: 'How much extra space?', a: 'O(1)' },
       ],
     })
-  })
-
-  it('suggest_slide slides the first count tickets and keeps the rest', () => {
-    expect(fakeOutput('suggest_slide', REQ.suggest_slide)).toEqual({
-      slide: [
-        { id: 'a', reason: '[fake:suggest_slide] Slide a: fewest slides so far.' },
-        { id: 'b', reason: '[fake:suggest_slide] Slide b: fewest slides so far.' },
-      ],
-      keep: [{ id: 'c', reason: '[fake:suggest_slide] Keep c: fits this sprint.' }],
-    })
-    const ctx = REQ.suggest_slide.context
-    expect(fakeOutput('suggest_slide', { ticket: null, context: { ...ctx, count: 9 } }).keep).toEqual([])
-    expect(fakeOutput('suggest_slide', { ticket: null, context: { ...ctx, count: -1 } }).slide).toEqual([])
-    expect(fakeOutput('suggest_slide', { ticket: null, context: { ...ctx, count: Number.NaN } }).slide).toEqual([])
   })
 
   it('classify suggests SLIDING WINDOW · M (banks contract §5.5)', () => {

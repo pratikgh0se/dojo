@@ -1,6 +1,6 @@
 import type { Status, Ticket } from '../data/types'
-import { isBankOrigin } from './bankTickets'
-import { CONTENT_KEYS, newTicket, type PlanTicketContent } from './planTickets'
+import { isOffPlanOrigin } from './bankTickets'
+import { CONTENT_KEYS, LEARNER_KEYS, newTicket, type PlanTicketContent } from './planTickets'
 
 export interface ReconcileResult {
   puts: Ticket[]
@@ -29,7 +29,8 @@ function withContent(t: Ticket, c: PlanTicketContent): Ticket {
   return { ...(base as Ticket), ...c, archived: false }
 }
 
-const STATUS_RANK: Record<Status, number> = { done: 3, doing: 2, slid: 1, todo: 0 }
+/** done > blocked = help > doing > slid > todo (README Data fields: `todo < doing < blocked = help < done`): the order reconcile's mergeOnto lifts a rename target by, and the kept-ids invariant checks it by. */
+export const STATUS_RANK: Record<Status, number> = { done: 4, blocked: 3, help: 3, doing: 2, slid: 1, todo: 0 }
 
 /** First non-undefined value for each proof slot, in row order; slot objects are cloned, never shared. */
 function mergeProof(rows: Ticket[]): Ticket['proof'] | undefined {
@@ -84,9 +85,21 @@ function mergeOnto(existingTarget: Ticket | undefined, vanishedRows: Ticket[], c
   delete merged.doneAt
   delete merged.doneAtApprox
   delete merged.proof
+  // the reason of a blocked or need-help ticket follows the ticket when a rename merges it (BOARD-51); any other status carries none
+  delete merged.blockedNote
+  if (status === 'blocked' || status === 'help') {
+    const note = rows.find(r => (r.status === 'blocked' || r.status === 'help') && r.blockedNote)?.blockedNote
+    if (note) merged.blockedNote = note
+  }
   if (doneAt !== undefined) merged.doneAt = doneAt
   if (doneAtApprox === true) merged.doneAtApprox = true
   if (proof) merged.proof = proof
+
+  // learner-owned fields (D11) follow the ticket when an idMap merge renames it: the target's own value wins, else the first vanished row's
+  for (const k of LEARNER_KEYS) {
+    const v = rows.find(r => r[k] !== undefined)?.[k]
+    if (v !== undefined) (merged as unknown as Record<string, unknown>)[k] = v
+  }
 
   return withContent(merged, c)
 }
@@ -104,13 +117,13 @@ export function reconcilePlan(
   for (const t of existing) {
     const c = planById.get(t.id)
     if (c) next.set(t.id, withContent(t, c))
-    // Bank and Mine tickets are not plan content: keep them exactly as they are.
+    // Bank, Mine and weekly ritual tickets are not plan content: keep them exactly as they are.
     // An unknown/missing origin is not a bank ticket, so it falls through to the
     // vanished-plan-ticket handling below instead of being kept forever.
-    else if (isBankOrigin(t.origin) || t.childOf) next.set(t.id, t)
+    else if (isOffPlanOrigin(t.origin)) next.set(t.id, t)
   }
 
-  const vanished = existing.filter(t => !planById.has(t.id) && !isBankOrigin(t.origin) && !t.childOf).map(t => t.id)
+  const vanished = existing.filter(t => !planById.has(t.id) && !isOffPlanOrigin(t.origin)).map(t => t.id)
   const vanishedSet = new Set(vanished)
   const mappedFirst = Object.keys(idMap).filter(k => vanishedSet.has(k))
   const mappedSet = new Set(mappedFirst)

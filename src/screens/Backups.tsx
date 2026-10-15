@@ -6,14 +6,16 @@ import { Button, Panel, useToast } from '../ui/primitives'
 import { Dialog } from './ai/Dialog'
 import { fetchDataHome, shownDataFile, type DataHome } from '../data/dataHome'
 import { copy, DESKTOP } from '../lib/platform'
+import { leaveRestoredToast, takeRestoredToast } from '../lib/restoredToast'
 
-interface BackupInfo { file: string; bytes: number; at: string }
+/** `at`: milliseconds since the epoch (the /db/backups contract). */
+interface BackupInfo { file: string; bytes: number; at: number }
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** ST1 #3: "2026-10-03 22:30" in local time, never a locale format. */
-export function isoMinute(at: string): string {
+export function isoMinute(at: number): string {
   const d = new Date(at)
-  if (Number.isNaN(d.getTime())) return at
+  if (Number.isNaN(d.getTime())) return String(at)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
@@ -25,9 +27,6 @@ export function isoMinute(at: string): string {
 export function backupLabel(b: BackupInfo): string {
   return b.file.startsWith('pre-restore-') ? 'Before restore' : b.file
 }
-
-/** The restore reloads the page, which would take a toast with it: the line waits here for the page that comes back. */
-export const RESTORED_KEY = 'dojo.restoredToast'
 
 /** Settings "Backups": list, Back up now, and Restore behind a confirm dialog. Talks to /db/*. */
 /** `dataHome`: the data directory from the page's own /db/health read (Settings); when omitted, Backups reads it itself. */
@@ -61,11 +60,10 @@ export function Backups({ fetcher, reload = () => window.location.reload(), data
   loadRef.current = load
   useEffect(() => { void loadRef.current() }, [])
   // UAT cu-8 P3-4: after a restore the page reloads; say what happened once it is back
+  // (the restore wipes this copy, so the screen can remount before the reload: only a later page takes the line, see lib/restoredToast)
   useEffect(() => {
-    try {
-      const said = sessionStorage.getItem(RESTORED_KEY)
-      if (said) { sessionStorage.removeItem(RESTORED_KEY); toast(said) }
-    } catch { /* no storage: no toast */ }
+    const said = takeRestoredToast()
+    if (said) toast(said)
   }, [toast])
 
   async function backupNow() {
@@ -124,7 +122,7 @@ export function Backups({ fetcher, reload = () => window.location.reload(), data
         toast('Backup restored. Reload to finish restore.', 'danger')
         return
       }
-      try { sessionStorage.setItem(RESTORED_KEY, `Restored ${backupLabel(b)} · ${isoMinute(b.at)}. Your earlier data is saved as Before restore.`) } catch { /* the reload itself says enough */ }
+      leaveRestoredToast(`Restored ${backupLabel(b)} · ${isoMinute(b.at)}. Your earlier data is saved as Before restore.`)
       reload()
     } catch {
       toast('Restore failed', 'danger')
@@ -134,23 +132,23 @@ export function Backups({ fetcher, reload = () => window.location.reload(), data
 
   return (
     <Panel title="Backups" aria-label="Backups" id="disk">
-      {down ? (
-        <p className="settings-note" data-testid="backups-down">
-          {DESKTOP ? copy('backupsDown') : <>Backups need the Dojo server. Open Dojo from the Dock (Dojo.app), or run <code>npm run dev</code>.</>}
-        </p>
-      ) : (
+      {/* GLOBAL-10: the hook stays in the page (hidden) while the server answers, and is shown when it does not */}
+      <p className="settings-note" data-testid="backups-down" hidden={!down}>
+        {DESKTOP ? copy('backupsDown') : <>Backups need the Dojo server. Open Dojo from the Dock (Dojo.app), or run <code>npm run dev</code>.</>}
+      </p>
+      {!down && (
         <>
           <p className="settings-note" data-testid="data-home">Your progress lives in <code>{where ? shownDataFile(where) : 'the Dojo data directory'}</code>. A snapshot is taken daily; the newest 30 are kept.</p>
           <div className="bk-actions">
-            <Button onClick={() => void backupNow()} disabled={busy}>Back up now</Button>
+            <Button onClick={() => void backupNow()} disabled={busy || syncGate.readOnly}>Back up now</Button>
           </div>
           {items && items.length === 0 && <p className="settings-note">No snapshots yet.</p>}
           <ul className="bk-list" data-testid="backup-list">
             {(items ?? []).map(b => (
-              <li key={b.file} className="bk-item">
+              <li key={b.file} className="bk-item" data-file={b.file}>
                 <code className="bk-name" title={b.file}>{backupLabel(b)}</code>
                 <span className="settings-meta">{Math.max(1, Math.round(b.bytes / 1024))} KB · {isoMinute(b.at)}</span>
-                <Button className="sr-btn-sm" onClick={() => (syncGate.readOnly ? toast(READ_ONLY_MESSAGE, 'danger') : setConfirming(b))} disabled={busy}>Restore</Button>
+                <Button className="sr-btn-sm" data-testid={`backup-restore-${b.file}`} onClick={() => (syncGate.readOnly ? toast(READ_ONLY_MESSAGE, 'danger') : setConfirming(b))} disabled={busy || syncGate.readOnly}>Restore</Button>
               </li>
             ))}
           </ul>
@@ -168,7 +166,7 @@ function RestoreDialog({ backup, onConfirm, onCancel }: { backup: BackupInfo; on
     <Dialog title="Restore this backup?" testId="bk-dialog" onClose={onCancel} initialFocus={() => safe.current}>
       <p className="dl-text">{backupLabel(backup)}{backup.file.startsWith('pre-restore-') ? ` · ${isoMinute(backup.at)}` : ''}. Your current data is saved first as a pre-restore backup, then replaced.</p>
       <div className="p-actions">
-        <Button variant="danger" onClick={onConfirm}>Restore</Button>
+        <Button variant="danger" data-testid="backup-restore-confirm" onClick={onConfirm}>Restore</Button>
         <Button ref={safe} variant="quiet" onClick={onCancel}>Cancel</Button>
       </div>
     </Dialog>

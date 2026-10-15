@@ -6,11 +6,13 @@ import type { Plugin } from 'vite'
 import { dojoPort, REAL_APP_PORT } from './dojoPort'
 import { vendorPyodide } from './scripts/vendor-pyodide.mjs'
 import { appCsp, CSP_REPORT_PATH, cspReportFile } from './server/csp.mjs'
+import { planFileSetting, readPlanFile } from './server/plan-file.mjs'
+import { overlayPlan, readProfile } from './server/profile.mjs'
 import { inPyPrefix } from './server/runner/pyframe.mjs'
 import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 
 const port = dojoPort(process.env)
-// Dev: the disk server (scripts/dev.mjs) owns /db, /ai and /tools. Without it (DOJO_DEV_DISK=off) there is no proxy.
+// Dev: the disk server (scripts/dev.mjs) owns /db, /ai/<job> and /tools (a bare /ai is an SPA route, SHELL-20). Without it (DOJO_DEV_DISK=off) there is no proxy.
 const serverPort = process.env.DOJO_SERVER_PORT || 8789
 if (String(serverPort) === String(REAL_APP_PORT)) {
   throw new Error(`DOJO_SERVER_PORT ${REAL_APP_PORT} is reserved for the real Dojo app (~/Dojo); dev uses 8789`)
@@ -19,7 +21,7 @@ const serverTarget = `http://127.0.0.1:${serverPort}`
 const proxy =
   process.env.DOJO_DEV_DISK === 'off'
     ? undefined
-    : { '/db': { target: serverTarget, changeOrigin: true }, '/ai': { target: serverTarget, changeOrigin: true }, '/tools': { target: serverTarget, changeOrigin: true } }
+    : { '/db': { target: serverTarget, changeOrigin: true }, '^/ai/': { target: serverTarget, changeOrigin: true }, '/tools': { target: serverTarget, changeOrigin: true } }
 
 // I3: the dev server serves files from the app root, which holds the server's sources and the Go
 // packs' reference solutions (server/runner/packs/<id>/ref.go). Never serve the server dir, any
@@ -112,6 +114,35 @@ export function planEdition(env: Record<string, string | undefined> = process.en
   const want = env.DOJO_PLAN || (env.VITEST ? 'public' : DEFAULT_PLAN)
   return want === 'private' ? 'private' : 'public'
 }
+/**
+ * DOJO_PLAN_FILE (LAUNCH-13): when set, GET /data/plan.json serves that file, re-read on every request so an edit shows
+ * on reload, with DOJO_HOME/profile.json's overlay on top as dojo-server does. `npm run dev` has already refused a missing or
+ * invalid file; one that goes bad later answers 500 with the message. Unset: next(), the build's own plan.
+ */
+export function planFile(env: Record<string, string | undefined> = process.env): Plugin {
+  return {
+    name: 'dojo-plan-file',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const file = planFileSetting(env)
+        if (!file || req.method !== 'GET' || (req.url ?? '').split(/[?#]/, 1)[0] !== '/data/plan.json') return next()
+        res.setHeader('Cache-Control', 'no-cache')
+        try {
+          const text = readPlanFile(file)
+          let body = text
+          try { body = overlayPlan(text, readProfile(env.DOJO_HOME)) } catch { /* an unreadable profile leaves the file as is */ }
+          res.setHeader('Content-Type', 'application/json')
+          res.end(body)
+        } catch (e) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+          res.end(e instanceof Error ? e.message : String(e))
+        }
+      })
+    },
+  }
+}
+
 function privatePlan(): Plugin {
   const file = resolve(APP_ROOT, 'public/data-private/plan.json')
   const on = () => planEdition() === 'private' && existsSync(file)
@@ -161,7 +192,7 @@ export function bankPacksPath(env: Record<string, string | undefined> = process.
 
 export default defineConfig({
   resolve: { alias: { '@bank-packs': bankPacksPath() } },
-  plugins: [denyServerDir(), devCsp(), vendorPyodide(), privatePlan(), react()],
+  plugins: [denyServerDir(), devCsp(), vendorPyodide(), planFile(), privatePlan(), react()],
   server: { host: '127.0.0.1', port, strictPort: true, proxy, fs: { deny: FS_DENY } },
   preview: { host: '127.0.0.1', port, strictPort: true },
   test: {

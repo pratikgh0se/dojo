@@ -17,6 +17,7 @@
 .atlas-lg-use { border-color: var(--sr-signal-warn); }
 .atlas-lg-main { background: var(--sr-signal-ok); }
 .atlas-lg-side { background: var(--sr-energy-accent); }
+.atlas-intro { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-small); line-height: 1.45; color: var(--sr-text-secondary); }
 .atlas-tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
 /* cu-r2 A2#47: the toggle on is not only 4 px lower: it takes the accent border and a leading check, so it reads as on */
 .atlas-tools .sr-btn[aria-pressed='true'] { border-color: var(--sr-energy-accent); }
@@ -64,6 +65,9 @@
 /* Prototype parity (Atlas §01): each cell is a full-size filled block — main-picture green, side-panel orange,
    empty cells the dark well — not a small outlined square. The learner's seen/predicted state is shown by the
    row marker (.am-marker) instead of recolouring the cells, so the kind colours are never hidden. */
+.am-cell-link { display: block; width: 100%; height: 100%; padding: 0; margin: 0; border: 0; background: transparent; cursor: pointer; font: inherit; }
+.am-cell-link:hover .am-cube { box-shadow: inset 0 0 0 2px var(--sr-text-primary); }
+.am-cell-link:focus-visible { outline: var(--sr-size-focus-w) solid var(--sr-focus); outline-offset: -2px; }
 .am-cube { display: block; width: calc(100% - 2px); height: calc(100% - 2px); margin: 1px auto; }
 tr td[data-kind='main'] .am-cube { background: var(--sr-signal-ok); }
 tr td[data-kind='side'] .am-cube { background: var(--sr-energy-accent); }
@@ -92,7 +96,8 @@ tr.sel td:last-child, tr.sel th:last-child { box-shadow: inset -2px 2px 0 0 var(
 .atlas-line { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
 .atlas-walks, .atlas-problems { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .atlas-walk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.aw-title { font-family: var(--sr-font-pixel); font-size:var(--type-display-s); line-height: 1.25; text-transform: uppercase; flex: 1 1 160px; -webkit-font-smoothing:none;font-smooth:never;text-rendering:optimizeSpeed;}
+/* GLOBAL-04: a walkthrough caption is body text, not a heading, so it is Chivo (Silkscreen is for headings at 16, 24 and 32 px only) */
+.aw-title { font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; line-height: 1.3; flex: 1 1 160px; }
 .aw-cx { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
 .aw-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 /* UAT cu-6 (narrow): cube | link | sprint in three columns, so a long title wraps inside its own column instead of

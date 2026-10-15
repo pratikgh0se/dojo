@@ -9,6 +9,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { planFileSetting, readPlanFile } from '../server/plan-file.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 // 8787 is the real app's port (Dojo.app, ~/Dojo). Dev never uses it, for vite or for its server.
@@ -31,6 +32,15 @@ const fold = p => (process.platform === 'darwin' ? p.toLowerCase() : p)
 if (disk && (fold(realHome) === fold(realDojo) || fold(realHome).startsWith(fold(realDojo) + sep))) {
   console.error('dev: refusing to use ~/Dojo (the real app\'s data) for the dev server')
   process.exit(1)
+}
+
+// LAUNCH-13: DOJO_PLAN_FILE (an absolute path to a plan JSON) replaces the build's plan; a missing or invalid file ends here.
+const planFile = planFileSetting(process.env)
+if (planFile) {
+  try { readPlanFile(planFile) } catch (e) {
+    console.error(`dev: ${e.message}`)
+    process.exit(1)
+  }
 }
 
 const children = []
@@ -68,4 +78,4 @@ if (disk) {
   }, 250)
   timer.unref()
 }
-run(join(root, 'node_modules', 'vite', 'bin', 'vite.js'), [], { DOJO_SERVER_PORT: serverPort, DOJO_DEV_DISK: disk ? 'on' : 'off', VITE_DOJO_DISK: disk ? 'on' : 'off' })
+run(join(root, 'node_modules', 'vite', 'bin', 'vite.js'), [], { DOJO_SERVER_PORT: serverPort, DOJO_DEV_DISK: disk ? 'on' : 'off', VITE_DOJO_DISK: disk ? 'on' : 'off', DOJO_HOME: home })

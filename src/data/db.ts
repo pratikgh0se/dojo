@@ -1,7 +1,7 @@
 import Dexie, { type Table } from 'dexie'
 import type {
   AiLogRow, Artifact, AtlasRun, BankItem, BlankTest, DesignSession, GradeRow, PictureRow,
-  Redo, RungUse, Session, Settings, StageCell, StoredEvent, Ticket, CheckAttemptRow, ReviewRow, CodeRow,
+  BankExtraRow, BankGradeRow, JournalRow, Pulse, Redo, RungUse, Session, Settings, StageCell, StoredEvent, Ticket, CheckAttemptRow, ReviewRow, CodeRow,
 } from './types'
 import { isReadOnly } from './writer' // first: takes the writer token out of the URL before anything else runs
 import { newOpId } from './sync/keys'
@@ -19,6 +19,8 @@ export interface OutboxRow {
   create?: boolean
   /** Append-only tables: an edit of a row hydrated from disk (maybe another client's; Addendum 2). */
   known?: boolean
+  /** Rows of one group are sent in one request (the flat migration is all-or-nothing on disk too). */
+  grp?: string
   at: string
 }
 export interface MetaRow { key: string; value: unknown }
@@ -44,12 +46,16 @@ export type DojoDB = Dexie & {
   checkAttempts: Table<CheckAttemptRow, string>
   reviews: Table<ReviewRow, string>
   code: Table<CodeRow, [string, string]>
+  pulses: Table<Pulse, string>
+  journal: Table<JournalRow, string>
+  bankGrades: Table<BankGradeRow, string>
+  bankExtra: Table<BankExtraRow, string>
   _outbox: Table<OutboxRow, number>
   _meta: Table<MetaRow, string>
 }
 
 export const DB_NAME = 'dojo'
-export const DB_VERSION = 7
+export const DB_VERSION = 10
 
 /** Milestone-1 schema. Never edit: existing browsers hold data at this version. */
 export const SCHEMA_V1 = {
@@ -125,6 +131,34 @@ export const SCHEMA_V7 = {
   code: '[ticketId+lang]',
 } as const
 
+/**
+ * v8 (R1 F1, Today ritual column): only ADDS `pulses`, the daily AI pulse log (one row per local day, `pulse-YYYY-MM-DD`).
+ * No existing table changes and the upgrade writes nothing, so a v7 browser opens with an empty `pulses`.
+ */
+export const SCHEMA_V8 = {
+  ...SCHEMA_V7,
+  pulses: 'id, day',
+} as const
+
+/**
+ * v9 (R1 scope 2 W2, the daily journal): only ADDS `journal`, one row per local day (`journal-YYYY-MM-DD`). No existing table
+ * changes and the upgrade writes nothing, so a v8 browser opens with an empty `journal`.
+ */
+export const SCHEMA_V9 = {
+  ...SCHEMA_V8,
+  journal: 'id, day',
+} as const
+
+/**
+ * v10 (R1 scope 2 W6, question banks): only ADDS `bankGrades` (one row per graded question, keyed by the question id) and `bankExtra`
+ * (AI-made questions). No existing table changes and the upgrade writes nothing, so a v8 or v9 browser opens with both tables empty.
+ */
+export const SCHEMA_V10 = {
+  ...SCHEMA_V9,
+  bankGrades: 'id, area, node',
+  bankExtra: 'id, area, node',
+} as const
+
 export const DEFAULT_SETTINGS: SettingsRow = {
   id: 'main',
   startDate: '',
@@ -145,7 +179,7 @@ export function createDb(name: string = DB_NAME, gate?: SyncGate): DojoDB {
     const rows = await tx.table('code').toArray()
     if (rows.length) await tx.table('_codeTmp').bulkPut(rows.map(r => ({ ...r, lang: r.lang ?? 'go' })))
   })
-  d.version(DB_VERSION).stores({ ...SCHEMA_V7, _codeTmp: null }).upgrade(async tx => {
+  d.version(7).stores({ ...SCHEMA_V7, _codeTmp: null }).upgrade(async tx => {
     const rows = (await tx.table('_codeTmp').toArray()) as CodeRow[]
     if (!rows.length) return
     // The upgrade must not be refused (a read-only browser) or queued by the outbox middleware: the
@@ -167,6 +201,9 @@ export function createDb(name: string = DB_NAME, gate?: SyncGate): DojoDB {
       ])
     }
   })
+  d.version(8).stores({ pulses: SCHEMA_V8.pulses })
+  d.version(9).stores({ journal: SCHEMA_V9.journal })
+  d.version(DB_VERSION).stores({ bankGrades: SCHEMA_V10.bankGrades, bankExtra: SCHEMA_V10.bankExtra })
   if (gate) d.use(outboxMiddleware(gate))
   return d
 }

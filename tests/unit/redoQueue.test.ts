@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { DesignSession, Redo, Session } from '../../src/data/types'
 import {
-  designRedoRows, displayTitle, givenUpText, isRedoDue, outcomeFeedback, redoBannerText, redoOutcome, redoRows,
+  designRedoRows, displayTitle, givenUpText, isRedoDue, outcomeFeedback, redoAgeDays, redoBannerText, redoOutcome, redoRows,
   refundWaiting,
 } from '../../src/rules/redoQueue'
+import { reviewCards } from '../../src/rules/reviewQueue'
 import { mkTicket } from '../helpers/tickets'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -81,13 +82,87 @@ describe('due-ness and drawer rows', () => {
     ]
     const redos = [mkRedo(), mkRedo({ id: 'r2', ticketId: 'p543', helpCost: 5, due: ist('2026-10-09T09:00:00'), createdAt: ist('2026-10-06T21:30:00') }), mkRedo({ id: 'r3', ticketId: 'p1', due: ist('2026-10-20T00:00:00') })]
     const rows = redoRows(redos, tickets, sessions, ist('2026-10-09T00:01:00'))
-    expect(rows.map(r => r.ticketId)).toEqual(['p543', 'p200'])
-    expect(rows[1]).toEqual({
+    // README "Oldest due": same due day, so createdAt decides (p200 was created first)
+    expect(rows.map(r => r.ticketId)).toEqual(['p200', 'p543'])
+    expect(rows[0]).toEqual({
       ticketId: 'p200', title: 'Number of Islands', days: 3, refund: 5,
       text: 'Number of Islands · 3d since first try · +5 xp waiting', to: '/do/p200',
     })
-    expect(rows[0].text).toBe('Diameter of Binary Tree · 3d since first try · +2 xp waiting')
-    expect(rows[0].to).toBe('/do/p543')
+    expect(rows[1].text).toBe('Diameter of Binary Tree · 3d since first try · +2 xp waiting')
+    expect(rows[1].to).toBe('/do/p543')
+  })
+  it('a due design_missed redo reads as its question and opens Review, not a ladder row (REVIEW-23)', () => {
+    const tickets = [mkTicket({ id: 'd-ddia', kind: 'design', title: 'Design a counter' })]
+    const piece = { topic: 'Partitioning', question: 'How do you pick a key?', answer: 'By access pattern.', sessionId: 'ds-1' }
+    const redos = [mkRedo({ id: 'keep-ds-1-1', ticketId: 'd-ddia', source: 'design_missed', piece, due: ist('2026-10-09T00:00:00') } as never)]
+    const rows = redoRows(redos, tickets, [], ist('2026-10-09T10:00:00'))
+    expect(rows).toEqual([{ ticketId: 'd-ddia', title: 'Design a counter', text: 'Design a counter · How do you pick a key?', to: '/review' }])
+  })
+  it('README Oldest due: earliest local due day first, then createdAt, then ticket id (REVIEW-04)', () => {
+    const tickets = ['a', 'b', 'c', 'd'].map(id => mkTicket({ id, kind: 'problem', title: `1 · Zed ${id}` }))
+    const now = ist('2026-10-12T10:00:00')
+    const redos = [
+      mkRedo({ id: 'ra', ticketId: 'a', due: ist('2026-10-10T23:00:00'), createdAt: 10 }),
+      mkRedo({ id: 'rb', ticketId: 'b', due: ist('2026-10-10T01:00:00'), createdAt: 20 }),
+      mkRedo({ id: 'rc', ticketId: 'c', due: '2026-10-09', createdAt: 99 }),
+      mkRedo({ id: 'rd', ticketId: 'd', due: ist('2026-10-10T12:00:00'), createdAt: 20 }),
+    ]
+    // c: oldest day; a and b/d share 10-10: createdAt 10 first, then b and d tie on createdAt -> ticketId
+    expect(redoRows(redos, tickets, [], now).map(r => r.ticketId)).toEqual(['c', 'a', 'b', 'd'])
+  })
+  it('a title tie-break no longer applies: same day, same createdAt orders by ticket id', () => {
+    const tickets = [mkTicket({ id: 'x2', kind: 'problem', title: '1 · Alpha' }), mkTicket({ id: 'x1', kind: 'problem', title: '2 · Omega' })]
+    const redos = [
+      mkRedo({ id: 'r1', ticketId: 'x2', due: ist('2026-10-10T08:00:00'), createdAt: 5 }),
+      mkRedo({ id: 'r2', ticketId: 'x1', due: ist('2026-10-10T09:00:00'), createdAt: 5 }),
+    ]
+    expect(redoRows(redos, tickets, [], ist('2026-10-11T10:00:00')).map(r => r.ticketId)).toEqual(['x1', 'x2'])
+  })
+  it('Today\'s drawer and Review\'s queue share one filter and one order: same tickets, same sequence, archived and not-yet-due skipped', () => {
+    const tickets = [
+      ...['a', 'b', 'c', 'd'].map(id => mkTicket({ id, kind: 'problem', title: `1 · T ${id}` })),
+      mkTicket({ id: 'gone', kind: 'problem', title: '1 · Gone', archived: true }),
+    ]
+    const now = ist('2026-10-12T10:00:00')
+    const redos = [
+      mkRedo({ id: 'ra', ticketId: 'a', due: ist('2026-10-10T23:00:00'), createdAt: 10 }),
+      mkRedo({ id: 'rb', ticketId: 'b', due: ist('2026-10-10T01:00:00'), createdAt: 20 }),
+      mkRedo({ id: 'rc', ticketId: 'c', due: '2026-10-09', createdAt: 99 }),
+      mkRedo({ id: 'rd', ticketId: 'd', due: ist('2026-10-13T12:00:00'), createdAt: 1 }),
+      mkRedo({ id: 're', ticketId: 'gone', due: ist('2026-10-01T12:00:00'), createdAt: 1 }),
+      mkRedo({ id: 'rf', ticketId: 'a', due: ist('2026-10-01T12:00:00'), createdAt: 1, closedAt: 5 }),
+    ]
+    const drawer = redoRows(redos, tickets, [], now).map(r => r.ticketId)
+    expect(drawer).toEqual(['c', 'a', 'b'])
+    expect(reviewCards({ redos, tickets, nowMs: now }).map(c => c.ticketId)).toEqual(drawer)
+  })
+})
+
+describe('redoAgeDays (README: whole local days from the due day to the clock day)', () => {
+  it('is 0 when due today, however late the clock', () => {
+    expect(redoAgeDays(mkRedo({ due: ist('2026-10-09T21:20:00') }), ist('2026-10-09T23:59:00'))).toBe(0)
+    expect(redoAgeDays(mkRedo({ due: '2026-10-09' }), ist('2026-10-09T00:01:00'))).toBe(0)
+  })
+  it('counts whole calendar days, not elapsed 24h blocks', () => {
+    // due late on the 9th, clock early on the 10th: 1 day by the calendar though only ~2h elapsed
+    expect(redoAgeDays(mkRedo({ due: ist('2026-10-09T23:00:00') }), ist('2026-10-10T01:00:00'))).toBe(1)
+    expect(redoAgeDays(mkRedo({ due: ist('2026-10-09T00:30:00') }), ist('2026-10-11T23:30:00'))).toBe(2)
+  })
+  it('handles YYYY-MM-DD string dues', () => {
+    expect(redoAgeDays(mkRedo({ due: '2026-10-09' }), ist('2026-10-11T10:00:00'))).toBe(2)
+  })
+  it('is calendar arithmetic across month ends and a leap day', () => {
+    expect(redoAgeDays(mkRedo({ due: '2026-09-29' }), ist('2026-10-02T10:00:00'))).toBe(3)
+    expect(redoAgeDays(mkRedo({ due: '2028-02-28' }), new Date(2028, 2, 1, 10).getTime())).toBe(2)
+  })
+  it('is calendar arithmetic in local time (crosses a DST change only when run under a DST timezone, e.g. TZ=America/New_York; the project default Asia/Kolkata has none)', () => {
+    const a = new Date(2026, 2, 7, 12).getTime() // local noon, Mar 7
+    const b = new Date(2026, 2, 9, 0, 30).getTime() // local 00:30, Mar 9
+    expect(redoAgeDays(mkRedo({ due: a }), b)).toBe(2)
+    expect(redoAgeDays(mkRedo({ due: new Date(2026, 9, 31, 23).getTime() }), new Date(2026, 10, 2, 0, 5).getTime())).toBe(2)
+  })
+  it('is never negative', () => {
+    expect(redoAgeDays(mkRedo({ due: '2026-10-20' }), ist('2026-10-11T10:00:00'))).toBe(0)
   })
 })
 

@@ -1,62 +1,70 @@
-.kit { display: grid; gap: 8px; min-width: 0; }
-.kit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.kit { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+/* Under the canvas: the view switch, the counts, JSON and Export, then the selection's fields (mockup 7b legend row) */
+.kit-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-width: 0; }
+.kit-bar { display: contents; }
+.kit-bar-end { margin-left: auto; }
+.kit-foot > .kit-frames { flex: 1 1 100%; }
 .kit-views { display: flex; gap: 4px; }
-.kit-bar .sr-btn[aria-pressed='true'] { background: var(--sr-energy-accent); color: var(--sr-text-onaccent); }
-.kit-count { margin-left: auto; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
-.kit-palette {
-  max-width: 100%; overflow-x: auto; padding: 8px;
-  background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-dark);
+/* The selected view / JSON toggle is inverted (cream fill, dark text), never accent-filled: the accent belongs to the phase's one advance button (GLOBAL-03, DESIGN-74). */
+.kit-bar .sr-btn[aria-pressed='true'] { background: var(--sr-text-primary); color: var(--sr-edge-dark); border-color: var(--sr-text-primary); }
+.kit-count { font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-secondary); }
+.kit-tools-counts { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; }
+/* The palette (mockup 7b): one row of family buttons, a divider and the four tools. A family's tiles open in a flyout under its button,
+ * over the canvas (a phone's flyout is full width in the flow instead). */
+.kit-palette { position: relative; max-width: 100%; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-dark); }
+.kit-palette-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; padding: 8px 8px 11px; overflow-x: auto; }
+.kit-families { display: flex; flex: none; gap: 4px; }
+.kit-sep { flex: none; align-self: stretch; width: 2px; margin: 2px 8px 3px; background: var(--sr-edge-mid); }
+.kit-fam {
+  display: inline-grid; place-items: center; flex: none; width: 40px; height: 36px; padding: 0; color: var(--sr-text-primary);
+  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); border-bottom-color: var(--fam, var(--sr-edge-dark)); border-bottom-width: 4px; cursor: pointer;
+  box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile);
 }
-.kit-palette-toolbar { display: flex; gap: 8px; }
-.kit-family { display: flex; flex: 0 0 auto; flex-direction: column; gap: 4px; padding-left: 6px; border-left: 3px solid var(--sr-edge-dark); }
-.kit-family-name { font-family:var(--sr-font-body); font-size:var(--type-meta); letter-spacing: 0.5px; text-transform: uppercase; color: var(--sr-label-accent); font-weight:700;}
-/* Per-family tint, like the prototype's diagram engine FAM map (public/engines/diagram.js): each
- * family's border-left and glyph (family name) colour matches that family's glyph role there. */
-.kit-family[data-family='client'] { border-left-color: var(--sr-text-primary); }
-.kit-family[data-family='client'] .kit-family-name { color: var(--sr-text-primary); }
-.kit-family[data-family='edge'] { border-left-color: var(--sr-energy-accent-glow); }
-.kit-family[data-family='edge'] .kit-family-name { color: var(--sr-energy-accent-glow); }
-.kit-family[data-family='compute'] { border-left-color: var(--sr-energy-accent); }
-.kit-family[data-family='compute'] .kit-family-name { color: var(--sr-energy-accent); }
-.kit-family[data-family='data'] { border-left-color: var(--sr-energy-rival); }
-.kit-family[data-family='data'] .kit-family-name { color: var(--sr-energy-rival); }
-.kit-family[data-family='messaging'] { border-left-color: var(--sr-energy-rival-glow); }
-.kit-family[data-family='messaging'] .kit-family-name { color: var(--sr-energy-rival-glow); }
-.kit-family[data-family='cache'] { border-left-color: var(--sr-energy-accent-glow); }
-.kit-family[data-family='cache'] .kit-family-name { color: var(--sr-energy-accent-glow); }
-.kit-family[data-family='security'] { border-left-color: var(--sr-signal-warn); }
-.kit-family[data-family='security'] .kit-family-name { color: var(--sr-signal-warn); }
-.kit-family[data-family='observe'] { border-left-color: var(--sr-signal-ok); }
-.kit-family[data-family='observe'] .kit-family-name { color: var(--sr-signal-ok); }
-.kit-family[data-family='ai'] { border-left-color: var(--sr-signal-arcane); }
-/* --sr-signal-arcane fails WCAG's 4.5:1 text minimum on the palette's --sr-surface-panel
- * background (D-59, axe color-contrast). The border-left keeps the saturated family colour to
- * match the prototype; the label uses --sr-signal-arcane-label, a lightened tint of the same hue
- * that clears 4.5:1, so it stays legible. Every other family's label already clears 4.5:1 at its
- * saturated colour — see tests/unit/kit-palette-contrast.test.ts. */
-.kit-family[data-family='ai'] .kit-family-name { color: var(--sr-signal-arcane-label); }
-.kit-family[data-family='external'] { border-left-color: var(--sr-text-secondary); }
-.kit-family[data-family='external'] .kit-family-name { color: var(--sr-text-secondary); }
-.kit-family[data-family='flow'] { border-left-color: var(--sr-energy-accent); }
-.kit-family[data-family='flow'] .kit-family-name { color: var(--sr-energy-accent); }
+.kit-fam[aria-expanded='true'] { background: var(--sr-edge-light-tile); border-color: var(--fam, var(--sr-edge-dark)); }
+.kit-fam:disabled { opacity: 0.5; cursor: not-allowed; }
+.kit-fam:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+.kit-fam-glyph { display: block; }
+.kit-flyout {
+  position: absolute; top: calc(100% - 4px); z-index: var(--sr-z-popover); display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  box-sizing: border-box; max-width: min(100%, 520px); padding: 8px; background: var(--sr-surface-panel);
+  border: 2px solid var(--fam, var(--sr-edge-dark)); box-shadow: 0 4px 0 var(--sr-edge-dark), 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+.kit-flyout-name { flex: 1 0 100%; font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--fam, var(--sr-text-secondary)); }
+/* Per-family tint, like the prototype's diagram engine FAM map (public/engines/diagram.js): the button's lower edge, the flyout's border
+ * and the flyout's family name take that family's glyph role there. */
+.kit-fam[data-family='client'], .kit-flyout[data-family='client'] { --fam: var(--sr-text-primary); }
+.kit-fam[data-family='edge'], .kit-flyout[data-family='edge'] { --fam: var(--sr-energy-accent-glow); }
+.kit-fam[data-family='compute'], .kit-flyout[data-family='compute'] { --fam: var(--sr-energy-accent); }
+.kit-fam[data-family='data'], .kit-flyout[data-family='data'] { --fam: var(--sr-energy-rival); }
+.kit-fam[data-family='messaging'], .kit-flyout[data-family='messaging'] { --fam: var(--sr-energy-rival-glow); }
+.kit-fam[data-family='cache'], .kit-flyout[data-family='cache'] { --fam: var(--sr-energy-accent-glow); }
+.kit-fam[data-family='security'], .kit-flyout[data-family='security'] { --fam: var(--sr-signal-warn); }
+.kit-fam[data-family='observe'], .kit-flyout[data-family='observe'] { --fam: var(--sr-signal-ok); }
+.kit-fam[data-family='ai'], .kit-flyout[data-family='ai'] { --fam: var(--sr-signal-arcane); }
+.kit-fam[data-family='external'], .kit-flyout[data-family='external'] { --fam: var(--sr-text-secondary); }
+.kit-fam[data-family='flow'], .kit-flyout[data-family='flow'] { --fam: var(--sr-energy-accent); }
+/* --sr-signal-arcane fails WCAG's 4.5:1 text minimum on the panel background (D-59, axe color-contrast). The edges keep the saturated
+ * family colour to match the prototype; the family name in the flyout uses --sr-signal-arcane-label, a lightened tint of the same hue
+ * that clears 4.5:1. Every other family's name already clears 4.5:1 at its saturated colour (tests/unit/kit-palette-contrast.test.ts). */
+.kit-flyout[data-family='ai'] .kit-flyout-name { color: var(--sr-signal-arcane-label); }
 .kit-kind {
-  padding: 2px 6px; text-align: left; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-text-primary);
-  background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); cursor: grab;
+  height: 30px; padding: 0 8px 0 7px; text-align: left; white-space: nowrap; font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 600;
+  color: var(--sr-text-primary); background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); border-left: 3px solid var(--fam, var(--sr-edge-dark)); cursor: grab;
   box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile);
 }
 .kit-kind:disabled { opacity: 0.5; cursor: not-allowed; }
 .kit-kind:focus-visible, .kit-node:focus-visible, .kit-link:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
-.kit-inspect { display: flex; flex-wrap: wrap; gap: 8px 16px; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
+.kit-inspect { display: contents; font-family: var(--sr-font-mono); font-size:var(--type-meta); }
 .kit-field { display: flex; align-items: center; gap: 6px; }
-.kit-status { min-height: 18px; margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-accent); }
+.kit-status { margin: 0; font-family: var(--sr-font-mono); font-size:var(--type-meta); color: var(--sr-label-accent); }
 .kit-canvas {
-  position: relative; max-width: 100%; height: min(70vh, 640px); overflow: auto;
+  position: relative; max-width: 100%; height: clamp(360px, 64vh, 640px); overflow: auto;
   background-color: var(--sr-chart-well); border: 2px solid var(--sr-edge-mid);
   background-image: linear-gradient(to right, var(--sr-chart-grid) 2px, transparent 2px), linear-gradient(to bottom, var(--sr-chart-grid) 2px, transparent 2px);
   background-size: 24px 24px;
 }
 .kit-canvas[data-locked='true'] { border-color: var(--sr-label-warn); }
-.kit-stage { position: relative; }
+.kit-stage { position: relative; min-width: 100%; min-height: 100%; }
 .kit-stage sr-diagram { max-width: none !important; overflow: visible !important; }
 .kit-stage-2d > sr-diagram { position: absolute; left: 0; top: 0; }
 .kit-overlay-2d { position: absolute; inset: 0; pointer-events: none; }
@@ -67,7 +75,7 @@
 .kit-port { width: 12px; height: 12px; background: var(--sr-energy-accent); border: 2px solid var(--sr-edge-dark); cursor: crosshair; touch-action: none; }
 .kit-canvas[data-locked='true'] .kit-port { display: none; }
 .kit-link { width: 16px; height: 16px; padding: 0; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); cursor: pointer; }
-.kit-link[aria-pressed='true'] { background: var(--sr-energy-accent); }
+.kit-link[aria-pressed='true'] { background: var(--sr-text-primary); border-color: var(--sr-energy-accent); } /* not accent-filled (GLOBAL-03) */
 .kit-overlay-iso { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; }
 .kit-overlay-iso .kit-node, .kit-overlay-iso .kit-link {
   width: auto; height: auto; padding: 2px 6px; font-family: var(--sr-font-mono); font-size:var(--type-meta);
@@ -85,4 +93,34 @@
 }
 @media (max-width: 640px) { .kit-canvas { height: 420px; } }
 /* A4 (settings-progress-ref): the palette's "Add <kind>" buttons are 44 px touch targets on phone. */
-@media (max-width: 767px) { .kit-kind { min-height: var(--sr-size-hit-touch); } }
+@media (max-width: 767px) {
+  .kit-kind, .kit-fam { min-height: var(--sr-size-hit-touch); }
+  .kit-fam { width: 48px; height: var(--sr-size-hit-touch); }
+  /* the flyout opens full width under the swipe row and pushes the canvas down */
+  .kit-flyout { position: static; left: auto !important; max-width: none; border-width: 2px 0 0; box-shadow: none; }
+  .kit-tools .sr-btn { flex: none; }
+}
+
+.kit-tools { display: flex; flex: none; flex-wrap: nowrap; align-items: center; gap: 4px; }
+.kit-tools-count { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.kit-field-count { font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.kit-inspect-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+/* DESIGN-28: a table block's column list is for assistive tech and tests; the engine draws the columns. It wears the shared .vh class (clipped, not display:none). */
+
+/* Stickies (DESIGN-31, 32): the 8 px top padding is the drag strip; a press on the textarea never drags. */
+.kit-overlay-2d .kit-note { position: absolute; pointer-events: auto; width: 168px; padding: 8px 4px 4px; background: var(--sr-surface-tile); border: 2px solid var(--sr-edge-dark); cursor: move; touch-action: none; }
+.kit-note[aria-current] { border-color: var(--sr-energy-accent); }
+.kit-note:focus-visible { outline: 2px solid var(--sr-focus); outline-offset: 2px; }
+.kit-note textarea { display: block; width: 100%; min-width: 0; box-sizing: border-box; font-family: var(--sr-font-body); font-size: var(--type-meta); color: var(--sr-text-primary); background: transparent; border: 0; resize: none; cursor: text; }
+.kit-canvas[data-locked='true'] .kit-note { cursor: default; }
+.kit-notes-list { padding: 8px; font-family: var(--sr-font-mono); font-size: var(--type-meta); border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); }
+.kit-notes-list p { margin: 0 0 4px; color: var(--sr-text-secondary); }
+.kit-frames { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.kit-frame-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-family: var(--sr-font-mono); font-size: var(--type-meta); }
+.kit-frame-count { color: var(--sr-text-secondary); }
+
+/* From 768 px up the row's tools and buttons are 30 px controls and the canvas-footer buttons match. */
+@media (min-width: 768px) {
+  .kit-tools .sr-btn { height: 30px; padding: 0 8px; box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile); }
+  .kit-bar .sr-btn { height: 30px; }
+}

@@ -1,0 +1,85 @@
+.qc-page { display: grid; gap: 24px; align-content: start; min-width: 0; }
+.qc-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 16px; }
+.qc-day { font-family: var(--sr-font-pixel); font-size: var(--type-display-l); letter-spacing: 1px; text-transform: uppercase; line-height: 1.2; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.qc-phase { font-size: var(--type-body); color: var(--sr-text-secondary); }
+.qc-top .qc-chip { margin-left: auto; text-transform: none; letter-spacing: 0; }
+.qc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.qc-col { display: grid; gap: 24px; min-width: 0; }
+.qc { display: grid; gap: 16px; }
+.qc-cap { font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); line-height: 1.3; margin: 0; }
+.qc-head { display: flex; gap: 16px; align-items: flex-start; }
+.qc-kind { width: 56px; height: 56px; display: grid; place-items: center; flex: none; color: var(--sr-label-accent); }
+.qc-main { min-width: 0; }
+.qc-title { margin: 0; font-size: var(--type-title); line-height: 1.3; font-weight: 700; overflow-wrap: anywhere; }
+.qc-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.qc-meta { font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.qc-lane { display: inline-flex; align-items: stretch; height: 26px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); font-size: var(--type-meta); font-weight: 700; letter-spacing: .06em; }
+.qc-lane::before { content: ''; width: 4px; background: var(--sr-lane-path); }
+.qc-lane[data-lane='dsa']::before { background: var(--sr-lane-dsa); }
+.qc-lane[data-lane='design']::before { background: var(--sr-lane-design); }
+.qc-lane[data-lane='career']::before { background: var(--sr-lane-career); }
+.qc-lane span { display: flex; align-items: center; padding: 0 8px; }
+.qc-linkwrap { display: inline-flex; }
+.qc-link { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; font-size: var(--type-meta); font-weight: 700; }
+.qc-reason { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qc-reason .glyph { color: var(--sr-label-accent); flex: none; }
+.qc-rtext { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.qc-reason .qc-pips { margin-left: auto; }
+.qc-note { margin: 0; font-size: var(--type-small); color: var(--sr-text-secondary); }
+/* the "Then" block: a boxed line under the reason, the label above the text */
+.qc-then { display: grid; gap: 4px; margin: 0; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); }
+.qc-then .qc-ttext { color: var(--sr-text-primary); }
+.qc-notes { display: grid; gap: 8px; }
+.qc-notes:empty { display: none; }
+.qc-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; padding-bottom: 4px; }
+.qc-pick { display: grid; gap: 16px; }
+.qc-pgroup { display: grid; gap: 6px; }
+.qc-pgroup ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.qc-pitem { display: flex; justify-content: space-between; gap: 12px; width: 100%; padding: 8px 12px; text-align: left; color: var(--sr-text-primary); background: transparent; border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 600; cursor: pointer; }
+.qc-pitem:hover { border-color: var(--sr-text-secondary); }
+/* the title wraps; the "AI · 55 min" cell keeps one line and its width, so a long title never squeezes it into a column */
+.qc-pitem .qc-ptitle { min-width: 0; overflow-wrap: anywhere; }
+.qc-pitem .qc-meta { white-space: nowrap; flex-shrink: 0; }
+.qc-second, .qc-ritual { display: grid; gap: 10px; justify-items: start; }
+.qc-stitle, .qc-rtitle { font-size: var(--type-small); font-weight: 600; line-height: 1.4; }
+.qc-ractions { display: flex; gap: 12px; }
+.qc-drawer { background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); }
+.qc-dtoggle { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 16px; background: transparent; border: 0; color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.qc-dbody { display: flex; flex-wrap: wrap; gap: 8px 24px; padding: 4px 16px 14px; font-size: var(--type-small); }
+@media (max-width: 1099px) { .qc-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 767px) {
+  /* TODAY-29/30: Start sits above the tab bar at 375 x 667 and is as wide as the card (the panel's 3 px border and 16 px padding are given back) */
+  .qc-page { gap: 16px; }
+  .qc-top { gap: 4px 12px; }
+  /* the "Review: n due" chip sits on the Day row, to the right; the phase line takes the next row */
+  .qc-top { align-items: center; }
+  .qc-top .qc-day { order: 0; }
+  .qc-top .qc-chip { order: 1; margin-left: auto; }
+  .qc-top .qc-phase { order: 2; flex: 1 0 100%; }
+  .qc-then { display: none; }
+  /* the kind tile stays on a phone, small, beside the title; the chips run full width under both */
+  .qc-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: start; }
+  .qc-main { display: contents; }
+  .qc-kind { width: 40px; height: 40px; }
+  .qc-kind .glyph { width: 28px; height: 28px; }
+  .qc-chips { grid-column: 1 / -1; margin-top: 0; }
+  /* the card gives up its side borders and padding: its content keeps a 16 px inset, the action group runs edge to edge, so the
+     Start button is exactly as wide as the card (over 90 percent of the viewport) and nothing overlaps a border */
+  .qc.sr-panel { gap: 12px; padding-inline: 0; border-inline-width: 0; box-shadow: inset 0 3px 0 var(--sr-edge-light-panel), inset 0 -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark); }
+  .qc > :not(.qc-actions) { margin-inline: 16px; }
+  .qc-actions { flex-direction: column-reverse; align-items: stretch; flex-wrap: nowrap; gap: 12px; margin: 0; padding-bottom: 0; order: 1; }
+  .qc-actions .sr-btn { width: 100%; height: var(--sr-size-hit-touch); }
+  .qc-notes { order: 2; }
+  /* the resource link is a 44 px touch target on a phone (24 px, WCAG 2.5.8, elsewhere) */
+  .qc-link { min-height: 44px; }
+}
+
+/* TODAY-50: the Pom card. A 96 x 200 stage beside the label, the level, the next form and a 12-cube meter; neutral colours, no accent */
+.pom-card { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; align-items: start; }
+.pom-well { position: relative; height: 210px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.pom-well pom-stage { position: absolute; inset: 0; }
+.pom-stats { display: grid; gap: 8px; align-content: space-between; height: 210px; min-width: 0; }
+.pom-lv { font-family: var(--sr-font-pixel); font-size: var(--type-display-m); line-height: 1.2; font-variant-numeric: tabular-nums; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.pom-meter { display: flex; gap: 2px; height: 10px; }
+.pom-cube { flex: 1; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.pom-cube[data-on='true'] { background: var(--sr-text-primary); border-color: var(--sr-text-primary); }

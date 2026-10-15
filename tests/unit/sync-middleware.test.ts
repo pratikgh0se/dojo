@@ -4,7 +4,6 @@ import { installOutbox, type SyncGate } from '../../src/data/sync/middleware'
 import { mkTicket } from '../helpers/tickets'
 import { realPlan } from '../helpers/plan'
 import { runReconcile } from '../../src/data/seed'
-import { ensureSeedArtifacts } from '../../src/data/projectActions'
 
 let d: DojoDB
 let gate: SyncGate
@@ -116,14 +115,12 @@ describe('I6: no-op puts record nothing', () => {
     expect((await outbox()).map(r => r.id)).toEqual(['b'])
   })
 
-  it('two boots add 0 ops the second time (reconcile + seed artifacts)', async () => {
+  it('two boots add 0 ops the second time (reconcile)', async () => {
     const plan = realPlan()
     await runReconcile(d, plan)
-    await ensureSeedArtifacts(d, 1)
     const first = await d._outbox.count()
     expect(first).toBeGreaterThan(0)
     await runReconcile(d, plan)
-    await ensureSeedArtifacts(d, 2)
     expect(await d._outbox.count()).toBe(first)
   })
 })

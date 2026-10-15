@@ -123,6 +123,52 @@ describe('/db routes', () => {
     expect(h.userHome).toBe(homedir())
   })
 
+  it('LAUNCH-04 / README: health returns exactly the contract keys, with a non-empty dbId and dbPath = <home>/dojo.db', async () => {
+    const h = await (await fetch(base + '/db/health')).json()
+    expect(Object.keys(h).sort()).toEqual(['dbId', 'dbPath', 'docs', 'home', 'lastBackup', 'ok', 'ops', 'projectRepo', 'userHome'])
+    expect(typeof h.dbId).toBe('string')
+    expect(h.dbId.length).toBeGreaterThan(0)
+    expect(h.dbPath).toBe(join(home, 'dojo.db'))
+    expect(h.home).toBe(home)
+    expect(h.lastBackup === null || typeof h.lastBackup === 'number').toBe(true)
+  })
+
+  it('MIG-18: ops counts persisted operations: +1 per applied op, unchanged by a read, a repeat or a server restart on the same home', async () => {
+    const ops = async () => (await (await fetch(base + '/db/health')).json()).ops as number
+    const before = await ops()
+    await post('/db/ops', { clientId: 'c', ops: [{ ...op('r1'), opId: 'r1' }] })
+    expect(await ops()).toBe(before + 1)
+    await post('/db/ops', { clientId: 'c', ops: [{ ...op('r2'), opId: 'r2' }] })
+    expect(await ops()).toBe(before + 2)
+    await post('/db/ops', { clientId: 'c', ops: [{ ...op('r2'), opId: 'r2' }] }) // a repeat applies nothing
+    await fetch(base + '/db/state')
+    expect(await ops()).toBe(before + 2)
+    const id = (await (await fetch(base + '/db/health')).json()).dbId
+    await s.close()
+    await start() // same home
+    expect(await ops()).toBe(before + 2)
+    expect((await (await fetch(base + '/db/health')).json()).dbId).toBe(id)
+  })
+
+  it('README: /db/backups is newest first with at in epoch milliseconds; a restore changes dbId and lists a pre-restore-* entry', async () => {
+    type B = { file: string; bytes: number; at: number }
+    const list = async () => (await (await fetch(base + '/db/backups')).json()).backups as B[]
+    const health = async () => (await (await fetch(base + '/db/health')).json()) as { dbId: string; lastBackup: number | null }
+    await post('/db/ops', { clientId: 'c', ops: [op('A')] })
+    const made = await (await post('/db/backup', {})).json()
+    const dbId0 = (await health()).dbId
+    await post('/db/ops', { clientId: 'c', ops: [op('B')] })
+    expect((await post('/db/restore', { file: made.file })).status).toBe(200)
+    const after = await list()
+    expect(after.every(b => typeof b.at === 'number' && Number.isInteger(b.at) && b.bytes > 0)).toBe(true)
+    expect(after.map(b => b.at)).toEqual([...after.map(b => b.at)].sort((x, y) => y - x))
+    expect(after.some(b => b.file.startsWith('pre-restore-'))).toBe(true)
+    expect(after.map(b => b.file)).toContain(made.file)
+    const h = await health()
+    expect(h.dbId).not.toBe(dbId0)
+    expect(typeof h.lastBackup).toBe('number')
+  })
+
   it('ops apply, are idempotent, and state returns them; history only grows', async () => {
     const body = { clientId: 'c', ops: [{ ...op('t1', { id: 't1', status: 'done' }), opId: 'o1' }] }
     expect((await (await post('/db/ops', body)).json()).applied).toBe(1)

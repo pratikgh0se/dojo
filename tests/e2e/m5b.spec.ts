@@ -1,18 +1,23 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { IST, idbAll, onboard } from './helpers'
 
-test('M5b demo: find this Sunday’s design and its deep dives (live plan)', async ({ page }) => {
+// /dsa, /designs, /atlas and /banks are in no rail item any more (SHELL-21): the palette is the way in (SHELL-17)
+const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+async function viaPalette(page: Page, query: string, path: string) {
+  await page.keyboard.press(`${MOD}+k`)
+  await page.getByTestId('shell-palette-input').fill(query)
+  await expect(page.getByTestId('shell-palette-item').first()).toHaveAttribute('data-target', path)
+  await page.keyboard.press('Enter')
+}
+
+test('M5b demo: find the next design and its deep dives (live plan)', async ({ page }) => {
   await page.clock.setFixedTime(IST('2026-10-06T21:10:00'))
   await onboard(page, '2026-10-05')
-  await page.keyboard.press('4')
+  await viaPalette(page, 'designs', '/designs')
   await expect(page).toHaveURL(/\/designs$/)
-  await expect(page.getByTestId('next-design-text')).toHaveText('Design bank starts S21')
+  await expect(page.getByTestId('next-design-title')).toHaveText('The method, on a whiteboard, in 45 minutes')
   await expect(page.getByTestId('designs-done')).toHaveText('0/48')
 
-  // Sprint 21, day 1 (Mon 2027-07-12)
-  await page.clock.setFixedTime(IST('2027-07-12T21:10:00'))
-  await page.reload()
-  await expect(page.getByTestId('next-design-title')).toHaveText('The method, on a whiteboard, in 45 minutes')
   await page.getByTestId('open-next-tier').click()
   await expect(page).toHaveURL(/\/designs\?tier=1$/)
   await expect(page.getByTestId('tier-1')).toHaveAttribute('aria-pressed', 'true')
@@ -28,6 +33,6 @@ test('M5b demo: find this Sunday’s design and its deep dives (live plan)', asy
   await expect(page.getByTestId('next-design-title')).toHaveText('Back-of-envelope sheet you know by heart')
 
   const events = await idbAll<{ t: string; id: string }>(page, 'events')
-  // the jump to sprint 21 also rolled the unfinished cards on: that is one `rolled` event, not part of this story
-  expect(events.filter(e => e.t !== 'rolled').map(e => [e.t, e.id])).toEqual([['tick', 'd-method']])
+  // R1 has no roll-over (README Retired: sprint machinery), so jumping the clock to sprint 21 writes nothing besides the tick
+  expect(events.map(e => [e.t, e.id])).toEqual([['tick', 'd-method']])
 })

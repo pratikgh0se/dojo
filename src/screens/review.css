@@ -1,0 +1,42 @@
+.rv { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+.rv-card { gap: 16px; display: grid; min-width: 0; }
+.rv-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.rv-what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.rv-name { font-family: var(--sr-font-body); font-size: var(--type-body); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.rv-cap { font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; line-height: 1.3; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); }
+.rv-ok { color: var(--sr-label-ok); }
+.rv-meta { font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.rv-q { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-title); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.rv-field { display: grid; gap: 8px; }
+.rv-field textarea { min-height: 150px; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-body); font-weight: 400; line-height: 1.5; resize: vertical; }
+.rv-field textarea:focus { border-color: var(--sr-energy-accent); outline: 0; }
+.rv-ans { display: grid; gap: 8px; padding: 12px 14px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.rv-ans blockquote { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-body); font-weight: 400; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rv-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; }
+.rv-grades .sr-btn { flex: 0 1 auto; }
+/* the next due interval sits after the grade's name, in the mono face; it is drawn, not text, so the button's name stays the grade */
+.rv-grade::after { content: attr(data-hint); margin-left: 10px; font-family: var(--sr-font-mono); font-size: var(--type-meta); font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--sr-text-secondary); }
+.rv-lane { display: inline-flex; align-items: stretch; height: 26px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; line-height: 1; }
+.rv-lane::before { content: ''; width: 4px; background: var(--sr-lane-path); }
+.rv-lane[data-lane='dsa']::before { background: var(--sr-lane-dsa); }
+.rv-lane[data-lane='design']::before { background: var(--sr-lane-design); }
+.rv-lane[data-lane='career']::before { background: var(--sr-lane-career); }
+.rv-lane span { display: flex; align-items: center; padding: 0 8px; }
+.rv-queue { display: grid; gap: 10px; }
+.rv-count { display: flex; align-items: baseline; gap: 12px; font-size: var(--type-body); color: var(--sr-text-secondary); }
+.rv-qline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+.rv-big { font-family: var(--sr-font-pixel); font-size: var(--type-display-xl); line-height: 1.1; color: var(--sr-text-primary); -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.rv-empty { grid-column: 1 / -1; display: grid; gap: 12px; justify-items: start; padding: 24px; background: var(--sr-surface-panel); border: 3px solid var(--sr-edge-dark); }
+.rv-empty p { margin: 0; }
+@media (max-width: 1099px) { .rv { grid-template-columns: minmax(0, 1fr); } .rv-queue { order: -1; } }
+@media (max-width: 767px) { .rv-actions .sr-btn, .rv-grades .sr-btn { flex: 1 1 100%; height: var(--sr-size-hit-touch); } }
+/* D10: the one action is orange when it can be used; with no answer yet it is a dashed outline that says why (the hint under the box), not a dim brown button */
+.rv-actions .sr-btn-accent:disabled { opacity: 1; background: var(--sr-surface-well); box-shadow: none; border: 2px dashed var(--sr-edge-mid); color: var(--sr-text-secondary); cursor: not-allowed; }
+/* D11: on a phone the queue is a slim strip above the card: "6 due" and the oldest on one line, the lane split under it */
+@media (max-width: 767px) {
+  .rv { gap: 12px; }
+  .rv-queue.sr-panel { padding: 10px 14px; gap: 2px; }
+  .rv-queue .rv-cap { display: none; }
+  .rv-big { font-size: var(--type-display-m); }
+  .rv-qline { gap: 2px 12px; }
+}

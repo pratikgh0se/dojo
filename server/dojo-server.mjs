@@ -19,6 +19,7 @@ import { FRAME_PATH, inPyPrefix, isPyAsset, pyAssetHeaders } from './runner/pyfr
 import { createRunner, LIMITS as RUN_LIMITS, publicPack, sweepStaleRunDirs } from './runner/runner.mjs'
 import { buildOriginAllowList, createHelperHandler, HOST, hostOriginProblem, MAX_BODY_BYTES, readBody, readConfig, STATUS } from './helper.mjs'
 import { overlayPlan, readProfile, resolveProjectRepo } from './profile.mjs'
+import { PlanFileError, planFileSetting, readPlanFile } from './plan-file.mjs'
 
 export const MAX_OPS_BODY_BYTES = 5 * 1024 * 1024
 const BIG_BODY_ROUTES = new Set(['/db/ops'])
@@ -38,6 +39,16 @@ const PACKS_PREFIX = '/tools/packs/'
 /** The run route's body cap: the code (64 KiB, checked after parsing) plus JSON escaping and the other fields. */
 export const MAX_RUN_BODY_BYTES = 512 * 1024
 const isRunRoute = path => path === RUN_PATH || path.startsWith(PACKS_PREFIX)
+
+// Sub-paths that never fall back to the SPA page when nothing is there: the API prefixes and the build's asset folders.
+// The bare prefix (/ai, /db) is not listed: it may be a client route (SHELL-20 loads /ai and redirects to /).
+const NO_SPA_PREFIXES = ['/db', '/ai', '/tools', '/data', '/assets', '/engines', '/fonts', '/pyodide', '/pyrunner']
+const ASSET_EXTS = new Set(Object.keys(MIME).filter(e => e !== '.html').concat(['.jpeg', '.gif', '.webp', '.avif', '.woff', '.ttf', '.otf', '.mp3', '.mp4', '.webm', '.pdf', '.xml']))
+export function isMissingAssetRequest(path, accept) {
+  if (NO_SPA_PREFIXES.some(p => path.startsWith(p + '/'))) return true
+  if (!ASSET_EXTS.has(extname(path).toLowerCase())) return false
+  return !/text\/html/i.test(String(accept ?? ''))
+}
 
 function isFile(p) {
   try { return statSync(p).isFile() } catch { return false }
@@ -96,8 +107,14 @@ export function readServerConfig(argv = process.argv.slice(2), env = process.env
     if (port === REAL_APP_PORT && !real) throw new Error(`DOJO_PORT ${REAL_APP_PORT} is reserved for Dojo.app (--real)`)
   }
   const dbOrigins = new Set(String(env.DOJO_DB_EXTRA_ORIGINS ?? '').split(',').map(x => x.trim()).filter(Boolean))
+  // LAUNCH-13: DOJO_PLAN_FILE must name a readable plan JSON at start (the server refuses to start otherwise, with the message).
+  // --real (the installed Dojo.app) ignores it: a stale shell export must neither stop the app nor swap its plan.
+  const planFile = real ? null : planFileSetting(env)
+  if (planFile) readPlanFile(planFile)
+  else if (real && planFileSetting(env)) process.stderr.write('DOJO_PLAN_FILE is ignored in --real mode (the installed app never serves a tester plan)\n')
   return {
     ...readConfig(argv, env),
+    planFile,
     // SEC-D-06: serving an app build (Dojo.app's --real, or --dist), the server answers its own origin (added on
     // listen), DOJO_HELPER_ORIGINS and DOJO_DB_EXTRA_ORIGINS only, never the dev ports. Dev (scripts/dev.mjs, no
     // --dist) keeps them for its vite page.
@@ -200,8 +217,41 @@ export function createDojoServer(cfg, clock = () => new Date()) {
       res.writeHead(403, { 'Content-Type': 'text/plain' })
       return res.end('forbidden')
     }
+    // A symlink inside dist must not lead out of it either: an existing file is checked by its real path too.
+    if (isFile(file)) {
+      let real
+      try { real = realpathSync(file) } catch { real = null }
+      if (real === null || (real !== distRoot && !real.startsWith(distRoot + sep))) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' })
+        return res.end('forbidden')
+      }
+    }
     // G6: the shipped plan is a neutral sample; DOJO_HOME/profile.json's `plan` keys (the learner's own schedule
     // and links) are laid over it here, read per request so an edited profile shows on the next launch.
+    // LAUNCH-13: with DOJO_PLAN_FILE set, that file stands in for the build's plan (re-read per request; the
+    // profile overlay still goes on top). A file that went bad since start answers 500 with the message.
+    if (rel === PLAN_PATH && cfg.planFile && (req.method === 'GET' || req.method === 'HEAD')) {
+      let text
+      try {
+        text = readPlanFile(cfg.planFile)
+      } catch (e) {
+        logger.log(describeError(e))
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' })
+        return res.end(e instanceof Error ? e.message : String(e))
+      }
+      let body
+      try {
+        body = Buffer.from(overlayPlan(text, readProfile(cfg.home)))
+      } catch (e) {
+        logger.log(`profile.json not applied to ${PLAN_PATH}: ${describeError(e)}`)
+        body = Buffer.from(text)
+      }
+      res.writeHead(200, {
+        'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache', 'Content-Length': body.length,
+        'Content-Security-Policy': CSP, 'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff',
+      })
+      return res.end(body)
+    }
     if (rel === PLAN_PATH && isFile(file) && req.method === 'GET') {
       let body
       try {
@@ -218,7 +268,10 @@ export function createDojoServer(cfg, clock = () => new Date()) {
     }
     if (!isFile(file)) {
       // C-PYTHON: a missing runner asset is a 404, never the SPA page (a script would parse HTML as JS).
-      if (extname(rel) !== '' || inPyPrefix(path)) {
+      // A last segment with a dot is NOT enough to call a path an asset: ticket ids are dotted (/do/ai.l3.learn.4),
+      // and a reload of such a route must get the SPA page. A missing path is a 404 only if it is under an API or
+      // asset prefix, or ends in a known asset extension and is not a browser navigation (Accept names text/html).
+      if (inPyPrefix(path) || isMissingAssetRequest(path, req.headers.accept)) {
         res.writeHead(404, { 'Content-Type': 'text/plain', 'X-Content-Type-Options': 'nosniff' })
         return res.end('not found')
       }
@@ -513,7 +566,15 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
     console.error(`dojo server: ${e.message}`)
     process.exit(2)
   }
-  const cfg = readServerConfig(argv, env)
+  let cfg
+  try {
+    cfg = readServerConfig(argv, env)
+  } catch (e) {
+    // LAUNCH-13: a bad DOJO_PLAN_FILE (never checked under --real) refuses the start with the one-line reason.
+    if (!(e instanceof PlanFileError)) throw e
+    console.error(e.message)
+    process.exit(1)
+  }
   const s = createDojoServer(cfg)
   installCrashGuards(msg => { s.logger.log(msg); console.error(`dojo server: ${msg}`) })
   let port

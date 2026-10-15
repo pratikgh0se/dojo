@@ -1,18 +1,10 @@
 import { useLayoutEffect, useSyncExternalStore } from 'react'
 
 /**
- * Ruling 23 K1: the footer legend is truthful per screen. The tab keys are global; the keys a screen itself answers
- * (Enter, space, d, s, Shift+arrows) are listed only while that screen answers them, so a screen publishes them here
- * and the Shell prints them after the global ones. A key that means nothing on a screen is not on its legend.
+ * Ruling 23 K1: the shortcuts list is truthful per screen. The destination keys (1 to 6) are global and listed by the
+ * shortcuts overlay itself; the keys a screen answers (Enter, F, D, Space) are published here while that screen answers
+ * them, and the overlay prints them under "On this screen". A key that means nothing on a screen is not listed.
  */
-export const GLOBAL_KEYS = '1–9, 0 tabs · a atlas · b banks · m more · t today'
-
-/** Today, with a NOW item: Enter opens it, space starts or pauses its timer, d marks it done, s slides it. */
-export const TODAY_KEYS: readonly string[] = ['Enter start', 'space timer', 'd done', 's slide']
-/** Board, the card itself focused. */
-export const BOARD_CARD_KEYS: readonly string[] = ['Enter open', 'Shift+←/→ move', 'd done', 's slide']
-/** Board, a control inside a card focused (Enter then belongs to that control). */
-export const BOARD_INSIDE_KEYS: readonly string[] = ['Shift+←/→ move', 'd done', 's slide']
 
 const NONE: readonly string[] = []
 let keys: readonly string[] = NONE
@@ -24,11 +16,6 @@ function setScreenKeys(next: readonly string[]) {
   if (same(keys, next)) return
   keys = next
   subs.forEach(f => f())
-}
-
-/** The legend line for the keys a screen publishes. */
-export function legendText(screenKeys: readonly string[] = NONE): string {
-  return [GLOBAL_KEYS, ...screenKeys].join(' · ')
 }
 
 /** A screen's own keys, for as long as it is mounted (and while `next` says so). */

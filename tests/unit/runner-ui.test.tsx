@@ -10,7 +10,7 @@ import { SLOW_GO_RUN_TEXT, SLOW_RUN_MS, stdoutText } from '../../src/runner/stat
 import type { PublicPack, RunResult, Step } from '../../src/runner/types'
 import { Do } from '../../src/screens/Do'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 import { mkTicket } from '../helpers/tickets'
 
@@ -50,7 +50,7 @@ async function panel(result: Partial<RunResult> | null = null) {
   const d = await seededDb()
   mockServer(result)
   const onPass = vi.fn()
-  renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={onPass} />, { db: d, plan: smallPlan })
+  renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={onPass} />, { db: d, plan: flatPlanV2 })
   await screen.findByRole('textbox', { name: 'Code' })
   return { d, onPass }
 }
@@ -124,7 +124,7 @@ describe('UAT cu-4 P3-17: a slow first Go run says why', () => {
       if (String(url) === '/tools/run-go') return new Promise<Response>(ok => { release = ok })
       return new Response('{}', { status: 404 })
     }))
-    renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={() => {}} />, { db: d, plan: smallPlan })
+    renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={() => {}} />, { db: d, plan: flatPlanV2 })
     await screen.findByRole('textbox', { name: 'Code' })
     fireEvent.click(screen.getByRole('button', { name: 'Run' }))
     expect(await screen.findByTestId('run-status')).toHaveTextContent(/^Running…$/)
@@ -145,7 +145,8 @@ describe('UAT cu-4 P3-19: a case row keeps its mark beside its text', () => {
     const row = caseRows()[0]
     expect(row.querySelector(':scope > .run-case-mark')).not.toBeNull()
     expect(row.querySelector(':scope > .run-case-body > code')).toHaveTextContent('numDecodings("12")')
-    expect(row).toHaveTextContent('✓ numDecodings("12") → 2')
+    expect(row).toHaveTextContent('numDecodings("12") → 2')
+    expect(row.querySelector('.run-case-mark svg.glyph')).toHaveAttribute('data-glyph', 'check')
   })
 })
 
@@ -247,34 +248,27 @@ describe('M7: a pass with no cycle yet is queued', () => {
   })
 })
 
-describe('M6: a hint by the disabled Solved buttons', () => {
-  it('reads "Submit 5/5 to unlock Solved" until a passing Submit', async () => {
-    const d = await seededDb()
-    await d.tickets.put(mkTicket({ id: 'p91', track: 'interview', kind: 'problem', title: 'Decode Ways' }))
-    mockServer({ status: 'ok', cases: PACK.cases.map(c => ({ ...c, got: c.expected, pass: true })) })
-    renderWithApp(<Do />, { db: d, plan: smallPlan, route: '/do/p91', path: '/do/:ticketId' })
-    const hint = await screen.findByTestId('do-run-gate-hint')
-    expect(hint).toHaveTextContent('Submit 5/5 to unlock Solved')
-    expect(screen.getByTestId('do-outcome-solved')).toBeDisabled()
-    expect(screen.getByTestId('do-outcome-solved')).toHaveAttribute('aria-describedby', hint.id)
-    await screen.findByRole('textbox', { name: 'Code' })
-    fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
-    await waitFor(() => expect(screen.getByTestId('run-status')).toHaveTextContent('Passed 5/5'))
-    await waitFor(() => expect(screen.getByTestId('do-outcome-solved')).toBeEnabled())
-    expect(screen.queryByTestId('do-run-gate-hint')).toBeNull()
-  })
-
-  it('L6: shows only while the run gate is what disables them (not after Give up locks the outcomes)', async () => {
+describe('TICKET-26: Solved is not gated on a pack ticket', () => {
+  it('Solved and Solved with help are enabled from the start, with no "Submit 5/5" hint, before any Submit', async () => {
     const d = await seededDb()
     await d.tickets.put(mkTicket({ id: 'p91', track: 'interview', kind: 'problem', title: 'Decode Ways' }))
     mockServer(null)
-    renderWithApp(<Do />, { db: d, plan: smallPlan, route: '/do/p91', path: '/do/:ticketId' })
-    await screen.findByTestId('do-run-gate-hint')
+    renderWithApp(<Do />, { db: d, plan: flatPlanV2, route: '/do/p91', path: '/do/:ticketId' })
+    await screen.findByRole('textbox', { name: 'Code' })
+    expect(screen.queryByTestId('do-run-gate-hint')).toBeNull()
+    expect(screen.getByTestId('do-outcome-solved')).toBeEnabled()
+    expect(screen.getByTestId('do-outcome-help')).toBeEnabled()
+    expect(screen.getByTestId('do-outcome-solved')).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('Give up still locks the outcomes', async () => {
+    const d = await seededDb()
+    await d.tickets.put(mkTicket({ id: 'p91', track: 'interview', kind: 'problem', title: 'Decode Ways' }))
+    mockServer(null)
+    renderWithApp(<Do />, { db: d, plan: flatPlanV2, route: '/do/p91', path: '/do/:ticketId' })
+    await screen.findByTestId('do-outcome-giveup')
     fireEvent.click(screen.getByTestId('do-outcome-giveup'))
     await waitFor(() => expect(screen.getByTestId('do-outcome-giveup')).toBeDisabled())
     expect(screen.getByTestId('do-outcome-solved')).toBeDisabled()
-    expect(screen.queryByTestId('do-run-gate-hint')).toBeNull()
-    expect(screen.getByTestId('do-outcome-solved')).not.toHaveAttribute('aria-describedby')
-    expect(screen.getByTestId('do-outcome-help')).not.toHaveAttribute('aria-describedby')
   })
 })

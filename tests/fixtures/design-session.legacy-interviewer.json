@@ -1,0 +1,43 @@
+{
+  "id": "ds-legacy-1", "designId": "d-method", "at": 1791108000000, "phase": "done", "endedAt": 1791110700000, "lockedAt": 1791110700000,
+  "minutes": 45, "mode": "interviewer", "view": "2d",
+  "canvas": {
+    "layout": "manual",
+    "nodes": [
+      { "id": "gateway-1", "kind": "gateway", "label": "Gateway 1", "x": 1, "y": 1 },
+      { "id": "service-1", "kind": "service", "label": "Service 1", "x": 8, "y": 1 },
+      { "id": "sql-1", "kind": "sql", "label": "Sql 1", "x": 15, "y": 1 }
+    ],
+    "links": [
+      { "from": "gateway-1", "to": "service-1", "kind": "sync" },
+      { "from": "service-1", "to": "sql-1", "kind": "write" }
+    ],
+    "zones": [], "flows": []
+  },
+  "close": { "tradeoff": { "chose": "a", "over": "b", "because": "c" }, "breaksAt10x": "x", "dataOwnership": "y", "couldNotAnswer": 3, "readNext": "DDIA ch. 5" },
+  "deepDives": [
+    { "q": "Requirements", "answered": 2, "by": "model" }, { "q": "API first", "answered": 1, "by": "model" },
+    { "q": "One deep dive", "answered": 1, "by": "model" }, { "q": "Failure modes", "answered": 0, "by": "model" }
+  ],
+  "tradeoffs": [{ "chose": "a", "over": "b", "because": "c" }, { "chose": "fail open", "over": "fail closed", "because": "uptime" }],
+  "rubric": 12, "rubricBy": "model",
+  "lenses": { "load": 2, "data": 1, "consistency": 1, "failure": 0, "latency": 1, "cost": 0, "evolution": 1 },
+  "interview": {
+    "messages": [
+      { "from": "interviewer", "text": "Restate: a gateway in front of a service. What are the requirements?" },
+      { "from": "you", "text": "10k rps, p99 100 ms" },
+      { "from": "interviewer", "text": "Which deep dive first?" },
+      { "from": "you", "text": "The API" }
+    ],
+    "final": {
+      "done": true, "score": 12,
+      "perItem": [
+        { "item": "Requirements and numbers", "points": 3, "note": "n" }, { "item": "API and data model", "points": 2, "note": "n" },
+        { "item": "High-level design that meets the numbers", "points": 3, "note": "n" },
+        { "item": "Two deep dives with real trade-offs", "points": 3, "note": "n" }, { "item": "Failure modes and operations", "points": 1, "note": "n" }
+      ],
+      "oneThingToStudy": "Backpressure.", "deepDives": [2, 1, 1, 0],
+      "lenses": { "load": 2, "data": 1, "consistency": 1, "failure": 0, "latency": 1, "cost": 0, "evolution": 1 }
+    }
+  }
+}

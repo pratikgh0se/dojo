@@ -72,6 +72,23 @@ describe('configs take their ports from dojoPort.ts', () => {
   })
 })
 
+describe('SHELL-20: dev proxy', () => {
+  const keys = Object.keys((config.server?.proxy ?? {}) as Record<string, unknown>)
+  const matches = (key: string, path: string) => (key.startsWith('^') ? new RegExp(key).test(path) : path.startsWith(key))
+
+  it('has no plain /ai key, so a direct load of /ai reaches the SPA redirect', () => {
+    expect(keys).not.toContain('/ai')
+  })
+
+  it('still proxies /ai/<job> to the disk server', () => {
+    expect(keys.some(k => matches(k, '/ai/hint'))).toBe(true)
+  })
+
+  it('does not match /ai alone', () => {
+    expect(keys.some(k => matches(k, '/ai'))).toBe(false)
+  })
+})
+
 describe('C3: dev and tests never use the real app port', () => {
   const dev = (env: Record<string, string>) => spawnSync(process.execPath, ['scripts/dev.mjs'], { env: { ...process.env, ...env }, encoding: 'utf8', timeout: 10_000 })
 

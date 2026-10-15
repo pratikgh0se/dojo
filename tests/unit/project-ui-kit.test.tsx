@@ -1,11 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { downloadText } from '../../src/lib/downloadText'
-import { CubeMark } from '../../src/screens/ai/CubeMark'
 import { Dialog } from '../../src/screens/ai/Dialog'
-import { focusRegion, Region } from '../../src/screens/ai/Region'
-import { StepLoader } from '../../src/screens/ai/StepLoader'
 
 function Harness({ nested = false }: { nested?: boolean }) {
   const [open, setOpen] = useState(false)
@@ -98,47 +94,5 @@ describe('Dialog', () => {
     fireEvent.keyDown(alert, { key: 'Escape' })
     expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Artifact · x' })).toBeInTheDocument()
-  })
-})
-
-describe('Region, CubeMark, StepLoader', () => {
-  it('Region is a named region that focusRegion focuses', () => {
-    render(<Region id="ai-cubes" title="Learn → build → prove" testId="ai-cube-ladder"><p>x</p></Region>)
-    const r = screen.getByRole('region', { name: 'Learn → build → prove' })
-    expect(r).toHaveAttribute('data-testid', 'ai-cube-ladder')
-    focusRegion('ai-cubes')
-    expect(document.activeElement).toBe(r)
-    focusRegion('missing')
-  })
-
-  it('CubeMark is a named img with data-state, or hidden when unnamed', () => {
-    render(<><CubeMark state="partial" name="Stage 00 learn: partial (1/3)" testId="c1" /><CubeMark state="full" testId="c2" /></>)
-    expect(screen.getByRole('img', { name: 'Stage 00 learn: partial (1/3)' })).toHaveAttribute('data-state', 'partial')
-    expect(screen.getByTestId('c2')).toHaveAttribute('aria-hidden', 'true')
-    expect(screen.getByTestId('c2')).toHaveAttribute('data-state', 'full')
-  })
-
-  it('StepLoader is a status named by its label with three blocks', () => {
-    render(<StepLoader label="Grading…" testId="grade-loading" />)
-    const s = screen.getByRole('status', { name: 'Grading…' })
-    expect(s).toHaveAttribute('data-testid', 'grade-loading')
-    expect(s.querySelectorAll('i')).toHaveLength(3)
-  })
-})
-
-describe('downloadText', () => {
-  it('downloads a named text blob through a temporary link', () => {
-    const blobs: Blob[] = []
-    const clicked: { href: string; download: string }[] = []
-    Object.assign(URL, { createObjectURL: vi.fn((b: Blob) => { blobs.push(b); return 'blob:dojo/1' }), revokeObjectURL: vi.fn() })
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-      clicked.push({ href: this.href, download: this.download })
-    })
-    downloadText('dojo-measures.md', '# Measures\n')
-    expect(blobs[0].size).toBe(11)
-    expect(blobs[0].type).toBe('text/markdown;charset=utf-8')
-    expect(clicked).toEqual([{ href: 'blob:dojo/1', download: 'dojo-measures.md' }])
-    expect(document.querySelector('a[download]')).toBeNull()
-    click.mockRestore()
   })
 })

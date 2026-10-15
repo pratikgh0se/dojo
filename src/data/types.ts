@@ -1,16 +1,21 @@
 import type {
-  AiErrorCode, Approach, BriefOutput, BriefSplitPart, CheckResult, DayType, DeliverableKind, ReviewStats, ClassifyOutput, DiagramJson, GradeOutput, InterviewFinal, JobName, Lens, ProviderName,
+  AiErrorCode, Approach, BriefOutput, CheckResult, DayType, DeliverableKind, ReviewStats, ClassifyOutput, DiagramJson, GradeOutput, InterviewFinal, JobName, Lens, ProviderName,
   Score012, SolutionOutput, SrAlgoJson,
 } from '../ai/types'
 import type { AtlasPattern } from '../content/patterns'
-import type { Weekday } from '../lib/dates'
+import type { DesignMode, DesignNotes } from '../rules/designDigest'
 
 export type { Approach, AtlasPattern, Lens, Score012 }
 
 export type Track = 'ai' | 'interview'
 /** 'watch' and 'read' are learning cards (briefs contract Addendum 1 Q1): the plan itself only has the first four. */
-export type Kind = 'task' | 'problem' | 'design' | 'stage' | 'watch' | 'read'
-export type Status = 'todo' | 'doing' | 'done' | 'slid'
+export type Kind = 'task' | 'problem' | 'design' | 'stage' | 'watch' | 'read' | 'build' | 'writeup' | 'ritual'
+/** R1 flat queue: which lane a ticket belongs to. `track` stays (`ai` for path, `interview` otherwise). */
+export type Lane = 'path' | 'dsa' | 'design' | 'career' | 'ritual' | 'bank'
+/** R1: the lab a build ticket runs in. */
+export interface LabRef { id: string; gpu: 'none' | 'free' | 'rented'; costUsd?: number }
+/** `blocked` and `help` are set only by the learner on the Board (board.md); a legacy `slid` may remain on archived tickets. */
+export type Status = 'todo' | 'doing' | 'blocked' | 'help' | 'done' | 'slid'
 export type Difficulty = 'E' | 'M' | 'H'
 /** Weekly rotation slot a stage ticket (kind:'stage') belongs to; forge AI-track rewrite only. */
 export type StageSession = 'watch' | 'rebuild' | 'build' | 'teachback'
@@ -21,14 +26,14 @@ export interface Link { label: string; url: string }
 export type BankId = 'neetcode150' | 'blind75' | 'striver' | 'codeforces' | 'hellointerview' | 'mine'
 export type TicketOrigin =
   | 'plan' | 'bank:neetcode150' | 'bank:blind75' | 'bank:striver' | 'bank:codeforces' | 'bank:hellointerview' | 'mine'
-  /** briefs BR-08: a session split off a big item has its parent's id as its origin (and `childOf` set) */
+  /** briefs BR-08: a session split off a big item has its parent's id as its origin */
   | (string & {})
 /** PLATFORM "Do" ladder: 1 Attempt · 2 Hint · 3 Picture · 4 Video · 5 Solution. */
 export type Rung = 1 | 2 | 3 | 4 | 5
 export type HelpRung = 2 | 3 | 4 | 5
 /** DATA "Redo schedule": stage 0 = +3d, 1 = +10d, 2 = +30d. */
 export type RedoStage = 0 | 1 | 2
-export interface InterviewMessage { from: 'interviewer' | 'you'; text: string }
+export interface InterviewMessage { from: 'interviewer' | 'you'; text: string; hint?: true }
 export interface InterviewTranscript { messages: InterviewMessage[]; final?: InterviewFinal }
 /** AI.md "UI contract": model outputs are stored on the ticket so a second visit costs nothing. */
 export interface TicketAi {
@@ -42,12 +47,10 @@ export interface TicketAi {
 }
 
 /** v2 part 3 (briefs spec §1): what to do, where to go, what you'll learn and what "done" looks like. */
-export interface Brief extends Omit<BriefOutput, 'split'> {
+export interface Brief extends BriefOutput {
   status: 'draft' | 'approved'
   source: 'ai' | 'edited'
   linkCheck?: { url: string; ok: boolean; status: number }[]
-  /** the model's proposal to split a big item (kept so the Split dialog can prefill it) */
-  splitSuggestion?: BriefSplitPart[]
 }
 export type { DayType, DeliverableKind }
 /** C-RUNNER §4: the learner's code for a ticket with a problem pack, in table `code` (keyed by ticketId). */
@@ -115,6 +118,8 @@ export interface Ticket {
   plannedSprint: number
   sprint: number
   status: Status
+  /** the learner's one-line reason (at most 140 characters, trimmed) for a `blocked` or `help` ticket; removed when the ticket becomes todo, doing or done */
+  blockedNote?: string
   slidFrom: number[]
   doneAt?: number
   /** reserved (import removed from core); never true in core */
@@ -124,22 +129,27 @@ export interface Ticket {
   /** additive (briefs): the card brief, its learning-check attempts and the deliverable handed in */
   brief?: Brief
   deliverable?: Deliverable
-  /** additive (workload): rebalancing leaves a pinned card alone */
-  pinned?: boolean
-  /** additive (workload): the sprints this card rolled over from, oldest first */
-  rolledFrom?: number[]
-  /** additive (workload): where a rolled-over card counts in the Today/Load views (its home sprint) while it sits in `into` */
-  carry?: { home: number; into: number }
-  /** additive (split): a container's child ids; the container is done when all children are */
-  children?: string[]
-  /** additive (split): the container this session was split from */
-  childOf?: string
-  /** additive (split, ruling 10 Q22): when a container's own check passed; it is done once this is set and every child is */
-  checkPassedAt?: number
-  /** additive (split): this session's share of the parent's base XP, so splitting never mints XP */
-  xpBase?: number
   /** additive: plan file order, for stable sorting */
   order: number
+  /** additive (flat migration): set on a split session folded into the container with this id; the row is archived history */
+  mergedInto?: string
+  /** R1 plan content (additive; absent on old documents) */
+  lane?: Lane
+  node?: string
+  area?: string
+  phase?: number
+  explain?: string[]
+  /** D10: reference answers, parallel to `explain` */
+  explainAnswers?: string[]
+  lab?: LabRef
+  asOf?: string
+  /** R1 learner-owned (D11): never part of CONTENT_KEYS, so a plan refresh does not overwrite them */
+  orderOverride?: number
+  learnerNotes?: string
+  explainResponses?: string[]
+  selfMark?: 'done' | 'partial' | 'skipped'
+  /** ms epoch of the learner's last edit of the three fields above */
+  learnerUpdatedAt?: number
   proof?: {
     repo?: string
     commit?: string
@@ -180,36 +190,94 @@ export interface Session {
   endLog?: EndLog
 }
 
+/** R1 W6: the two question areas of a bank, the four question types, the four self-grades (trees-and-banks.md BANK-02, BANK-11). */
+export type BankArea = 'design' | 'ai'
+export type QuestionType = 'concept' | 'estimate' | 'tradeoff' | 'design'
+export type BankGrade = 'again' | 'hard' | 'good' | 'easy'
+/** A question as the plan ships it (`qbank[]`, BANK-02) and as an AI-made `bankExtra` row stores it (plus `aiMade` and `at`, no `source`). */
+export interface PlanQuestion {
+  id: string; area: BankArea; node: string; type: QuestionType; difficulty: number
+  question: string; answer: string; checklist: string[]; source?: string
+}
+/** R1 W6: one row per graded question, keyed by the question's id; holds the last grade (BANK-11, BANK-12). */
+export interface BankGradeRow { id: string; area: BankArea; node: string; grade: BankGrade; at: number; tries: number }
+/** R1 W6: an AI-made question ("More questions", BANK-19). Written only by that job, removed only by Delete (BANK-24). */
+export interface BankExtraRow extends Omit<PlanQuestion, 'source'> { aiMade: true; at: number }
+
+/** R1 F1: the daily AI pulse log, one row per local day. Not a ticket: no XP, no streak, no skip. */
+export interface Pulse {
+  /** `pulse-YYYY-MM-DD` of the local day */
+  id: string
+  day: string
+  /** ms epoch of the last save of that day's line (an edit moves it) */
+  at: number
+  /** what the learner asked an AI tool, at most 140 characters */
+  text: string
+}
+
+/** R1 W2: how hard a finished ticket felt, in the learner's words; null when left unanswered. */
+export type JournalRating = 'again' | 'hard' | 'good' | 'easy'
+/** R1 W2: whether the learner could explain a finished ticket without notes; null when left unanswered. */
+export type JournalExplain = 'no' | 'partly' | 'yes'
+export type JournalObstacle = 'time' | 'energy' | 'job' | 'tools' | 'other'
+export interface JournalItem { ticketId: string; rating: JournalRating | null; explain: JournalExplain | null }
+/**
+ * R1 W2: the daily journal, one row per local day (`journal-YYYY-MM-DD`). Written only by Save on /journal, never on page load.
+ * No XP, no streak. `mode` none is the "No study today" path: no items, an obstacle, an optional one line.
+ */
+export interface JournalRow {
+  id: string
+  day: string
+  /** ms epoch of the last save (not the entry's day) */
+  at: number
+  mode: 'studied' | 'none'
+  items: JournalItem[]
+  hardest?: string
+  next?: string
+  notes?: string
+  obstacle?: JournalObstacle
+  line?: string
+}
+
 export interface EndLog { done: string; stuckOn: string; nextStep: string }
+
+/** The `replan` event's report (contracts/migration.md MIG-03). Field names are part of the contract. */
+export interface ReplanReport {
+  /** the manual backup taken just before the migration (`dojo-YYYY-MM-DD-HHMMSS.db`), null when the app runs without a disk server */
+  backupFile: string | null
+  /** tickets the migration archived (dropped plan tickets and folded split sessions) */
+  archived: number
+  /** ids of done tickets that are no longer in the plan */
+  doneAndDropped: string[]
+  xpBefore: number
+  xpAfter: number
+  designSessionsRewritten: number
+  coreMinutesBefore: number
+  coreMinutesAfter: number
+  /** code rows folded into another one (same container and language); the `code` count drops by this (MIG-08) */
+  codeMerged: number
+}
 
 export type DojoEvent =
   | { t: 'tick'; id: string; at: number; xp: number }
   | { t: 'untick'; id: string; at: number }
-  | { t: 'slide'; id: string; at: number; from: number; to: number; reason: 'manual' | 'sprint' | 'plan' }
-  | { t: 'slide_sprint'; at: number; sprint: number; count: number; to: number; ids: string[] }
-  | { t: 'shift_plan'; at: number; fromSprint: number; ids: string[]; to: Record<string, number> }
+  /** legacy (Undo is retired, nothing writes it): the sync layer still maps `of` to a disk id (src/data/sync/diskIds.ts) */
   | { t: 'undo'; at: number; of: number }
   /** DATA "events": a help rung opened; `applied` = the part the 0 floor actually took */
   | { t: 'rung'; id: string; at: number; rung: HelpRung; cost: number; applied?: number }
   | { t: 'redo_pass'; id: string; at: number; stage: RedoStage; refund: number }
   | { t: 'redo_fail'; id: string; at: number; stage: RedoStage; refund: 0 }
   | { t: 'grade'; id: string; at: number; score: number; max: number }
-  /** briefs: one roll-over run: these cards moved on to sprint `to` from the sprints that ended (no XP) */
-  | { t: 'rolled'; at: number; to: number; ids: string[] }
   /** briefs: a learning-check attempt */
   | { t: 'check'; id: string; at: number; passed: boolean }
-  /** workload: the user moved a card to another sprint by hand or accepted a rebalance move */
-  | { t: 'moved'; id: string; at: number; from: number; to: number; why: 'manual' | 'rebalance' }
-  /** UAT r3 J7: a card moved between Board columns (drag, Shift+arrow, d); Undo moves it back */
-  | { t: 'column'; id: string; at: number; from: Status; to: Status }
   /** ux spec: a finished Pomodoro focus block on a ticket. A health signal only: it never carries XP. */
   | { t: 'focus'; id: string; at: number; minutes: number; sid?: string; block?: number }
 
-  /** ruling 20 S6: a card was split into sessions (`parts`); Undo removes the parts while none has been started */
-  | { t: 'split'; id: string; at: number; parts: string[] }
+  /** flat migration (MIG-03): ran once; total XP is unchanged */
+  | { t: 'replan'; at: number; report: ReplanReport }
 
-/** `appSession`: the app session that wrote an undoable event (ruling 20 S6: Undo is per session). */
-export type StoredEvent = DojoEvent & { seq?: number; appSession?: string }
+/** Old stored rows may carry types this build no longer writes (`column`, `slide_sprint`, `shift_plan`); `remapEvent` rewrites their ticket ids generically and an `appSession` stamp; they are only remapped, never read. */
+export type StoredEvent = DojoEvent & { seq?: number }
 
 export interface Settings {
   /** 'YYYY-MM-DD' local date Sprint 1 begins; '' until first-launch onboarding sets it */
@@ -219,78 +287,38 @@ export interface Settings {
   aiProviders: Record<string, string[]>
   /** additive: cached sum of base XP over non-archived plan tickets */
   possibleXp: number
-  /** additive (workload): "Core minutes per sprint"; absent means 1440 (24 h) */
+  /** additive (workload): "Core minutes per sprint"; absent means twice the weekly lane budget (960, 16 h, by default) */
   coreMinutes?: number
   /** additive (workload): the sprint tracking began in; sprints before it never roll over (their cards stay left behind) */
   trackedFrom?: number
+  /** R1 (all optional for old documents) */
+  modelVersion?: 1 | 2
+  flatMigratedAt?: number
+  /** minutes per weekday, length 7, Sunday first (Date.getDay order) */
+  laneBudgets?: number[]
+  careerLane?: boolean
+  sessionMinutes?: number
+  navLabels?: 'intro' | 'always' | 'hover'
+  /** The highest Pom form ever reached (0 to 8). Written only by an XP-granting action that lifts the computed form above it; the shown form never falls below it. */
+  pomFormMax?: number
 }
 
 export interface PlanLink { label: string; url: string }
-export interface PlanTask {
-  id: string; skill: string; text: string; links: PlanLink[]; kind?: 'task' | 'stage' | 'watch' | 'read'
-  /** additive: forge AI-track rewrite fields, present only when kind is 'stage' */
-  stage?: number; session?: StageSession
-}
-export interface PlanSprint {
-  sprint: number
-  block: number
-  block_title: string
-  block_theme: string
-  focus_ai: string
-  focus_interview: string
-  ai: PlanTask[]
-  interview: PlanTask[]
-  proof: string | null
-}
-export interface PlanProblem { num: number; name: string; url: string; difficulty: Difficulty; premium?: boolean }
+export interface PlanProblem { num: number; name: string; url: string; difficulty: Difficulty; premium?: boolean; order?: number; /** skill-tree node id (TREE-03) */ node?: string }
 export interface PlanDsaSprint { sprint: number; topic: string; pattern: string; note: string; problems: PlanProblem[] }
-export interface PlanDesign { id: string; title: string; difficulty: Difficulty; deep_dives: string[]; refs: PlanLink[] }
+export interface PlanDesign { id: string; title: string; difficulty: Difficulty; deep_dives: string[]; refs: PlanLink[]; order?: number; /** skill-tree node id (TREE-03) */ node?: string }
 export interface PlanDesignTier { tier: string; skill: string; items: PlanDesign[] }
-export interface PlanPhase { n: string; months: number[]; note: string }
-export interface PlanSkill { id: string; label: string; tier: number; needs: string[]; what: string; why: string }
-export type CommunityLane = 'learner' | 'contributor' | 'program'
-export interface PlanCommunity { n: string; k: string; u: string; fit: string; how: string; lane: CommunityLane }
-export interface PlanShelfItem { skill: string; text: string; links: PlanLink[]; from?: string }
+/**
+ * What the kept screens read from the loaded plan: the two banks, the id map, the version and the learner's own links.
+ * A PlanV2 satisfies it as it is; `loadPlan` hands the screens this slim view of the v2 plan.
+ */
 export interface PlanJson {
-  generated?: string
   planVersion?: string
   idMap?: Record<string, string>
-  sprint_days: number
-  total_sprints: number
-  rotation: Partial<Record<Weekday, string>>
-  sprints: PlanSprint[]
   dsa_bank: PlanDsaSprint[]
   design_bank: PlanDesignTier[]
-  /** additive, optional (M5 content tabs); views render an empty state when absent */
-  phases?: PlanPhase[]
-  skills?: PlanSkill[]
-  communities?: PlanCommunity[]
-  ai_shelf?: PlanShelfItem[]
-  /** G6, optional: the learner's day (Ritual tab, Today's time line). Absent: the neutral defaults in content/schedule.ts. */
-  schedule?: Partial<PlanSchedule>
   /** G6, optional: the learner's own links. A plan link whose url is `{{learner.<key>}}` resolves here, or is dropped. */
   learner?: PlanLearner
-}
-
-/**
- * G6: the learner's daily schedule as plan data, so the shipped sample carries a neutral day and a learner's own
- * values come from DOJO_HOME/profile.json (server/profile.mjs lays its `plan.schedule` over plan.json).
- */
-export interface PlanSchedule {
-  /** The Ritual tab's opening paragraph. */
-  intro: string
-  /** The weekday study block, 24 h "HH:MM": Today shows "start – end" on block days, the Ritual timeline "start to end". */
-  block: { start: string; end: string }
-  /** "A weekday, concretely": rows in order; the row with `block: true` is the study block (its time comes from `block`). */
-  timeline: Array<{ time?: string; what: string; block?: boolean }>
-  /** The note under the weekday timeline. */
-  timelineNote: string
-  /** Today's sentence on the rest day. */
-  restDay: string
-  /** Where links captured during the week go (Ritual · Saturday news slot), e.g. "a note on your phone". */
-  inbox: string
-  /** What compressing the plan would cost (Overview · Why three years): "Compressing it means skipping <protects>". */
-  protects: string
 }
 
 /** G6: the learner's own links (settings, not shipped values). */
@@ -326,7 +354,13 @@ export interface RungUse {
   redoId?: string
 }
 
-export type RedoSource = 'gave_up' | 'solved_help' | 'design_rubric' | 'blank_test' | 'stage_built' | 'check_failed'
+export type RedoSource = 'gave_up' | 'solved_help' | 'design_rubric' | 'design_missed' | 'journal_hard' | 'blank_test' | 'stage_built' | 'check_failed' | 'bank_q'
+/** R1 W2: what a `journal_hard` redo reviews, copied from its ticket's first explain question when the learner pressed Add to Review. */
+export interface JournalPiece { topic: string; question: string; answer: string }
+/** F3: what a `design_missed` redo reviews, copied from the AI grade's `missed` entry when the learner pressed Add. */
+export interface MissedPiece { topic: string; question: string; answer: string; sessionId: string }
+/** R1 W6: what a `bank_q` redo reviews (BANK-14): the node title, the question and its model answer, and the question id (also the redo's `ticketId`). */
+export interface BankPiece { topic: string; question: string; answer: string; qid: string }
 /** H (D, P enqueue): the spaced-redo queue (DATA "Redo schedule"; TRACKING §1–2; CAPSTONE "Proof model"). */
 export interface Redo {
   id: string
@@ -341,8 +375,8 @@ export interface Redo {
   helpCost: number
   refunded: number
   closedAt?: number
-  /** blank tests / capstone pieces: what is being rebuilt */
-  piece?: string
+  /** blank tests / capstone pieces: what is being rebuilt (a string); a `design_missed` redo: the weak spot to review (MissedPiece); a `journal_hard` redo on a ticket with an explain question: JournalPiece; a `bank_q` redo: BankPiece */
+  piece?: string | MissedPiece | JournalPiece | BankPiece
 }
 
 /** H: one row per AI job call (AI.md "Provider": log job and ms). */
@@ -370,7 +404,11 @@ export interface AtlasRun { seq?: number; key: string; kind: 'seen' | 'predict';
 export type DesignPhase = 'setup' | 'drawing' | 'close' | 'score' | 'done'
 export interface Tradeoff { chose: string; over: string; because: string }
 /** TRACKING §1: 0 blank · 1 hand-wave · 2 trade-off with a number or failure mode; null = not scored yet. */
-export interface DeepDive { q: string; answered: Score012 | null; answer?: string; by?: 'self' | 'model' }
+export interface DeepDive { q: string; answered: Score012 | null; answer?: string; by?: 'self' | 'model' | 'partner' }
+/** Partner sheet: five rubric rows scored 0 to 4 (null = not scored) and four deep dives scored 0 to 2. */
+export interface PartnerScores { perItem: (number | null)[]; deepDives: (Score012 | null)[] }
+/** `notes`: the friend's free text about the session (at most 2000 characters, plain text, may be empty); the host reads it, never edits it. */
+export interface PartnerState { name?: string; at?: number; scores?: PartnerScores; notes?: string }
 /** TRACKING §1 "The 5-question close" (texts in content/tracking.ts CLOSE_QUESTIONS). */
 export interface CloseAnswers {
   /** Q1, becomes tradeoffs[0] */
@@ -394,8 +432,13 @@ export interface DesignSession {
   endedAt?: number
   /** when the canvas locked (45:00 or End drawing) */
   lockedAt?: number
+  /** F2: set while the 45-minute clock is paused (when it was paused); removed on Resume and at the lock */
+  pausedAt?: number
+  /** F2: the sum of the pauses that ended, in ms; the lock folds an open pause into it. Drawing time = lockedAt - at - pausedMs */
+  pausedMs?: number
+  /** drawing minutes, pauses left out */
   minutes: number
-  mode: 'solo' | 'interviewer'
+  mode: DesignMode | 'interviewer'
   view: '2d' | 'iso'
   /** his sr-diagram canvas (layout 'manual') */
   canvas: DiagramJson
@@ -404,14 +447,18 @@ export interface DesignSession {
   tradeoffs: Tradeoff[]
   /** 0–20 */
   rubric: number | null
-  rubricBy?: 'self' | 'model'
+  rubricBy?: 'self' | 'model' | 'partner'
   lenses: Partial<Record<Lens, Score012>>
   /** job `diagram` reference, shown beside his */
   reference?: DiagramJson
   interview?: InterviewTranscript
+  notes?: DesignNotes
+  partner?: PartnerState
   redesignDue?: number
   /** the earlier session this one redesigns (redesign pass rate) */
   redesignOf?: string
+  /** F3: when "Keep what you missed" added this session's weak spots as review cards (ms); absent until then */
+  keptAt?: number
 }
 
 /** TRACKING §2, verbatim strings (spaces included). Board order in content/tracking.ts ARTIFACT_STATUSES. */

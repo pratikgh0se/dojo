@@ -63,8 +63,16 @@ describe('helper server, fake mode', () => {
     const { base, forgeRoot } = await start()
     const r = await fetch(`${base}/health`)
     expect(r.status).toBe(200)
-    expect(await r.json()).toEqual({ ok: true, mode: 'fake', model: 'sonnet', claude: 'skipped', inFlight: 0, limit: 2, jobs: ['hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'suggest_slide', 'classify'], projectRepo: forgeRoot })
-    expect(JOBS).toHaveLength(8)
+    expect(await r.json()).toEqual({ ok: true, mode: 'fake', model: 'sonnet', claude: 'skipped', inFlight: 0, limit: 2, jobs: ['hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'classify'], projectRepo: forgeRoot })
+    expect(JOBS).toHaveLength(7)
+  })
+
+  it('brief needs context.kind and answers 400 without it', async () => {
+    const { base } = await start()
+    expect((await post(base, 'brief', { ticket: { id: 't1', title: 'T', track: 'interview' }, context: { estMin: 30 } })).status).toBe(400)
+    expect((await post(base, 'brief', { ticket: { id: 't1', title: 'T', track: 'interview' }, context: { kind: 'task', estMin: 30 } })).status).toBe(200)
+    // an older client still sends the retired forge context: the extra fields are ignored
+    expect((await post(base, 'brief', { ticket: { id: 't1', title: 'T', track: 'interview' }, context: { kind: 'task', forge: true, sprint: 1, estMin: 30 } })).status).toBe(200)
   })
 
   it('H-51 hint returns the app fake output in the envelope', async () => {
@@ -85,7 +93,6 @@ describe('helper server, fake mode', () => {
       interview: { ticket: { id: 'd-method', title: 'The method', track: 'design' }, context: { turn: 0, answers: [], deepDives: [] } },
       grade: { ticket: { id: 'stage-00', title: 'Stage 0', track: 'ai' }, context: {} },
       solution: { ticket: P200, context: { gave_up: true } },
-      suggest_slide: { ticket: null, context: { count: 1, tickets: ['a', 'b', 'c'].map(id => ({ id, title: id, track: 'ai', estMin: 50, slidCount: 0 })) } },
       classify: { context: { input: 'https://leetcode.com/problems/number-of-islands/' } },
     }
     for (const [job, body] of Object.entries(bodies)) {

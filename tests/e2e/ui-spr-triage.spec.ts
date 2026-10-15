@@ -26,39 +26,6 @@ async function noPageScroll(page: Page, width: number): Promise<void> {
 test.describe('desktop 1280', () => {
   test.use({ viewport: { width: 1280, height: 900 } })
 
-  test('Progress: chart labels secondary, rings 15/700, empties Chivo 15, redo 400, burn-up fills its well (720 x 220 at least), evidence Mono 15, no 100 px padding', async ({ page }) => {
-    await start(page)
-    await page.goto('/progress')
-    await expect(page.getByTestId('screen-progress')).toHaveAttribute('data-ready', 'true')
-    // M2 + M4
-    const label = page.getByTestId('ring-all').locator('.ring-label')
-    expect(await css(label, ['font-family', 'font-size', 'font-weight', 'color'])).toMatchObject({ 'font-size': '15px', 'font-weight': '700', color: SECONDARY })
-    expect((await css(page.getByTestId('ring-all-count'), ['color'])).color).toBe(SECONDARY)
-    expect((await css(page.locator('.chart-legend').first(), ['color'])).color).toBe(SECONDARY)
-    // M3
-    for (const id of ['no-sessions', 'no-study-sessions', 'help-ladder-empty', 'no-reviews']) {
-      const c = await css(page.getByTestId(id), ['font-family', 'font-size', 'font-weight', 'color'])
-      expect(`${id} ${fam(c['font-family'])} ${c['font-size']} ${c['font-weight']} ${c.color}`).toBe(`${id} Chivo 15px 400 ${SECONDARY}`)
-    }
-    // M5
-    expect((await css(page.getByTestId('redo-passed-value'), ['font-weight']))['font-weight']).toBe('400')
-    // M6: drawn at least 720 x 220, centred in its well; UAT r3 J2: a wider well is filled edge to edge
-    const svg = page.getByRole('img', { name: 'Planned vs done, cumulative by sprint' })
-    const b = (await svg.boundingBox())!
-    expect(b.width).toBeGreaterThanOrEqual(720)
-    expect(Math.round(b.height)).toBe(220)
-    const well = (await svg.locator('xpath=..').boundingBox())!
-    expect(Math.abs((b.x - well.x) - (well.x + well.width - b.x - b.width))).toBeLessThanOrEqual(2)
-    expect(well.width - b.width).toBeLessThanOrEqual(24) // only the well's padding and border
-    // S6: evidence row value Space Mono 15
-    const v = await css(page.getByTestId('ev-dsa-solved-value'), ['font-family', 'font-size'])
-    expect(`${fam(v['font-family'])} ${v['font-size']}`).toBe('Space Mono 15px')
-    // M11: no 100 px side padding anywhere on the screen
-    const off = await page.getByTestId('screen-progress').evaluate(root => [...root.querySelectorAll('*')]
-      .filter(e => { const cs = getComputedStyle(e); return cs.paddingLeft === '100px' || cs.paddingRight === '100px' }).length)
-    expect(off).toBe(0)
-  })
-
   test('Settings: start date text is Chivo 15/400', async ({ page }) => {
     await start(page)
     await page.goto('/settings')
@@ -123,73 +90,40 @@ test.describe('desktop 1280', () => {
     expect(off).toBe(0)
   })
 
-  test('Design session: palette and canvas are .sc scrollers; the palette scrolls instead of clipping', async ({ page }) => {
+  test('Design session: the palette row and the canvas are .sc scrollers; the row scrolls instead of clipping', async ({ page }) => {
     await start(page)
     await page.goto('/designs/session/d-ratelimit')
-    await page.getByRole('button', { name: 'Start · 45 min' }).click()
-    const pal = page.getByTestId('kit-palette')
+    await page.getByTestId('session-start').click()
+    const pal = page.getByTestId('kit-palette').locator('.kit-palette-row')
     await expect(pal).toHaveClass(/\bsc\b/)
     await expect(page.getByTestId('kit-canvas')).toHaveClass(/\bsc\b/)
     const p = await pal.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, ox: getComputedStyle(el).overflowX }))
     if (p.sw > p.cw) expect(p.ox).toBe('auto')
-  })
-
-  test('Overview, Mentors, Ritual: lists padding 24; Mentors and Ritual paragraphs are Body 17', async ({ page }) => {
-    await start(page)
-    for (const path of ['/overview', '/mentors', '/ritual']) {
-      await page.goto(path)
-      await expect(page.getByTestId(`screen-${path.slice(1)}`)).toHaveAttribute('data-ready', 'true')
-      const pads = await page.locator('.prose-list').evaluateAll(els => els.map(e => getComputedStyle(e).paddingLeft))
-      expect(pads.length, path).toBeGreaterThan(0)
-      expect(new Set(pads), path).toEqual(new Set(['24px']))
-      if (path === '/overview') continue
-      const bad = await page.locator('main').evaluate(root => [...root.querySelectorAll('p')].filter(p => p.getBoundingClientRect().width > 0).flatMap(p => {
-        const cs = getComputedStyle(p)
-        const f = cs.fontFamily.split(',')[0].replace(/"/g, '').trim()
-        if (f === 'Space Mono') return []
-        return f !== 'Chivo' || cs.fontSize !== '17px' || parseFloat(cs.lineHeight) < 25.5 ? [`${(p.textContent ?? '').slice(0, 30)} ${f} ${cs.fontSize}/${cs.lineHeight}`] : []
-      }))
-      expect(bad, path).toEqual([])
-    }
-  })
-
-  test('AI and Map: cube and meter gaps are 2', async ({ page }) => {
-    await start(page)
-    await page.goto('/map')
-    await expect(page.locator('.path-cubes').first()).toBeVisible()
-    const g = await page.locator('.path-cubes').first().evaluate(e => getComputedStyle(e).columnGap)
-    expect(g).toBe('2px')
-    await page.goto('/ai')
-    await expect(page.getByTestId('screen-ai')).toHaveAttribute('data-ready', 'true')
-    const minis = await page.locator('.p-mini').evaluateAll(els => els.map(e => getComputedStyle(e).columnGap))
-    expect(minis.length).toBeGreaterThan(0)
-    expect(new Set(minis)).toEqual(new Set(['2px']))
   })
 })
 
 test.describe('phone 393', () => {
   test.use({ viewport: { width: 393, height: 852 } })
 
-  test('Progress: the burn-up keeps 720 x 220 and scrolls inside an .sc well', async ({ page }) => {
-    await start(page)
-    await page.goto('/progress')
-    const svg = page.getByRole('img', { name: 'Planned vs done, cumulative by sprint' })
-    const b = (await svg.boundingBox())!
-    expect(Math.round(b.width)).toBe(720)
-    expect(Math.round(b.height)).toBe(220)
-    const well = svg.locator('xpath=..')
-    await expect(well).toHaveClass(/\bsc\b/)
-    const w = await well.evaluate(el => ({ sw: el.scrollWidth, cw: el.clientWidth, ox: getComputedStyle(el).overflowX }))
-    expect(w.ox).toBe('auto')
-    expect(w.sw).toBeGreaterThan(w.cw)
-    await noPageScroll(page, 393)
-  })
-
-  test('Settings: Workload spinbutton is 160 wide on phone (ruling 8 S5)', async ({ page }) => {
+  // R1: the sprint "Core minutes per sprint" field is retired (the sprint machinery is: README "Retired hooks"). Ruling 8 S5 (a numeric
+  // Settings field is 160 wide on a phone, not full width) is kept on the standalone numeric field Settings has now, the session
+  // length (SET-06, a text input with a numeric keypad, found by its hook). The seven daily budgets (SET-01) are numeric fields
+  // too and compute to 160 as well (R1 polish, settings.css .ps-field), inside the screen with no sideways scroll.
+  test('Settings: the session-length field is 160 wide on phone, the budget fields stay on screen (ruling 8 S5)', async ({ page }) => {
     await start(page)
     await page.goto('/settings')
-    const n = page.getByRole('spinbutton', { name: 'Core minutes per sprint' })
-    expect(Math.round((await n.boundingBox())!.width)).toBe(160)
+    const mins = page.getByTestId('settings-session-minutes')
+    await mins.scrollIntoViewIfNeeded()
+    expect(Math.round((await mins.boundingBox())!.width)).toBe(160)
+    for (const i of [0, 6]) {
+      const b = page.getByTestId(`settings-budget-${i}`)
+      await b.scrollIntoViewIfNeeded()
+      const box = (await b.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(393)
+      expect(Math.round(box.width), `budget ${i}`).toBe(160)
+    }
+    await noPageScroll(page, 393)
   })
 
   test('DSA: stat tiles are one column on phone', async ({ page }) => {
@@ -199,5 +133,30 @@ test.describe('phone 393', () => {
     const xs = await page.locator('.dsa .stat-strip > .stat').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().x)))
     expect(xs).toHaveLength(3)
     expect(new Set(xs).size).toBe(1)
+  })
+})
+
+test.describe('R1 polish: numeric Settings fields are 160 wide', () => {
+  for (const [w, h] of [[1280, 800], [375, 667]] as const) {
+    test(`the seven budgets and the session length compute to 160 px at ${w}, with no sideways scroll`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: h })
+      await start(page)
+      await page.goto('/settings')
+      await expect(page.getByTestId('screen-settings')).toHaveAttribute('data-ready', 'true')
+      for (const id of [...[0, 1, 2, 3, 4, 5, 6].map(i => `settings-budget-${i}`), 'settings-session-minutes']) {
+        expect(await page.getByTestId(id).evaluate(e => getComputedStyle(e).width), `${id} at ${w}`).toBe('160px')
+      }
+      await noPageScroll(page, w)
+    })
+  }
+
+  test('Settings with a mid-week start date shows no Board, Sprint or "AI watch day" text', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await start(page) // 2026-10-14 is a Wednesday, the start date 2026-10-05 a Monday
+    await page.goto('/settings')
+    await expect(page.getByTestId('screen-settings')).toHaveAttribute('data-ready', 'true')
+    await page.getByLabel('Start date').fill('2026-10-07') // a Wednesday
+    await expect(page.getByTestId('start-date-warn')).toHaveCount(0)
+    expect((await page.getByTestId('screen-settings').innerText())).not.toMatch(/\bBoard\b|Sprint|AI watch day/i)
   })
 })

@@ -80,10 +80,10 @@ Outside the app the same server runs as a plain Node process: `npm run server` (
 | `server/profile.mjs`, `linkcheck.mjs` | `<home>/profile.json` (plan overlay, project repo); the link check. |
 | `server/db/` | `adapter.mjs` (SQLite seam), `store.mjs` (documents and op history), `manager.mjs` (open, migrate, writer token, backups, restore), `log.mjs`, `migrations/*.sql`. |
 | `server/runner/`, `shared/` | `runner.mjs` (packs, harness, sandboxed build and run, limits, sweeps), `pyframe.mjs` (Python asset rules, frame CSP), `tk/` (Go step toolkit), `packs/<id>/`; `shared/stepShape.mjs`, the step shape both runners produce. |
-| `src/app/` | `App.tsx` (boot and error states), `Shell.tsx` (top bar, footer, global hooks), `routes.tsx`, `tabs.ts`, `shortcuts.ts`, `StartGate.tsx`. |
-| `src/screens/` | One component per route, plus subfolders for Do, briefs, design sessions, the AI tab, Atlas, Banks and Progress. |
+| `src/app/` | `App.tsx` (boot and error states), `Shell.tsx` (rail, header, global keys), `shell/` (rail, tab bar, header, gear menu, palette, shortcuts overlay), `routes.tsx`, `StartGate.tsx`. |
+| `src/screens/` | One component per route, plus subfolders for Today, Path, Skills, Do, briefs, design sessions, Atlas and Banks. `src/screens/ai/` now holds only the shared `Dialog` (and its `projects.css` dialog/form styles); the retired capstone screen is deleted. |
 | `src/data/` | Dexie schema (`db.ts`), row types (`types.ts`), write actions (`*Actions.ts`), live-query hooks, the writer token (`writer.ts`), plan load and reconcile (`seed.ts`), `sync/`. |
-| `src/rules/` | Pure domain logic, no React and no Dexie: sprints, board moves, XP, help ladder, redos, workload, reconcile, reviews. Most unit tests point here. |
+| `src/rules/` | Pure domain logic, no React and no Dexie: the queue, XP, help ladder, redos, reconcile. The sprint-era modules `sprint` and `progress` no longer have a live screen and go in a later dead-code cleanup. Most unit tests point here. |
 | `src/ai/` | The AI job contract (`types.ts`), `client.ts` (`runJob`), the fake provider, prompts, guardrails, validators. |
 | `src/runner/`, `src/study/` | Code panel, CodeMirror editor, Go client, Python frame protocol (`py/`), trace and DP views; the study-session runner. |
 | `src/content/`, `ui/`, `lib/`, `styles/` | Static text and bank datasets; shared components and charts; utilities; design tokens and CSS. |
@@ -93,9 +93,11 @@ Outside the app the same server runs as a plain Node process: `npm run server` (
 ## Front end
 
 - **Routing.** `BrowserRouter`; `routes.tsx` maps one path per screen plus `/do/:ticketId` and
-  `/designs/session/:designId` (full-screen, global shortcuts off); anything else redirects to `/`. Today and DSA
-  are eager, the rest lazy, so the entry chunk stays under 480 KB (`npm run bundle:check`). `tabs.ts` holds tab
-  order, the More menu and the single-key shortcuts.
+  `/designs/session/:designId` (with the rail beside them; the number keys are ignored on the design canvas); `/dsa`, `/designs`, `/atlas` and `/banks` are on the rail (Topics and Practice groups); anything else, including the retired `/week`, `/overview`, `/mentors`, `/ritual`, `/map`, `/progress` and `/ai`, redirects to `/`. Only Today is eager, the rest lazy, so the entry chunk stays under 480 KB (`npm run bundle:check`). `rules/nav.ts` holds the twelve destinations (rail groups main, topics, practice, foot) with keys 1 to 6 on the first six; the phone tab bar shows Today, Path, Board, Review and a More sheet with the other eight.
+- **Screens and their rules.** The shell (`src/app/shell/`) frames twelve destinations (a collapsible rail, or a tab bar and More sheet on a phone). Each
+  reads one pure model: S2's `queue`, `dayMix` and `pace`, plus this stream's `todayModel` (Today), `skillView` (Skills),
+  `reviewQueue` (Review), `paceView` (Settings, Pace) and `palette` (Ctrl or Cmd K). A ticket opens as a single-block study
+  session on `/do/:ticketId`. The stage, cube and capstone code is unrouted until R3.
 - **Layers.** Screens read through live queries (`dexie-react-hooks`) and write through action functions in
   `src/data`, which run Dexie transactions; decisions live in `src/rules`. `safeWrite` turns failed writes into toasts.
 - **Boot.** `main.tsx` starts disk sync (a lazy chunk). A window with a working copy renders at once and reconciles
@@ -115,11 +117,11 @@ Outside the app the same server runs as a plain Node process: `npm run server` (
 
 **Two copies, one source of truth.** `<home>/dojo.db` is the source of truth. Each window keeps a working copy in
 IndexedDB: `dojo-disk` in the writer, `dojo-view` in a read-only window (no token), `dojo` in builds with
-`VITE_DOJO_DISK=off` (Dexie only, used by most browser e2e tests). App tables (Dexie schema version 7): `tickets`,
+`VITE_DOJO_DISK=off` (Dexie only, used by most browser e2e tests). App tables (Dexie schema version 10): `tickets`,
 `sessions`, `events`, `settings`, `rungUses`, `redos`, `aiLog`, `pictures`, `atlasRuns`, `designSessions`,
-`artifacts`, `stageCells`, `blankTests`, `grades`, `bankItems`, `checkAttempts`, `reviews`, `code`. Tables starting
+`artifacts`, `stageCells`, `blankTests`, `grades`, `bankItems`, `checkAttempts`, `reviews`, `code`, `pulses`, `journal`, `bankGrades`, `bankExtra`. Tables starting
 with `_` (`_outbox`, `_meta`) are bookkeeping and never synced. Versions only add tables, except 6 and 7, which
-re-key `code` by `[ticketId+lang]`.
+re-key `code` by `[ticketId+lang]`, 8, which adds `pulses` (the daily AI pulse log), 9, which adds `journal` (the daily journal), and 10, which adds `bankGrades` and `bankExtra` (the Design and AI question banks).
 
 ### Writing
 
@@ -179,8 +181,8 @@ POST bodies must be `application/json`. `/db` and `/ai` errors are `{ "ok": fals
 | `GET`/`HEAD /*` | No | The built app from `dist/`, SPA fallback to `index.html`. Hashed `/assets/*` are immutable. A missing file with an extension is a 404. |
 | `GET /data/plan.json` | No | The shipped plan with `profile.json`'s `plan.schedule` and `plan.learner` laid over it, read per request. |
 | `GET`/`HEAD /pyodide/*`, `/pyrunner/*` | No | Pyodide and the Python frame. The only routes that accept `Origin: null` (the sandboxed frame), with CORS `*` and strict path checks. |
-| `GET /db/health` | No | `ok`, `dbPath`, `dbId`, `docs`, `ops`, `lastBackup`, `home`, `projectRepo`. |
-| `GET /db/state`, `/db/backups` | No | Every live document grouped by table; `{ backups: [{ file, bytes, at }] }`, newest first. |
+| `GET /db/health` | No | `ok`, `dbPath`, `dbId`, `docs`, `ops`, `lastBackup`, `home`, `userHome`, `projectRepo`. `ops` is the persistent `dojo_ops` row count (survives a restart); `lastBackup` is epoch milliseconds or `null`. |
+| `GET /db/state`, `/db/backups` | No | Every live document grouped by table; `{ backups: [{ file, bytes, at }] }`, newest first; `at` is epoch milliseconds (a number). |
 | `POST /db/ops` | Yes | Apply a batch of ops (body up to 5 MiB; other POSTs 64 KiB). |
 | `POST /db/backup`, `/db/restore` | Yes | Take a manual snapshot; restore `{ file }`. |
 | `POST /tools/linkcheck` | Yes | `{ urls }` to `{ ok, results: [{ url, ok, status }] }`. |
@@ -226,38 +228,59 @@ POST bodies must be `application/json`. `/db` and `/ai` errors are `{ "ok": fals
 
 ## The plan data model
 
-The plan is `public/data/plan.json`, typed as `PlanJson` in `src/data/types.ts`. `loadPlan`
-(`src/data/seed.ts`) requires a non-empty `sprints` array, a `rotation` object and `dsa_bank` and `design_bank`
-arrays; `planToTickets` (`src/rules/planTickets.ts`) throws `PlanDataError` on what it cannot use (missing or
-duplicate ids, non-array links), and the app shows "Plan data problem".
+The plan is `public/data/plan.json`, a plan v2 (`planFormat: 2`, typed `PlanV2` in `src/data/planV2.ts`; the keys are in
+`docs/DATA-REFERENCE.md` section 2.4). `loadPlan` (`src/data/seed.ts`) accepts only a plan v2: the shallow `isPlanV2` check, then
+`assertPlanV2Shape` for the arrays and weekly budgets, and it resolves `{{learner.*}}` links. A v1 plan (an array `sprints`, a `rotation`) is no
+longer read; it gets the "neither a plan v2 (planFormat 2) nor a v1 plan" error card. `loadPlan` returns `{ plan, v2 }`: `v2` is the plan itself
+(`usePlanV2()`, `useRequiredPlanV2()`), and `plan` is the slim `PlanJson` view the Do, DSA, Designs, Atlas and Banks screens read through `usePlan()`.
+`planToTickets` (`src/rules/planTickets.ts`) throws `PlanDataError` on what it cannot use (missing or duplicate ids, non-array links, a
+non-numeric problem number), and the app shows "Plan data problem".
 
-| Key | Shape | Used for |
+| `PlanJson` key (the slim view) | Shape | Used for |
 |---|---|---|
-| `planVersion`, `generated` | string | Shown in Settings (`planVersion`, else `generated`). |
+| `planVersion` | string | Shown in Settings; `settings.planVersion` records the version the database was reconciled to. |
 | `idMap` | `{ oldId: newId }` | Renames: progress on an old id moves to the new one at reconcile. |
-| `sprint_days`, `total_sprints` | number | In the type, not read: the app uses 14 days and 72 sprints (`src/rules/sprint.ts`). |
-| `rotation` | `{ Mon..Sun: role }` | Weekday roles on Week, Ritual and Today. |
-| `sprints[]` | `{ sprint, block, block_title, block_theme, focus_ai, focus_interview, ai[], interview[], proof }` | Task cards per sprint. |
-| `sprints[].ai[]`, `.interview[]` | `{ id, skill, text, links[{label,url}], kind?, stage?, session? }` | `kind`: `task` (default), `watch`, `read` or `stage`; stage cards carry `stage` and `session` (`watch`, `rebuild`, `build`, `teachback`). |
-| `dsa_bank[]` | `{ sprint, topic, pattern, note, problems[{ num, name, url, difficulty E/M/H, premium? }] }` | Problem cards with id `p<num>`. |
-| `design_bank[]` | `{ tier, skill, items[{ id, title, difficulty, deep_dives[], refs[] }] }` | Design cards, spread over the range in the tier name ("... (sprints A to B)"), else 1 to 72. |
-| `phases[]`, `skills[]` | `{ n, months[], note }`; `{ id, label, tier, needs[], what, why }` | Map: Journey and Skill tree. Optional. |
-| `communities[]`, `ai_shelf[]` | `{ n, k, u, fit, how, lane }`; `{ skill, text, links[], from? }` | Mentors (`lane`: `learner`, `contributor`, `program`); the AI tab's Optional shelf. Optional. |
-| `schedule` | `PlanSchedule` (partial) | Ritual, Today and Overview text. Missing keys fall back to `src/content/schedule.ts`. |
+| `dsa_bank[]` | `{ sprint, topic, pattern, note, problems[{ num, name, url, difficulty E/M/H, premium?, order?, estMin? }] }` | Problem cards with id `p<num>`. |
+| `design_bank[]` | `{ tier, skill, items[{ id, title, difficulty, deep_dives[], refs[], order?, estMin? }] }` | Design cards; the tier name's "(sprints A to B)" range is shown on the Designs ladder. |
 | `learner` | `{ patternsRepo? }` | Resolves links written as `{{learner.<key>}}`; such links are dropped while unset. |
 
-**Cards (tickets).** Every card is a `Ticket` row: `id`, `origin` (`plan`, `bank:<id>`, `mine`, or the parent id of
-a split session), `track`, `kind`, `plannedSprint` and current `sprint`, `status` (`todo`, `doing`, `done`, `slid`),
-`xp`, and optional brief, deliverable, pin, roll-over and split fields. A plan task's title is the first sentence of
-its `text` (at most 72 characters). Default minutes: 50 for task, watch, read and stage; 30 for problems; 45 for
-designs. Base XP: 10, 5/10/15 by problem difficulty, and 20 for a design. Roll-over, slides and rebalancing are
-rules in `src/rules/sprint.ts`, `slide.ts` and `workload.ts`; moves are `events` rows, which Undo reverses.
+`sprint_days`, `total_sprints`, `sprints[]`, `rotation`, `schedule`, `phases[]`/`skills[]` (v1), `communities[]` and `ai_shelf[]` are gone from the
+type and from every reader (`server/profile.mjs` still overlays a profile's `schedule` and `learner` keys when it serves the plan).
+
+**Cards (tickets).** Every card is a `Ticket` row: `id`, `origin` (`plan`, `bank:<id>` or `mine`), `track`, `kind`, `plannedSprint` and current `sprint`, `status` (`todo`, `doing`, `done`; legacy rows may still hold `slid`, which no screen sets any more),
+`xp`, and optional brief, deliverable and proof fields (documents written before the flat migration may still carry `pinned`, `rolledFrom`,
+`carry`, `children`, `childOf`, `checkPassedAt` and `xpBase`; the `Ticket` type no longer has them, only the migration reads them). Default minutes: 50 for task, watch, read and stage; 30 for problems; 45 for
+designs. Base XP: 10, 5/10/15 by problem difficulty, and 20 for a design. Roll-over, slides and rebalancing belonged to the removed Board and are gone (`slide.ts`, `workload.ts` and
+`review.ts` are deleted); `src/rules/sprint.ts` keeps the sprint date math that legacy readers still use.
 
 **Reconcile.** On every boot the writer runs `runReconcile` (`src/data/seed.ts`, rules in `src/rules/reconcile.ts`):
-ids still in the plan keep their progress (status, sprint, XP, slides) and get fresh content; new ids become `todo`
-cards in their planned sprint; ids that left the plan are archived with their XP, unless `idMap` maps them, in which
-case they merge into the target and their sessions and events follow. Bank, Mine and split cards are left alone.
+ids still in the plan keep their progress (status, XP, order override) and get fresh content; new ids become `todo`
+cards (stamped with the plan's `plannedSprint`, which only legacy readers use); ids that left the plan are archived with their XP, unless `idMap` maps them, in which
+case they merge into the target and their sessions and events follow. Bank and Mine cards are left alone. At boot `bootPlan` (`src/data/flatMigration.ts`) runs the flat migration against the plan v2.
 `server/profile.mjs` replaces only the top-level `schedule` and `learner` keys when serving `/data/plan.json`.
+
+### Design session v2
+
+- **Digest.** `src/rules/designDigest.ts` turns a session (notes, schema tables, canvas nodes with their columns, links,
+  frames, canvas notes) into one plain-text digest, clipped to a fixed size. The AI partner and the partner card read the
+  stored session through it, so what is written in the Notes tab and drawn on the canvas is what is graded and shown.
+- **Coach table.** `src/ai/coachPlan.ts` holds the thinking coach's turns (phase, kind, focus). The prompts, the built-in
+  fake AI and the chat panel all read that one table, so the status line and the questions agree. The AI partner asks one
+  question a turn; a Hint is a sharper question, at most three per session.
+- **Modes.** `solo`, `ai-partner` and `human-partner` (`src/rules/designMode.ts`; the legacy stored `interviewer` reads as
+  `ai-partner`). A `human-partner` session makes no AI call at all.
+- **Partner card route.** `#/partner/<sessionId>` is parsed in `App.tsx` before the router renders, so the card page has no
+  rail, tab bar or number keys (`partnerRoute.ts`, `PartnerWindow`). It reads and writes the same IndexedDB and the same
+  `designSessions` row as the main window, live.
+- **Second window.** The Partner tab opens the card with `window.open` (`openPartnerWindow.ts`); in the desktop app
+  `electron/main.mjs` allows it through `setWindowOpenHandler` only for an `isPartnerCardUrl` of the app's own origin
+  (`electron/windows.mjs`), and a card window may not open another. A blocked window falls back to the same card inline.
+- **Loopback limit.** The server and the AI helper accept loopback hosts only (see Security boundaries), so the card
+  window is for the machine that runs Dojo; it is not a way to show the card on another device. A second window of the
+  same profile has the writer token and runs its own sync loop.
+- **Pending stash.** A window that is going away stashes only the unsaved notes, canvas and view in
+  `localStorage` (`dojo-design-pending:<sessionId>`, `src/data/designPending.ts`); the next load applies it only onto the row it
+  started from (see DATA-REFERENCE, in-progress state).
 
 ## The AI job pipeline
 
@@ -270,13 +293,11 @@ carries `ticket` (id, title, text, track, pattern, difficulty, links; `null` whe
 | `picture` | Do, help ladder, problems | the attempt log, `language: "python"`; returns a step walkthrough |
 | `diagram` | Do ladder on designs; design session reference | deep dives, reference links |
 | `solution` | Do, after Give up | `gave_up: true`, the attempt log, the picture already shown |
-| `interview` | Design session, Interviewer mode | turn, answers, deep dives, transcript; `final` for the grade |
-| `grade` | AI tab artifacts; Get feedback on a deliverable | proof note, repo URL, commit, commit summary, stage, rubric; `repoPath` adds git evidence |
-| `suggest_slide` | Today, Load check (`ticket: null`) | candidate cards (title, track, minutes, difficulty, times slid), how many, pace, next sprint's cards |
+| `interview` | Design session, AI partner (stored job name) | turn or Hint, the chat so far, deep dives, the design digest; `final` for the grade |
+| `grade` | Get feedback on a deliverable; the design session final grade (AI partner) | proof note, repo URL, commit, commit summary, stage, rubric; `repoPath` adds git evidence |
 | `classify` | Banks Mine; Atlas search fallback (`ticket: null`) | the pasted URL or name |
-| `brief` | Board, Draft briefs | kind, AI-track build flag, learning flag, minutes, sprint, stage and session |
+| `brief` | The draft job (`src/data/draftJob.ts`, shown by the draft indicator); the Board and Draft briefs screens that started it are removed | kind, AI-track build flag, learning flag, minutes, sprint, stage and session |
 | `check` | Mark done on learning cards | each question with its key ideas and the learner's answer or choice |
-| `review_sprint` | Progress Reviews, automatic reviews (`ticket: null`) | the numbers computed by `src/rules/review.ts` |
 
 1. A screen or action calls `callJob` (`src/data/aiActions.ts`), which lazy-loads `src/ai/client.ts`, calls `runJob`
    (never throws) and logs one `aiLog` row. The provider is fixed at build time: the in-page fake (`src/ai/fake.ts`)
@@ -406,6 +427,7 @@ database is the real `~/Dojo`. Test-only variables: `DOJO_STORAGE_PORT` (default
 | `DOJO_HOME` | app: `~/Dojo`; server: required | The data folder. Non-app runs refuse `~/Dojo`. |
 | `DOJO_PORT` | app: free port; dev: 8790 | Server port (required for `npm run server`), or the Vite dev port. 8787 is reserved. |
 | `DOJO_SERVER_PORT`, `DOJO_DEV_DISK` | 8789, on | `npm run dev`: the dojo-server port behind Vite; `off` runs Vite alone on Dexie. |
+| `DOJO_PLAN_FILE` | none | An absolute path to a plan JSON. `GET /data/plan.json` serves it instead of the build's plan, re-read per request, with `profile.json`'s overlay on top (Vite plugin `planFile` in dev, the `--dist` route in `dojo-server`; `server/plan-file.mjs`). A missing or invalid file makes `npm run dev` and the server exit 1 with a message. Used to test a plan refresh. |
 | `DOJO_DB_EXTRA_ORIGINS`, `DOJO_HELPER_ORIGINS` | none | Extra origins for `/db` and `/tools`, and for the AI routes (comma-separated). |
 | `DOJO_HELPER_PORT`, `DOJO_HELPER_TIMEOUT_MS`, `DOJO_HELPER_CONCURRENCY` | 8788, 90000, 2 | The standalone helper's port; one job's deadline; jobs at once. |
 | `DOJO_CLAUDE_BIN`, `DOJO_GO_BIN` | `claude`, none | Name or path of the Claude Code CLI; of `go` (when set, only it is used). |
@@ -418,13 +440,12 @@ Server flags: `--real` (the app only; allows `~/Dojo`), `--fake`, `--dist <dir>`
 
 ## Known gaps
 
-- The parity suite (`tests/parity`, `playwright.parity.config.ts`) and a few unit tests (those using `legacyPlan()` in
-  `tests/helpers/plan.ts`, and the `ai-guardrails`, `ai-validate`, `ai-types`, `engines` and `diagram-kit` tests)
+- The parity suite (`tests/parity`, `playwright.parity.config.ts`) and a few unit tests (the `ai-guardrails`, `ai-validate`, `ai-types`, `engines` and `diagram-kit` tests)
   read fixtures and design prototypes outside the repository root that are not in this repository. They fail here until those
   fixtures move into `tests/fixtures/` or the tests are dropped.
 - `npm run engines` regenerates `public/engines` from design sources that are not in this repository; treat the
   committed engine files as the source.
-- `sprint_days` and `total_sprints` in `plan.json` are not read; sprint length (14 days) and count (72) are constants.
+- `plan.json` has no sprint fields; the sprint length (14 days) and count (72) are constants in `src/rules/sprint.ts`, kept for legacy readers only (the flat queue does not use sprints).
 - `npm run build` alone makes a build with the in-page fake AI; only `install:app` (or `VITE_DOJO_AI=helper`) wires
   the real helper. `npm run desktop` opens `~/Dojo` unless `DOJO_HOME` is set.
 - macOS only: the Go runner needs `sandbox-exec`, and the installer `codesign`, `sips` and `iconutil`. The app is

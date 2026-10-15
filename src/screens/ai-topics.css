@@ -1,0 +1,26 @@
+/* AI topics (NAV-15 to NAV-26): square corners, 14 px text at least, one accent only (none is used here: the pressed chip is a filled well). */
+.at-summary { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-small); color: var(--sr-text-secondary); }
+.at-filters { display: grid; gap: 8px; }
+.at-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.at-chip { min-height: 44px; padding: 0 14px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-secondary); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 700; cursor: pointer; }
+.at-chip:hover { border-color: var(--sr-edge-light-tile); color: var(--sr-text-primary); }
+.at-chip[aria-pressed='true'] { background: var(--sr-surface-tile); border-color: var(--sr-text-primary); color: var(--sr-text-primary); }
+.at-chip:focus-visible, .at-node:focus-visible { outline: 3px solid var(--sr-text-primary); outline-offset: 2px; }
+.at-area { display: grid; gap: 8px; }
+.at-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.at-title { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-title); font-weight: 700; line-height: 1.3; }
+.at-tag { font-family: var(--sr-font-mono); font-size: var(--type-small); color: var(--sr-text-secondary); letter-spacing: 1px; }
+.at-meta { font-size: var(--type-small); color: var(--sr-text-secondary); white-space: nowrap; }
+.at-nodes { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.at-node { display: grid; grid-template-columns: minmax(0, 1.4fr) auto minmax(0, 1fr); align-items: center; gap: 4px 16px; min-height: 52px; padding: 8px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); color: var(--sr-text-primary); text-decoration: none; }
+.at-node:hover { border-color: var(--sr-edge-light-tile); }
+.at-nt { min-width: 0; overflow-wrap: anywhere; font-size: var(--type-small); font-weight: 700; }
+.at-fig { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; }
+.at-kinds { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.at-kind { display: inline-flex; align-items: center; height: 28px; padding: 0 8px; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); font-size: var(--type-meta); font-weight: 700; }
+.at-empty { display: grid; gap: 12px; justify-items: start; }
+.at-empty p { margin: 0; }
+@media (max-width: 767px) {
+  .at-node { grid-template-columns: minmax(0, 1fr); }
+  .at-kinds { justify-content: flex-start; }
+}

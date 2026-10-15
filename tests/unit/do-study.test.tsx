@@ -1,5 +1,8 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
+import { AppProviders } from '../../src/app/providers'
+import { Shell } from '../../src/app/Shell'
 import { Do } from '../../src/screens/Do'
 import StudyRunner from '../../src/study/StudyRunner'
 import { setNow } from '../../src/lib/clock'
@@ -7,31 +10,43 @@ import { loadStudy, saveStudy, STUDY_KEY } from '../../src/lib/studyStore'
 import { startStudy } from '../../src/rules/studySession'
 import { TIMER_KEY } from '../../src/lib/timer'
 import { totalXp } from '../../src/rules/xp'
-import type { Ticket } from '../../src/data/types'
-import { otherCards } from '../../src/screens/do/study/PlanDialog'
+import type { DojoDB } from '../../src/data/db'
+import { beginStudy } from '../../src/study/runner'
 import { seededDb } from '../helpers/db'
-import { mkTicket } from '../helpers/tickets'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const T = new Date('2026-09-08T21:10:00+05:30').getTime()
 const MIN = 60_000
 let clock = T
 
+let db: DojoDB
+
 async function open(id: string) {
   clock = T
   setNow(() => clock)
   const d = await seededDb()
-  renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: smallPlan, route: `/do/${id}`, path: '/do/:ticketId' })
+  db = d
+  renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: `/do/${id}`, path: '/do/:ticketId' })
   return d
 }
 
-async function startSession(opts: { goal?: string; cycle?: string } = {}) {
-  fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
-  const dlg = await screen.findByRole('dialog', { name: 'Plan this session' })
-  if (opts.goal) fireEvent.change(within(dlg).getByLabelText('This session I will'), { target: { value: opts.goal } })
-  if (opts.cycle) fireEvent.click(within(dlg).getByRole('radio', { name: opts.cycle }))
-  fireEvent.click(within(dlg).getByRole('button', { name: 'Start' }))
+/** The one Start of the ticket view: a single session at the remembered length, no break. */
+async function startSession() {
+  fireEvent.click(await screen.findByTestId('ticket-start'))
+  await screen.findByTestId('session-timer')
+}
+
+/** A session the way older versions planned it (blocks and breaks): the runner still honours one found in storage. */
+async function startBlocks(id: string, opts: { goal?: string; focusMin?: number; breakMin?: number } = {}) {
+  const ticket = (await db.tickets.get(id))!
+  const focusMin = opts.focusMin ?? 25
+  await act(async () => {
+    await beginStudy({
+      d: db, ticket, nowMs: clock, chime: () => {}, toast: () => {}, onError: () => {},
+      plan: { goal: opts.goal ?? '', focusMin, breakMin: opts.breakMin ?? 5, cardIds: [id], chime: false },
+    })
+  })
   await screen.findByTestId('session-timer')
 }
 
@@ -41,54 +56,40 @@ async function elapse(min: number, then: () => void) {
   await waitFor(then, { timeout: 4000 })
 }
 
-describe('Do: plan step (UX-06)', () => {
-  it('Start session opens "Plan this session" with the goal field, the three cycles and Start', async () => {
-    await open('p127')
-    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
-    const dlg = await screen.findByRole('dialog', { name: 'Plan this session' })
-    expect(within(dlg).getByLabelText('This session I will')).toBeInTheDocument()
-    expect(within(dlg).getByRole('radio', { name: '25 / 5' })).toBeChecked()
-    expect(within(dlg).getByRole('radio', { name: '50 / 10' })).not.toBeChecked()
-    expect(within(dlg).getByRole('radio', { name: 'Custom' })).not.toBeChecked()
-    expect(within(dlg).getByRole('button', { name: 'Start' })).toBeInTheDocument()
-  })
+const LOG = 'What is the invariant? What did you try?'
+/** The session's Notes pad lives in focus mode (F): there is no Notes box and no Focus button beside the screen (TICKET-31). */
+async function inFocus<T>(fn: (notes: HTMLElement) => T | Promise<T>): Promise<T> {
+  fireEvent.keyDown(window, { key: 'f' })
+  const notes = await screen.findByRole('textbox', { name: 'Notes' })
+  const out = await fn(notes)
+  fireEvent.keyDown(window, { key: 'Escape' })
+  await screen.findByTestId('do-back')
+  return out
+}
 
-  it('offers the card and other open cards of the sprint; Custom reveals focus and break minutes', async () => {
-    await open('m1w1t1')
-    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
-    const dlg = await screen.findByRole('dialog', { name: 'Plan this session' })
-    const own = within(dlg).getAllByRole('checkbox')[0]
-    expect(own).toBeChecked()
-    expect(own).toBeDisabled()
-    fireEvent.click(within(dlg).getByRole('radio', { name: 'Custom' }))
-    expect(within(dlg).getByLabelText('Focus minutes')).toBeInTheDocument()
-    expect(within(dlg).getByLabelText('Break minutes')).toBeInTheDocument()
-  })
-
-  it('a bad custom cycle is refused with an alert and nothing starts', async () => {
-    await open('p127')
-    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
-    const dlg = await screen.findByRole('dialog', { name: 'Plan this session' })
-    fireEvent.click(within(dlg).getByRole('radio', { name: 'Custom' }))
-    fireEvent.change(within(dlg).getByLabelText('Focus minutes'), { target: { value: '0' } })
-    fireEvent.click(within(dlg).getByRole('button', { name: 'Start' }))
-    expect(await within(dlg).findByRole('alert')).toHaveTextContent('Focus minutes must be 1 to 180.')
-    expect(localStorage.getItem(STUDY_KEY)).toBeNull()
-  })
-
-  it('Start runs the timer, moves the ticket to Doing and keeps the card text and plan beside it', async () => {
-    const d = await open('m1w1t1')
-    await startSession({ goal: 'finish rung 1' })
+describe('Do: the one Start (UX-06)', () => {
+  it('Start runs one single session, moves the ticket to Doing and keeps the card title beside the clock', async () => {
+    const d = await open('p127')
+    await startSession()
     expect(screen.getByTestId('session-timer')).toHaveTextContent('25:00')
     expect(screen.getByTestId('session-phase')).toHaveTextContent('Focus')
-    const brief = screen.getByTestId('session-brief')
-    const t = (await d.tickets.get('m1w1t1'))!
+    const t = (await d.tickets.get('p127'))!
     expect(t.status).toBe('doing')
-    expect(brief).toHaveTextContent(t.title)
-    expect(brief).toHaveTextContent('This session I will: finish rung 1')
-    expect(brief).toHaveTextContent(t.text!.slice(0, 30))
-    expect(JSON.parse(localStorage.getItem(TIMER_KEY)!)).toMatchObject({ ticketId: 'm1w1t1', min: 25, running: true })
-    expect(loadStudy()).toMatchObject({ ticketId: 'm1w1t1', goal: 'finish rung 1', focusMin: 25, breakMin: 5 })
+    expect(screen.getByTestId('session-brief')).toHaveTextContent(t.title)
+    expect(JSON.parse(localStorage.getItem(TIMER_KEY)!)).toMatchObject({ ticketId: 'p127', min: 25, running: true })
+    expect(loadStudy()).toMatchObject({ ticketId: 'p127', goal: '', focusMin: 25, single: true })
+    expect(screen.queryByTestId('session-blocks')).toBeNull()
+  })
+
+  it('has no plan step, no Soft chime checkbox and no second End or Pause: one timer, one way to end', async () => {
+    await open('p127')
+    await startSession()
+    expect(screen.queryByRole('dialog', { name: 'Plan this session' })).toBeNull()
+    for (const gone of ['start-session', 'session-dock', 'session-resume', 'timer-end']) expect(screen.queryByTestId(gone)).toBeNull()
+    expect(screen.queryByText('Soft chime')).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'End session' })).toHaveLength(1)
+    expect(screen.getAllByTestId('timer-pause')).toHaveLength(1)
+    expect(screen.getAllByTestId('timer-readout')).toHaveLength(1)
   })
 
   it('all paragraphs on Do stay Chivo reading text (a class, not an inline size)', async () => {
@@ -98,25 +99,10 @@ describe('Do: plan step (UX-06)', () => {
   })
 })
 
-describe('otherCards', () => {
-  const mk = (id: string, over: Partial<Ticket> = {}) => mkTicket({ id, sprint: 3, track: 'interview', status: 'todo', order: Number(id.slice(1)), ...over })
-  it('lists every open, non-archived card of the same sprint, any track, in plan order (shell-today-board A2)', () => {
-    const me = mk('c0')
-    const all = [me, mk('c5'), mk('c2'), mk('c3', { status: 'done' }), mk('c4', { archived: true }), mk('c6', { sprint: 4 }), mk('c7', { track: 'ai' }),
-      ...['c8', 'c9', 'c10', 'c11', 'c12', 'c13'].map(id => mk(id))]
-    expect(otherCards(all, me).map(t => t.id)).toEqual(['c2', 'c5', 'c7', 'c8', 'c9', 'c10', 'c11', 'c12', 'c13'])
-  })
-  it('does not list a split parent beside its parts (cu-r1 P3-6)', () => {
-    const me = mk('c0')
-    const all = [me, mk('c1', { children: ['c2', 'c3'] }), mk('c2', { childOf: 'c1' }), mk('c3', { childOf: 'c1' })]
-    expect(otherCards(all, me).map(t => t.id)).toEqual(['c2', 'c3'])
-  })
-})
-
 describe('Do: Pomodoro cycles (UX-07)', () => {
   it('25 minutes later the phase reads Break and a focus event of 25 minutes is stored; 5 more and it is Focus', async () => {
     const d = await open('p127')
-    await startSession()
+    await startBlocks('p127')
     await elapse(25, () => expect(screen.getByTestId('session-phase')).toHaveTextContent('Break'))
     await waitFor(async () => expect((await d.events.toArray()).filter(e => e.t === 'focus')).toHaveLength(1))
     expect((await d.events.toArray()).find(e => e.t === 'focus')).toMatchObject({ t: 'focus', id: 'p127', minutes: 25 })
@@ -127,7 +113,7 @@ describe('Do: Pomodoro cycles (UX-07)', () => {
   it('the break after the 4th focus block is a Long break, and focus minutes add no XP', async () => {
     const d = await open('p127')
     const xp0 = totalXp(await d.tickets.toArray())
-    await startSession()
+    await startBlocks('p127')
     for (let i = 0; i < 3; i++) {
       await elapse(25, () => expect(screen.getByTestId('session-phase')).toHaveTextContent(/^Break$/))
       await elapse(5, () => expect(screen.getByTestId('session-phase')).toHaveTextContent(/^Focus$/))
@@ -139,7 +125,7 @@ describe('Do: Pomodoro cycles (UX-07)', () => {
 
   it('the attempt cycle banks the focus minutes so the ladder timer keeps its meaning', async () => {
     await open('p127')
-    await startSession()
+    await startBlocks('p127')
     await elapse(25, () => expect(screen.getByTestId('session-phase')).toHaveTextContent('Break'))
     expect(screen.getByTestId('do-timer-elapsed')).toHaveAttribute('data-seconds', String(25 * 60))
   })
@@ -147,8 +133,8 @@ describe('Do: Pomodoro cycles (UX-07)', () => {
 
 describe('Do: focus mode (UX-08)', () => {
   it('f (or the button) shows only the brief, the timer, Notes and the two buttons; Esc restores and the timer runs on', async () => {
-    await open('m1w1t1')
-    await startSession({ goal: 'g' })
+    await open('p127')
+    await startSession()
     fireEvent.keyDown(window, { key: 'f' })
     await screen.findByRole('button', { name: 'Exit focus mode' })
     expect(screen.getByTestId('session-brief')).toBeInTheDocument()
@@ -160,10 +146,14 @@ describe('Do: focus mode (UX-08)', () => {
     expect(screen.getByTestId('do-back')).not.toBeVisible()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(await screen.findByTestId('do-back')).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent('/do/m1w1t1')
+    expect(screen.getByTestId('location')).toHaveTextContent('/do/p127')
     expect(screen.getByTestId('session-timer')).toBeInTheDocument()
     expect(loadStudy()).not.toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Focus mode' }))
+    // no Focus button and no Notes box on the screen itself: F is the way in
+    expect(screen.queryByRole('button', { name: 'Focus mode' })).toBeNull()
+    expect(screen.queryByTestId('session-focus')).toBeNull()
+    expect(screen.queryByRole('textbox', { name: 'Notes' })).toBeNull()
+    fireEvent.keyDown(window, { key: 'f' })
     expect(await screen.findByRole('button', { name: 'Exit focus mode' })).toBeInTheDocument()
   })
 
@@ -172,8 +162,7 @@ describe('Do: focus mode (UX-08)', () => {
     fireEvent.keyDown(window, { key: 'f' })
     expect(screen.queryByRole('button', { name: 'Exit focus mode' })).toBeNull()
     await startSession()
-    const notes = screen.getByRole('textbox', { name: 'Notes' })
-    fireEvent.keyDown(notes, { key: 'f' })
+    fireEvent.keyDown(screen.getByLabelText(LOG), { key: 'f' })
     expect(screen.queryByRole('button', { name: 'Exit focus mode' })).toBeNull()
   })
 })
@@ -181,7 +170,7 @@ describe('Do: focus mode (UX-08)', () => {
 describe('Do: stuck prompt (UX-09)', () => {
   it('a focus block with no progress ends with a "Stuck?" dialog; "I\'m fine" closes it and it does not return in that block', async () => {
     await open('p127')
-    await startSession()
+    await startBlocks('p127')
     await elapse(25, () => expect(screen.getByRole('dialog', { name: 'Stuck?' })).toBeInTheDocument())
     const dlg = screen.getByRole('dialog', { name: 'Stuck?' })
     expect(within(dlg).getByRole('button', { name: 'Open the next help rung' })).toBeInTheDocument()
@@ -195,16 +184,16 @@ describe('Do: stuck prompt (UX-09)', () => {
 
   it('a note typed in the block suppresses it', async () => {
     await open('p127')
-    await startSession()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'two pointers' } })
+    await startBlocks('p127')
+    fireEvent.change(screen.getByLabelText(LOG), { target: { value: 'two pointers' } })
     await elapse(25, () => expect(screen.getByTestId('session-phase')).toHaveTextContent('Break'))
     expect(screen.queryByRole('dialog', { name: 'Stuck?' })).toBeNull()
   })
 
   it('it prompts again in the next block if that one has no progress either', async () => {
     await open('p127')
-    await startSession()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'x' } })
+    await startBlocks('p127')
+    fireEvent.change(screen.getByLabelText(LOG), { target: { value: 'x' } })
     await elapse(25, () => expect(screen.getByTestId('session-phase')).toHaveTextContent('Break'))
     await elapse(5, () => expect(screen.getByTestId('session-phase')).toHaveTextContent('Focus'))
     await elapse(25, () => expect(screen.getByRole('dialog', { name: 'Stuck?' })).toBeInTheDocument())
@@ -212,7 +201,7 @@ describe('Do: stuck prompt (UX-09)', () => {
 
   it('"Take a 5-minute break" makes the break exactly five minutes from now', async () => {
     await open('p127')
-    await startSession({ cycle: '50 / 10' })
+    await startBlocks('p127', { focusMin: 50, breakMin: 10 })
     await elapse(50, () => expect(screen.getByRole('dialog', { name: 'Stuck?' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Take a 5-minute break' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Stuck?' })).toBeNull())
@@ -222,7 +211,7 @@ describe('Do: stuck prompt (UX-09)', () => {
 
   it('"Open the next help rung" opens an unlocked rung (or says none is unlocked)', async () => {
     await open('p127')
-    await startSession()
+    await startBlocks('p127')
     await elapse(25, () => expect(screen.getByRole('dialog', { name: 'Stuck?' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Open the next help rung' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Stuck?' })).toBeNull())
@@ -234,13 +223,7 @@ describe('Do: stuck prompt (UX-09)', () => {
 describe('Do: a Stuck? prompt with no help rung to open says why on the page (UAT cu-4 P3-5)', () => {
   it('a 1-minute block ends with the Hint still locked: the dialog explains it and keeps the button off, no toast', async () => {
     await open('p127')
-    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
-    const plan = await screen.findByRole('dialog', { name: 'Plan this session' })
-    fireEvent.click(within(plan).getByRole('radio', { name: 'Custom' }))
-    fireEvent.change(within(plan).getByLabelText('Focus minutes'), { target: { value: '1' } })
-    fireEvent.change(within(plan).getByLabelText('Break minutes'), { target: { value: '1' } })
-    fireEvent.click(within(plan).getByRole('button', { name: 'Start' }))
-    await screen.findByTestId('session-timer')
+    await startBlocks('p127', { focusMin: 1, breakMin: 1 })
     await elapse(1, () => expect(screen.getByRole('dialog', { name: 'Stuck?' })).toBeInTheDocument())
     const dlg = screen.getByRole('dialog', { name: 'Stuck?' })
     expect(within(dlg).getByTestId('stuck-no-rung')).toHaveTextContent('No help rung is unlocked yet: the Hint opens after 10 minutes on this attempt (9 min to go).')
@@ -257,7 +240,7 @@ describe('Do: end log (UX-10, UX-11)', () => {
   it('End session asks Done / Stuck on / Next step (max 280) and Save writes one studied session row', async () => {
     const d = await open('p127')
     const xp0 = totalXp(await d.tickets.toArray())
-    await startSession({ goal: 'trace it' })
+    await startBlocks('p127', { goal: 'trace it' })
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     const dlg = await screen.findByRole('dialog', { name: 'End session' })
     for (const name of ['Done', 'Stuck on', 'Next step']) expect(within(dlg).getByRole('textbox', { name })).toHaveAttribute('maxlength', '280')
@@ -310,7 +293,7 @@ describe('Do: end log (UX-10, UX-11)', () => {
   it('Solved while a session runs closes the session too', async () => {
     await open('p127')
     await startSession()
-    fireEvent.click(screen.getByRole('button', { name: 'Solved ✓' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Solved' }))
     await waitFor(() => expect(localStorage.getItem(STUDY_KEY)).toBeNull())
   })
 })
@@ -321,26 +304,22 @@ describe('Do: one session at a time, and it survives a reload', () => {
     setNow(() => clock)
     saveStudy(startStudy({ id: 's', ticketId: 'p127', goal: 'resume me', cardIds: ['p127'], focusMin: 25, breakMin: 5, chime: false, now: T - 5 * MIN }), undefined)
     const d = await seededDb()
-    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/do/p127', path: '/do/:ticketId' })
+    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: '/do/p127', path: '/do/:ticketId' })
     expect(await screen.findByTestId('session-timer')).toHaveTextContent('20:00')
     expect(screen.getByTestId('session-brief')).toHaveTextContent('resume me')
-    expect(screen.queryByRole('button', { name: 'Start session' })).toBeNull()
+    expect(screen.queryByTestId('ticket-start')).toBeNull()
   })
 
-  it('a session running on another card refuses a second one', async () => {
+  it('starting a second card saves the session on the first and runs the second (TICKET-08, PATH-18)', async () => {
     clock = T
     setNow(() => clock)
     saveStudy(startStudy({ id: 's', ticketId: 'p1', goal: '', cardIds: ['p1'], focusMin: 25, breakMin: 5, chime: false, now: T - MIN }), undefined)
     const d = await seededDb()
-    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/do/p127', path: '/do/:ticketId' })
-    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
-    // UAT cu-4 P3-5: a dialog, not a toast; a session has its own End log, so it is not ended from here
-    const dlg = await screen.findByRole('alertdialog', { name: 'A study session is already running' })
-    expect(within(dlg).queryByRole('button', { name: /^Stop it/ })).toBeNull()
-    expect(within(dlg).getByRole('button', { name: 'Go to that card' })).toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'Plan this session' })).toBeNull()
-    fireEvent.click(within(dlg).getByRole('button', { name: 'Cancel' }))
-    expect(screen.queryByRole('alertdialog')).toBeNull()
+    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: '/do/p127', path: '/do/:ticketId' })
+    fireEvent.click(await screen.findByTestId('ticket-start'))
+    await waitFor(() => expect(loadStudy()).toMatchObject({ ticketId: 'p127' }))
+    expect(screen.queryByText('A session is running on another ticket; end it first.')).toBeNull()
+    expect((await d.sessions.toArray()).filter(x => x.id === 's-s')).toHaveLength(1)
   })
 
   it('a session found past a sleep gap shows "Welcome back": Resume restarts the phase, End opens the End session dialog', async () => {
@@ -348,7 +327,7 @@ describe('Do: one session at a time, and it survives a reload', () => {
     setNow(() => clock)
     saveStudy(startStudy({ id: 's', ticketId: 'p127', goal: '', cardIds: ['p127'], focusMin: 25, breakMin: 5, chime: false, now: T }), undefined)
     const d = await seededDb()
-    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/do/p127', path: '/do/:ticketId' })
+    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: '/do/p127', path: '/do/:ticketId' })
     const dlg = await screen.findByRole('dialog', { name: 'Welcome back' }, { timeout: 4000 })
     expect(dlg).toHaveTextContent('You were away: Resume or End?')
     expect(await d.events.count()).toBe(1) // the block that was running is credited, nothing more
@@ -365,7 +344,7 @@ describe('Do: one session at a time, and it survives a reload', () => {
     setNow(() => clock)
     saveStudy(startStudy({ id: 's', ticketId: 'p127', goal: '', cardIds: ['p127'], focusMin: 25, breakMin: 5, chime: false, now: T }), undefined)
     const d = await seededDb()
-    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/do/p127', path: '/do/:ticketId' })
+    renderWithApp(<><Do /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: '/do/p127', path: '/do/:ticketId' })
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Welcome back' }, { timeout: 4000 })).getByRole('button', { name: 'Resume' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Welcome back' })).toBeNull())
     expect(loadStudy()).toMatchObject({ away: null, phaseStart: clock })
@@ -373,32 +352,36 @@ describe('Do: one session at a time, and it survives a reload', () => {
 })
 
 describe('Do: read-only, focus overlay, stuck prompt focus', () => {
-  it('Start session is refused with the Read-only toast in a browser without the writer token', async () => {
+  it('Start is refused with the Read-only toast in a browser without the writer token', async () => {
     await open('p127')
+    const start = await screen.findByTestId('ticket-start')
     localStorage.removeItem('dojo.writer')
-    fireEvent.click(await screen.findByRole('button', { name: 'Start session' }))
+    fireEvent.click(start)
     expect(await screen.findByText(/Read-only/)).toBeInTheDocument()
-    expect(screen.queryByRole('dialog', { name: 'Plan this session' })).toBeNull()
+    expect(loadStudy()).toBeNull()
     localStorage.setItem('dojo.writer', 'test-writer')
   })
 
   it('focus mode is an overlay: the screen stays mounted (typed notes survive) and Notes gets the cursor', async () => {
     await open('p127')
     await startSession()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'kept' } })
+    fireEvent.change(screen.getByLabelText(LOG), { target: { value: 'log kept' } })
     fireEvent.keyDown(window, { key: 'f' })
     const notes = await screen.findByRole('textbox', { name: 'Notes' })
     expect(notes).toHaveFocus()
-    expect(notes).toHaveValue('kept')
+    fireEvent.change(notes, { target: { value: 'kept' } })
     expect(screen.getByTestId('do-screen')).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(await screen.findByTestId('do-back')).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('kept')
+    expect(screen.getByLabelText(LOG)).toHaveValue('log kept')
+    expect(screen.queryByRole('textbox', { name: 'Notes' })).toBeNull()
+    fireEvent.keyDown(window, { key: 'f' })
+    expect(await screen.findByRole('textbox', { name: 'Notes' })).toHaveValue('kept')
   })
 
   it('the Stuck? dialog opens with focus on "I\'m fine"; the next help rung leaves focus mode', async () => {
     await open('p127')
-    await startSession()
+    await startBlocks('p127')
     fireEvent.keyDown(window, { key: 'f' })
     await screen.findByRole('button', { name: 'Exit focus mode' })
     await elapse(25, () => expect(screen.getByRole('dialog', { name: 'Stuck?' })).toBeInTheDocument())
@@ -445,65 +428,67 @@ describe('Do: Notes and the Attempt log are two fields (ui-do D3.6, D3.9; UAT cu
   it('during a session the Study session Notes and the Attempt log both show, and typing in one never shows in the other', async () => {
     await open('p127')
     await startSession()
-    const notes = screen.getByRole('textbox', { name: 'Notes' })
-    const log = screen.getByLabelText('What is the invariant? What did you try?')
-    expect(notes).not.toBe(log)
-    fireEvent.change(notes, { target: { value: 'ch1: slope of a secant' } })
+    const log = screen.getByLabelText(LOG)
+    await inFocus(notes => fireEvent.change(notes, { target: { value: 'ch1: slope of a secant' } }))
     expect(log).toHaveValue('')
     fireEvent.change(log, { target: { value: 'invariant: window sum' } })
-    expect(notes).toHaveValue('ch1: slope of a secant')
+    await inFocus(notes => expect(notes).toHaveValue('ch1: slope of a secant'))
     await waitFor(() => expect(JSON.parse(localStorage.getItem('dojo-draft:p127')!)).toMatchObject({ notes: 'invariant: window sum', sessionNotes: 'ch1: slope of a secant' }))
   })
 
   it('a new session starts with an empty Notes box; the attempt log stays with the card (UAT cu-2p P3-4)', async () => {
     await open('p127')
-    await startSession({ goal: 'first' })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'ch1 notes' } })
-    fireEvent.change(screen.getByLabelText('What is the invariant? What did you try?'), { target: { value: 'invariant: sum' } })
+    await startSession()
+    await inFocus(notes => fireEvent.change(notes, { target: { value: 'ch1 notes' } }))
+    fireEvent.change(screen.getByLabelText(LOG), { target: { value: 'invariant: sum' } })
     fireEvent.click(screen.getByRole('button', { name: 'End session' }))
     const dlg = await screen.findByRole('dialog', { name: 'End session' })
     fireEvent.change(within(dlg).getByRole('textbox', { name: 'Done' }), { target: { value: 'x' } })
     fireEvent.click(within(dlg).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByTestId('session-timer')).toBeNull())
-    await startSession({ goal: 'second' })
-    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('')
-    expect(screen.getByLabelText('What is the invariant? What did you try?')).toHaveValue('invariant: sum')
-    await waitFor(() => expect(JSON.parse(localStorage.getItem('dojo-draft:p127')!)).toMatchObject({ notes: 'invariant: sum', sessionNotes: '' }))
-  })
-
-  it('an AI card keeps its Repo and Proof apart from the session Notes too', async () => {
-    await open('m1w1t1')
     await startSession()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'pad' } })
-    expect(screen.getByRole('textbox', { name: 'Proof' })).toHaveValue('')
-    fireEvent.change(screen.getByRole('textbox', { name: 'Proof' }), { target: { value: 'ran 3 ms' } })
-    expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue('pad')
+    await inFocus(notes => expect(notes).toHaveValue(''))
+    expect(screen.getByLabelText(LOG)).toHaveValue('invariant: sum')
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('dojo-draft:p127')!)).toMatchObject({ notes: 'invariant: sum', sessionNotes: '' }))
   })
 
   it('the pad and the log meet only when the attempt closes: one session row keeps both', async () => {
     const d = await open('p127')
-    await startSession({ goal: 'redo it' })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Notes' }), { target: { value: 'pad text' } })
-    fireEvent.change(screen.getByLabelText('What is the invariant? What did you try?'), { target: { value: 'log text' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Solved ✓' }))
+    await startSession()
+    await inFocus(notes => fireEvent.change(notes, { target: { value: 'pad text' } }))
+    fireEvent.change(screen.getByLabelText(LOG), { target: { value: 'log text' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Solved' }))
     await waitFor(async () => expect((await d.sessions.toArray()).some(s => s.outcome === 'solved')).toBe(true))
     const row = (await d.sessions.toArray()).find(s => s.outcome === 'solved')!
     expect(row.notes).toBe('log text\n\nStudy session notes:\npad text')
   })
 })
 
-describe('Do: Solved ✓ ends a running study session, and says so (UAT cu-4 P3-11)', () => {
-  it('says so before the click, ends the session on Solved ✓ with a toast, and lists it under Earlier sessions', async () => {
+describe('Do: Solved ends a running study session, and says so (UAT cu-4 P3-11)', () => {
+  it('says so before the click, ends the session on Solved with a toast, and lists it under Earlier sessions', async () => {
     const d = await open('p127')
-    await startSession({ goal: 'redo decode ways' })
-    expect(screen.getByTestId('do-session-note')).toHaveTextContent('Solved ✓, Solved with help and Give up also end your study session (0 focus blocks so far)')
-    expect(screen.getByRole('button', { name: 'Solved ✓' })).toHaveAccessibleDescription(/also end your study session/)
+    await startSession()
+    expect(screen.getByTestId('do-session-note')).toHaveTextContent('Solved, Solved with help and Give up also end your session (0 min focus so far)')
+    expect(screen.getByRole('button', { name: 'Solved' })).toHaveAccessibleDescription(/also end your session/)
+    await elapse(10, () => expect(screen.getByTestId('do-session-note')).toHaveTextContent('(10 min focus so far)'))
+    fireEvent.click(screen.getByRole('button', { name: 'Solved' }))
+    expect(await screen.findByText('Session ended · 10 min focus')).toBeInTheDocument()
+    expect(screen.queryByText(/focus blocks?/)).toBeNull()
+    await waitFor(() => expect(loadStudy()).toBeNull())
+    // the session is a row with the focus minutes it kept, not a zero
+    const row = (await d.sessions.toArray()).find(s => s.outcome === 'solved')!
+    expect(row).toMatchObject({ focusMinutes: 10 })
+  })
+
+  it('an older session of blocks still says its focus blocks, and records the finished ones', async () => {
+    const d = await open('p127')
+    await startBlocks('p127', { goal: 'redo decode ways' })
+    expect(screen.getByTestId('do-session-note')).toHaveTextContent('also end your session (0 focus blocks so far)')
     await elapse(25, () => expect(screen.getByTestId('session-phase')).toHaveTextContent('Break'))
     expect(screen.getByTestId('do-session-note')).toHaveTextContent('(1 focus block so far)')
-    fireEvent.click(screen.getByRole('button', { name: 'Solved ✓' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Solved' }))
     expect(await screen.findByText('Study session ended with the card · 1 focus block')).toBeInTheDocument()
     await waitFor(() => expect(loadStudy()).toBeNull())
-    // the session is a row: the plan line, and the focus minutes it kept
     const row = (await d.sessions.toArray()).find(s => s.outcome === 'solved')!
     expect(row).toMatchObject({ goal: 'redo decode ways', focusMinutes: 25 })
   })
@@ -517,7 +502,7 @@ describe('Do: Solved ✓ ends a running study session, and says so (UAT cu-4 P3-
     const box = await screen.findByTestId('session-history')
     await waitFor(() => expect(within(box).getAllByRole('listitem')).toHaveLength(2))
     expect(within(box).getByTestId('session-history-a')).toHaveTextContent('This session I will: redo it')
-    expect(within(box).getByTestId('session-history-a')).toHaveTextContent('Ended by: Solved ✓')
+    expect(within(within(box).getByTestId('session-history-a')).getByTestId('hist-ended-by')).toHaveTextContent(/^Ended by: Solved$/)
     expect(within(box).getByTestId('session-history-a')).toHaveTextContent('50 min focus')
     expect(within(box).getByTestId('session-history-b')).toHaveTextContent('Ended by: Give up')
     expect(within(box).queryByTestId('session-history-c')).toBeNull()
@@ -525,21 +510,34 @@ describe('Do: Solved ✓ ends a running study session, and says so (UAT cu-4 P3-
 
   it('without a session there is no such note', async () => {
     await open('p127')
-    await screen.findByRole('button', { name: 'Start session' })
+    await screen.findByTestId('ticket-start')
     expect(screen.queryByTestId('do-session-note')).toBeNull()
   })
 })
 
-describe('Do: save-status in the top rail (ux addendum 5)', () => {
-  it('shows the same save-status as the header, inside the rail, and follows the state', async () => {
+describe('Do: one save-status per page (GLOBAL-10; the shell header owns it)', () => {
+  it('a problem ticket inside the Shell shows exactly one save-status, in the shell header, and the ticket rail is not a second banner', async () => {
     const { setSaveState } = await import('../../src/data/sync/status')
     setSaveState('saved')
-    await open('p127')
+    setNow(() => T)
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/do/p127']}>
+        <AppProviders db={await seededDb()} plan={flatPlanV2}>
+          <Shell />
+        </AppProviders>
+      </MemoryRouter>,
+    )
     const rail = (await screen.findByTestId('do-back')).closest('header') as HTMLElement
-    expect(within(rail).getByTestId('save-status')).toHaveTextContent('Saved')
+    const status = await screen.findAllByTestId('save-status')
+    expect(status).toHaveLength(1)
+    act(() => setSaveState('saved'))
+    await waitFor(() => expect(within(screen.getByTestId('shell-header')).getByTestId('save-status')).toHaveTextContent('Saved'))
+    expect(within(rail).queryByTestId('save-status')).toBeNull()
+    expect(rail).not.toHaveAttribute('role', 'banner')
     act(() => setSaveState('saving'))
-    await waitFor(() => expect(within(rail).getByTestId('save-status')).toHaveTextContent('Saving'))
+    await waitFor(() => expect(screen.getAllByTestId('save-status')).toHaveLength(1))
+    expect(screen.getByTestId('save-status')).toHaveTextContent('Saving')
     act(() => setSaveState('off'))
-    await waitFor(() => expect(within(rail).queryByTestId('save-status')).toBeNull())
+    await waitFor(() => expect(screen.queryAllByTestId('save-status')).toHaveLength(0))
   })
 })

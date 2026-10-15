@@ -49,7 +49,7 @@ export function CheckDialog({ ticket, brief, onClose, onDone, returnFocus }: {
       const r = await safeWrite(() => submitCheck(d, ticket.id, answers, at), m => toast(m, 'danger'))
       if (!r) return
       if (!r.ok) {
-        if (r.code === 'incomplete' || r.code === 'no_brief') setMessage(r.error)
+        if (r.code === 'incomplete' || r.code === 'no_brief' || r.code === 'skipped') setMessage(r.error)
         else setFailure({ code: r.code, message: r.error })
         return
       }

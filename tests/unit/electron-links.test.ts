@@ -28,7 +28,19 @@ describe('SEC-D-05: which links leave the window', () => {
   it('main.mjs routes both the window-open and the navigate handlers through the verdict, never a bare openExternal', () => {
     const main = readFileSync('electron/main.mjs', 'utf8')
     expect(main.match(/shell\.openExternal\(/g)).toHaveLength(2) // openOutside's two calls (open, and open after confirming)
-    expect(main).toMatch(/setWindowOpenHandler\(\(\{ url: u \}\) => \{ if \(!own\(u\)\) openOutside\(u\)/)
+    // window.open: decided by windowOpenDecision (electron/windows.mjs); only 'outside' reaches openOutside (the link verdict), and the handler
+    // always answers deny unless the decision is the partner card.
+    expect(main).toMatch(/import \{ windowOpenDecision \} from '\.\/windows\.mjs'/)
+    const handler = /wc\.setWindowOpenHandler\(\(\{ url: u \}\) => \{([\s\S]*?)\n    \}\)/.exec(main)?.[1] ?? ''
+    expect(handler).toMatch(/const decision = windowOpenDecision\(u, url, \{ allowCard \}\)/)
+    expect(handler).toMatch(/if \(decision === 'outside'\) openOutside\(u\)\s*\n\s*return \{ action: 'deny' \}/)
+    expect(handler.match(/action: 'allow'/g)).toHaveLength(1) // only the card branch allows a window
+    expect(handler.indexOf("action: 'allow'")).toBeLessThan(handler.indexOf("decision === 'outside'"))
+    expect(handler).toMatch(/if \(decision === 'card'\) \{\s*return \{\s*action: 'allow'/)
+    // the card is allowed only from the app window (allowCard true); a child window gets the same guard without it, so it cannot open cards
+    expect(main).toMatch(/guard\(win\.webContents, \{ allowCard: true \}\)/)
+    expect(main).toMatch(/did-create-window', child => guard\(child\.webContents, \{ allowCard: false \}\)/)
+    expect(main).not.toMatch(/setWindowOpenHandler\([^)]*=>\s*\{?\s*return \{ action: 'allow'/)
     expect(main).toMatch(/will-navigate', \(e, u\) => \{ if \(!own\(u\)\) \{ e\.preventDefault\(\); openOutside\(u\)/)
   })
 })

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { openApp, rows } from './briefs-helpers'
+import { openApp, openApproaches, rows } from './briefs-helpers'
 import { ServerHarness } from './harness'
 
 // Findings of the computer-use UAT lane cu-4 (dojo-acceptance/reports/uat/cu-4.md, 584d18b: the Do screen for Go problems)
@@ -209,29 +209,26 @@ test('cu-4 P3-7: a 2-D table that fits its pane has no scrollbar of its own', as
   await ctx.close()
 })
 
-test('cu-4 P3-13 / P3-10: the study session\'s brief lines stay together, and Notes is its own field beside the Attempt log', async ({ browser }) => {
+test('cu-4 P3-13 / P3-10: a running problem shows its brief as the title alone (the statement is not repeated), and the Attempt log is the one notes field', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/do/p91')
-  await page.getByTestId('start-session').click()
-  await page.getByTestId('plan-dialog').getByRole('textbox').first().fill('redo decode ways from memory')
-  await page.getByTestId('plan-start').click()
-  await page.getByTestId('session-phase').waitFor()
+  // The Plan dialog, the "This session I will" line and the clock column (`.study-side`) are retired, and the Notes pad was folded into
+  // the Attempt log (SessionPanel: "the Attempt log is the notes box here"), so the old spacing rule has nothing to space. What survives:
+  // the brief inside the running ticket is the card's title, once, without the statement the screen already shows (P3-13),
+  // and the notes live in one field (P3-10), which keeps what is typed.
+  const title = (await page.getByTestId('do-title').textContent())!
+  await page.getByTestId('ticket-start').click()
   const brief = page.getByTestId('session-brief')
-  const lines = await brief.locator('h2, p').evaluateAll(els => els.map(e => ({ top: e.getBoundingClientRect().top, bottom: e.getBoundingClientRect().bottom })))
-  expect(lines.length).toBeGreaterThanOrEqual(3) // title, the plan line, the card text
-  for (let i = 1; i < lines.length; i++) expect(lines[i].top - lines[i - 1].bottom, `gap before line ${i}`).toBeLessThanOrEqual(16)
-  // the clock column is taller than the brief's text, so a stretching grid would have spread the lines
-  const side = await page.locator('.study-side').boundingBox()
-  expect(side!.height).toBeGreaterThan(lines[lines.length - 1].bottom - lines[0].top + 20)
-  // Notes and the Attempt log: two fields
-  const notes = page.getByRole('textbox', { name: 'Notes', exact: true })
+  await brief.waitFor()
+  await expect(brief.locator('h2')).toHaveText(title)
+  await expect(brief.locator('p')).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveCount(0)
   const log = page.getByLabel('What is the invariant? What did you try?')
   await expect(log).toBeVisible()
-  await notes.fill('ch1: slope of a secant')
-  await expect(log).toHaveValue('')
   await log.fill('invariant: i is the prefix length')
-  await expect(notes).toHaveValue('ch1: slope of a secant')
+  await page.reload()
+  await expect(page.getByLabel('What is the invariant? What did you try?')).toHaveValue('invariant: i is the prefix length')
   await ctx.close()
 })
 
@@ -239,7 +236,7 @@ test('cu-4 P3-2: "Compare with" in the Approaches column shows the whole title; 
   const { ctx, page } = await openApp(browser, srv)
   const open2 = async () => {
     await page.goto('/do/p91')
-    const strip = page.getByTestId('dsa-approaches')
+    const strip = await openApproaches(page)
     await strip.getByRole('button', { name: 'Pick two' }).click()
     const chips = strip.getByRole('button').filter({ hasNotText: /Pick two/ })
     await chips.nth(1).click()
@@ -264,9 +261,11 @@ test('cu-4 P3-2: "Compare with" in the Approaches column shows the whole title; 
     return c.measureText(text).width <= s.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
   })
   expect(fits).toBe(true)
-  // a wide two-up (one column at 834) keeps V12's one row
-  await page.setViewportSize({ width: 834, height: 900 })
+  // a wide two-up (one column) keeps V12's one row. The R1 shell's rail narrows the page column, so the 600 px container threshold is
+  // reached at 1000, not 834 (below 600 the select takes its own row, which the 1280 half above pins); the precondition is measured.
+  await page.setViewportSize({ width: 1000, height: 900 })
   two = await open2()
+  expect((await two.boundingBox())!.width, 'the two-up is wide enough for one row').toBeGreaterThanOrEqual(600)
   const ys = await two.locator('.lab-two-up-head').locator('select, button').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2)))
   expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(4)
   await ctx.close()
@@ -296,41 +295,42 @@ test('cu-4 P3-16: pressing a trace cell or a call node never moves the panes, so
   await ctx.close()
 })
 
-test('cu-4 P3-18: the session panel has no Pause of its own; its buttons are full width, stacked, in the side column and on a phone', async ({ browser }) => {
+test('cu-4 P3-18: the one timer card holds Pause and End session in its own row, in the column and on a phone; Resume after a pause from the pill', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   const start = async () => {
     await page.goto('/do/p91')
-    await page.getByTestId('start-session').click()
-    await page.getByTestId('plan-start').click()
+    await page.getByTestId('ticket-start').click()
     await page.getByTestId('session-phase').waitFor()
     await page.waitForTimeout(500) // the panel's entrance animation
   }
+  // The session panel with Focus mode / End session stacked in a 220 px side column is retired (one timer, TICKET-08); Pause and
+  // End session now sit in the Timer card's button row. The rule that survives: they stay inside the card, side by side, at any width.
   const geo = async () => {
-    const r = (id: string) => page.getByTestId(id).evaluate(e => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height } })
-    return { focus: await r('session-focus'), end: await r('session-end'), panel: await page.locator('.study-side').evaluate(e => { const b = e.getBoundingClientRect(); return { x: b.x, w: b.width } }) }
+    const r = (loc: ReturnType<typeof page.getByTestId>) => loc.evaluate(e => { const b = e.getBoundingClientRect(); return { x: b.x, y: b.y, w: b.width, h: b.height } })
+    return {
+      pause: await r(page.getByTestId('timer-pause')), end: await r(page.getByTestId('session-end')),
+      card: await r(page.getByRole('region', { name: 'Timer' })),
+    }
   }
   await page.setViewportSize({ width: 1280, height: 900 })
   await start()
-  await expect(page.getByTestId('session-pause')).toHaveCount(0)
   await expect(page.getByTestId('session-resume')).toHaveCount(0)
   let g = await geo()
-  expect(g.focus.w).toBeCloseTo(g.panel.w, 0) // the 220 px column
-  expect(g.end.w).toBeCloseTo(g.panel.w, 0)
-  expect(g.end.y).toBeGreaterThan(g.focus.y + g.focus.h - 1)
+  for (const b of [g.pause, g.end]) { expect(b.x).toBeGreaterThanOrEqual(g.card.x - 0.5); expect(b.x + b.w).toBeLessThanOrEqual(g.card.x + g.card.w + 0.5) }
+  expect(Math.abs(g.pause.y - g.end.y), 'Pause and End session share a row').toBeLessThanOrEqual(2)
   await page.setViewportSize({ width: 375, height: 800 })
   await page.waitForTimeout(300)
   g = await geo()
-  expect(g.focus.w).toBeGreaterThan(300) // the whole width of the phone panel
-  expect(g.end.w).toBeCloseTo(g.focus.w, 0)
-  expect(g.end.y).toBeGreaterThan(g.focus.y + g.focus.h - 1)
-  // paused from the pill on another screen, the card's own panel offers Resume (so it is never stuck there)
+  for (const b of [g.pause, g.end]) { expect(b.x).toBeGreaterThanOrEqual(g.card.x - 0.5); expect(b.x + b.w).toBeLessThanOrEqual(g.card.x + g.card.w + 0.5); expect(b.h).toBeGreaterThanOrEqual(44) }
+  // paused from the pill on another screen, the card's own timer offers Resume (so it is never stuck there)
   await page.getByTestId('do-back').click()
   await page.getByTestId('session-pill-pause').click()
   await page.goto('/do/p91')
-  await expect(page.getByTestId('session-resume')).toBeVisible()
-  await page.getByTestId('session-resume').click()
+  await expect(page.getByTestId('timer-resume')).toBeVisible()
+  await page.getByTestId('timer-resume').click()
   await expect(page.getByTestId('session-phase')).toHaveText('Focus')
-  await expect(page.getByTestId('session-resume')).toHaveCount(0)
+  await expect(page.getByTestId('timer-resume')).toHaveCount(0)
+  await expect(page.getByTestId('timer-pause')).toBeVisible()
   await ctx.close()
 })
 

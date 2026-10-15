@@ -21,7 +21,14 @@
   }
 }
 .do-rail-sprint, .do-rail-timer { font-family: var(--sr-font-mono); }
+/* the one visible timer reading of the problem screen (TICKET-08): the sticky rail's, read at a glance beside the code */
+.do-rail-timer { font-size: var(--type-title); font-weight: 700; letter-spacing: 0; text-transform: none; line-height: 1.2; }
 .do-rail-xp { font-family: var(--sr-font-mono); }
+/* GLOBAL-03 / TICKET-32: on the problem screen the only accent is Start. Accent-styled buttons of the embedded tools
+   (trace Play, Trace, Approve, ...) carry no data-accent and render as plain quiet controls here (TODAY-31). */
+.do .sr-btn-accent:not([data-accent]) {
+  background: transparent; color: var(--sr-text-primary); box-shadow: none; border-color: var(--sr-edge-mid);
+}
 .redo-banner {
   margin: 0; padding: 8px 12px; border: 2px solid var(--sr-label-warn); color: var(--sr-label-warn);
   font-family: var(--sr-font-mono); font-size:var(--type-meta); overflow-wrap: anywhere;
@@ -48,7 +55,6 @@
 }
 /* ui-do D3.5 / F6.18: the button, then the blocks beside the readout on their own row (never under the button) */
 .timer { display: grid; gap: 12px; justify-items: start; }
-.timer > .sr-panel-title { margin: 0; }
 .timer-row { display: flex; align-items: center; gap: 12px; width: fit-content; max-width: 100%; }
 .blocks { display: flex; gap: 4px; }
 .block { width: 14px; height: 24px; border: 2px solid var(--sr-edge-mid); }
@@ -78,7 +84,6 @@
 .do-given-up { margin: 0; font-family: var(--sr-font-mono); color: var(--sr-label-warn); }
 .do-left, .do-right { min-width: 0; }
 .outcomes .sr-btn[aria-pressed='true'] { outline: 2px solid var(--sr-text-secondary); outline-offset: 2px; }
-.do .do-run-gate-hint { margin: 0; color: var(--sr-text-secondary); font-size: var(--type-small); }
 /* UAT cu-4 P3-11: while a study session runs, the outcome buttons say they end it too (reading text: Body 17) */
 .do p.do-session-note { margin: 0; color: var(--sr-text-secondary); }
 .redo-replay { display: grid; gap: 8px; min-width: 0; }
@@ -98,3 +103,9 @@
 /* rerun F001 (D4): the rung notes ("The timer, the links and your log. Always open.") are Chivo 15 secondary, not Body */
 .do p.rung-note, .do p.rung-why { font-size: var(--type-small); line-height: 1.55; color: var(--sr-text-secondary); }
 .do p.redo-banner { font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.45; }
+
+/* GLOBAL-04 / one-orange: panel headings on the problem screen are quiet Chivo caps like the other ticket cards (.dk-cap), not orange pixel type */
+.do .sr-panel-title {
+  font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; line-height: 1.3;
+  color: var(--sr-text-secondary); -webkit-font-smoothing: auto; font-smooth: auto; text-rendering: auto;
+}

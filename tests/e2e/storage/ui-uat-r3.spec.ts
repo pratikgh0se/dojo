@@ -12,49 +12,6 @@ test.describe.configure({ timeout: 240_000 })
 
 const tab = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name })
 
-test('r3 P2: Draft briefs that drafts nothing says Failed, none of N and how to sign in, and stays until dismissed', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv, undefined, c => c.addInitScript(() => { localStorage.setItem('dojo-ai-fake-fail', 'brief:claude_signed_out') }))
-  await page.goto('/board')
-  await page.getByRole('button', { name: 'Draft briefs for Sprint 1' }).click()
-  await expect(page.getByTestId('brief-progress')).toHaveText('Failed')
-  await expect(page.getByTestId('brief-failed')).toHaveText(/^None of the \d+ cards could be drafted\.$/)
-  const err = page.getByTestId('ai-error')
-  await expect(err).toContainText("Claude Code isn't signed in. Open Terminal, run claude, sign in, then try again.")
-  await expect(err.locator('code', { hasText: /^claude$/ })).toBeVisible()
-  await expect(page.getByTestId('ai-error-detail')).toHaveText('claude_signed_out: fake brief unavailable')
-  // leave the Board and come back: the outcome is still there
-  await tab(page, 'Today').click()
-  await page.waitForURL(/\/$/)
-  await tab(page, 'Board').click()
-  await expect(page.getByTestId('brief-progress')).toHaveText('Failed')
-  await expect(page.getByTestId('brief-failed')).toHaveText(/^None of the \d+ cards could be drafted\.$/)
-  // a relaunch keeps the origin, so a reload stands in for it
-  await page.reload()
-  await expect(page.getByTestId('brief-progress')).toHaveText('Failed')
-  await expect(page.getByTestId('ai-error')).toBeVisible()
-  await page.getByTestId('brief-dismiss').click()
-  await expect(page.getByTestId('brief-progress')).toHaveCount(0)
-  await expect(page.getByTestId('brief-failed')).toHaveCount(0)
-  await page.reload()
-  await expect(page.getByRole('button', { name: 'Draft briefs for Sprint 1' })).toBeEnabled()
-  await expect(page.getByTestId('brief-progress')).toHaveCount(0)
-  await ctx.close()
-})
-
-test("r3 P2: a partly failed run says how many of how many were drafted; never \"the others were\"", async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  const queue = (await rows(srv, 'tickets')).filter(t => t.sprint === 1 && t.status !== 'done' && !t.archived && !t.brief)
-  expect(queue.length).toBeGreaterThan(2)
-  await page.evaluate(id => localStorage.setItem('dojo-ai-fake-fail', `brief@${id}`), queue[0].id as string)
-  await page.goto('/board')
-  await page.getByRole('button', { name: 'Draft briefs for Sprint 1' }).click()
-  await expect(page.getByTestId('brief-progress')).toHaveText('Done', { timeout: 60_000 })
-  await expect(page.getByTestId('brief-failed')).toHaveText(`${queue.length - 1} of ${queue.length} drafted; 1 couldn't be.`)
-  await expect(page.getByTestId('brief-failed')).not.toContainText('the others')
-  await expect(page.getByTestId('ai-error-detail')).toHaveText('claude_failed: fake brief unavailable')
-  await ctx.close()
-})
-
 const P91_PY = `def numDecodings(s: str) -> int:
     prev2, prev1 = 1, (0 if s[0] == '0' else 1)
     for i in range(2, len(s) + 1):
@@ -116,32 +73,25 @@ test('r3 J8 (P3): the daily snapshot is listed at the time it was taken, not 00:
   await ctx.close()
 })
 
-test('r3 J1 (P3): at 1280 "Saved" sits at the header\'s right edge, as in the mockups', async ({ browser }) => {
+test('r3 J1 (P3): at 1280 "Saved" sits in the right-hand cluster of the shell header: after the search, before the level chip, the gear at the right edge', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.goto('/')
   await expect(page.getByTestId('save-status')).toHaveText('Saved')
-  const right = await page.evaluate(() => {
-    const bar = document.querySelector('.topbar')!
+  // The old `.topbar` with "Saved" on its right edge is the 48 px `shell-header` now (SHELL-07): search, then the save state, the one
+  // level/XP chip, and the gear closing the row at the header's right padding edge.
+  const g = await page.evaluate(() => {
+    const r = (id: string) => document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect()
+    const bar = document.querySelector('[data-testid="shell-header"]')!
     const pad = parseFloat(getComputedStyle(bar).paddingRight)
-    return { edge: Math.round(bar.getBoundingClientRect().right - pad), saved: Math.round(document.querySelector('[data-testid="save-status"]')!.getBoundingClientRect().right) }
+    return {
+      edge: Math.round(bar.getBoundingClientRect().right - pad), gear: Math.round(r('shell-gear').right),
+      searchRight: Math.round(r('shell-search').right), savedLeft: Math.round(r('save-status').left), savedRight: Math.round(r('save-status').right),
+      levelLeft: Math.round(r('level').left), inside: bar.contains(document.querySelector('[data-testid="save-status"]')),
+    }
   })
-  expect(Math.abs(right.saved - right.edge)).toBeLessThanOrEqual(2)
-  await ctx.close()
-})
-
-test('r3 J7 (P3): a Board card at 1280 keeps Pin + Move to sprint… on one row and its reserved rail on one more', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.setViewportSize({ width: 1280, height: 860 })
-  await page.goto('/board')
-  const card = page.getByTestId('col-todo').locator('article').first()
-  const rows = await card.evaluate(c => {
-    const rowsOf = (sel: string) => new Set([...c.querySelectorAll(`${sel} > *`)].map(b => Math.round(b.getBoundingClientRect().top))).size
-    return { tools: rowsOf('.bd-tools'), rail: rowsOf('.rail'), height: Math.round(c.getBoundingClientRect().height) }
-  })
-  expect(rows.tools).toBe(1)
-  expect(rows.rail).toBe(1)
-  // was about 290 with two rows each. Since UAT cu-3 P3-2 the card also keeps the "Pinned" chip's place (a card whose one source chip
-  // leaves no room for it beside it holds one more, empty, chip line), so that pinning never makes it taller: about 241 here.
-  expect(rows.height).toBeLessThan(260)
+  expect(g.inside).toBe(true)
+  expect(Math.abs(g.gear - g.edge)).toBeLessThanOrEqual(2)
+  expect(g.savedLeft).toBeGreaterThanOrEqual(g.searchRight)
+  expect(g.savedRight).toBeLessThanOrEqual(g.levelLeft)
   await ctx.close()
 })

@@ -1,8 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { IST } from './helpers'
-import {
-  begin, CACHE, completeS1, drawS1, endDrawing, fillClose, guard, pick, resumeAndGo, RL, RL_TITLE, startSession,
-} from './design-helpers'
+import { addKind, begin, CACHE, completeS1, drawS1, endDrawing, fillClose, guard, pick, resumeAndGo, RL, RL_TITLE, startSession } from './design-helpers'
 
 const LENS = ['Load', 'Data', 'Consistency', 'Failure', 'Latency', 'Cost', 'Evolution']
 
@@ -20,8 +18,8 @@ async function completeS2(page: Page) {
   await row2.getByRole('textbox', { name: 'Over' }).fill('b')
   await row2.getByRole('textbox', { name: 'Because' }).fill('c')
   await page.getByRole('spinbutton', { name: 'Rubric (0–20)' }).fill('15')
-  await page.getByRole('button', { name: 'Complete session' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('done')
+  await page.getByTestId('session-complete').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Done')
 }
 
 test('D-48 empty evidence', async ({ page }) => {
@@ -92,10 +90,11 @@ test('D-46/D-47 redesign queue, due link, a passing redesign', async ({ page }) 
   await resumeAndGo(page, () => page.reload())
   await expect(row.getByText('due', { exact: true })).toBeVisible()
   await row.getByRole('link', { name: `Start redesign: ${RL_TITLE}` }).click()
-  await expect(page).toHaveURL(new RegExp(`/designs/session/${RL}$`))
+  await expect(page).toHaveURL(new RegExp(`/designs/session/${RL}\\?new=1$`))
   await expect(page.getByTestId('session-setup')).toContainText('Redesign pass · previous rubric 12')
-  await page.getByRole('button', { name: 'Start · 45 min' }).click()
-  await page.getByRole('button', { name: 'Add gateway', exact: true }).click()
+  await page.getByTestId('design-mode-skip-ai').check()
+  await page.getByTestId('session-start').click()
+  await addKind(page, 'gateway')
   await endDrawing(page)
   await fillClose(page, 'None, I answered all four')
   const dives = await page.getByTestId('session-score').getByRole('radiogroup').evaluateAll(gs => gs.slice(0, 4).map(g => g.getAttribute('aria-label') ?? ''))
@@ -106,8 +105,8 @@ test('D-46/D-47 redesign queue, due link, a passing redesign', async ({ page }) 
   await row2.getByRole('textbox', { name: 'Over' }).fill('b')
   await row2.getByRole('textbox', { name: 'Because' }).fill('c')
   await page.getByRole('spinbutton', { name: 'Rubric (0–20)' }).fill('16')
-  await page.getByRole('button', { name: 'Complete session' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('done')
+  await page.getByTestId('session-complete').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Done')
   await expect(page.getByTestId('toast').filter({ hasText: '+20 xp' })).toHaveCount(0)
   await resumeAndGo(page, () => page.goto('/designs'))
   await expect(page.getByTestId(`design-redesign-${RL}`)).toHaveCount(0)
@@ -115,22 +114,35 @@ test('D-46/D-47 redesign queue, due link, a passing redesign', async ({ page }) 
   check()
 })
 
-test('C-INT §7 I-26: a due redesign shows up in Today\'s Redo drawer as a link and opens the design session', async ({ page }) => {
+test('C-INT §7 I-26: a due redo on a finished design ticket is a Design replay card in Review and REDO · DESIGN opens the session', async ({ page }) => {
   const check = guard(page)
   await begin(page)
   await completeS1(page)
-  await resumeAndGo(page, () => page.goto('/'))
-  await expect(page.getByTestId('today-redo-drawer')).toHaveCount(0)
+  // Today's Redo drawer is retired (README Retired `today-redo-*`): Review is the one queue (REVIEW-15).
+  // Finishing a design session stores `redesignDue` on the session (shown by the Designs row and the done view, D-46 / DESIGN-73) and
+  // writes the open `design_rubric` redo on the design ticket (review.md Preconditions), which is what feeds the replay card.
+  await resumeAndGo(page, () => page.goto('/review'))
+  await expect(page.getByTestId('review-empty')).toBeVisible()
+  // before it is due nothing is queued (REVIEW-16): the nav carries no badge
+  await resumeAndGo(page, () => page.reload())
+  await expect(page.getByTestId('review-empty')).toBeVisible()
+  await expect(page.getByTestId('shell-review-badge')).toHaveCount(0)
   await page.clock.setSystemTime(IST('2026-11-10T09:00:00'))
   await resumeAndGo(page, () => page.reload())
-  const toggle = page.getByTestId('today-redo-toggle')
-  await expect(toggle).toContainText('Redo · 1')
-  await toggle.click()
-  const row = page.getByTestId(`today-redo-design-${RL}`)
-  await expect(row).toHaveAccessibleName('Redesign Distributed rate limiter and API gateway')
-  await expect(row).toHaveAttribute('href', `/designs/session/${RL}`)
-  await expect(row).toHaveText('Distributed rate limiter and API gateway · redesign · previous rubric 12/20')
-  await row.click()
+  // due: one replay card for the design, and the count and the nav badge agree (REVIEW-02)
+  await expect(page.getByTestId('review-count')).toHaveAttribute('data-count', '1')
+  await expect(page.getByTestId('shell-review-badge')).toHaveAttribute('data-count', '1')
+  const card = page.getByTestId('review-card')
+  await expect(card).toHaveAttribute('data-kind', 'replay')
+  await expect(card).toHaveAttribute('data-ticket-id', RL)
+  await expect(page.getByTestId('review-card-kind')).toHaveText('Design')
+  await expect(page.getByTestId('review-card-lane')).toHaveText('Design')
+  await expect(page.getByTestId('review-card-title')).toHaveText(RL_TITLE)
+  await expect(page.getByTestId('review-answer')).toHaveCount(0)
+  const redo = page.getByTestId('review-redo')
+  await expect(redo).toHaveText('REDO · DESIGN')
+  await redo.click()
   await expect(page).toHaveURL(new RegExp(`/designs/session/${RL}$`))
+  await expect(page.getByTestId('screen-design-session')).toBeVisible()
   check()
 })

@@ -1,5 +1,5 @@
 import { chromium, expect, test, type Page } from '@playwright/test'
-import { draftSprint1, openApp, reopen, rows, ticket } from './briefs-helpers'
+import { openApp, rows, ticket } from './briefs-helpers'
 import { ServerHarness } from './harness'
 import { GO_VF } from '../../helpers/visualSolutions'
 
@@ -120,109 +120,68 @@ test('J6 (re-UAT P2): the picture pane keeps one width, and the caption and vari
   await real.close()
 })
 
-test('J3 (P2): Pause keeps the Do timer and the study-session timer where they are; Resume continues from there', async ({ browser }) => {
+test('J3 (P2): Pause keeps the ticket timer where it is; Resume continues from there; a pause from the pill holds across a page load', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.goto('/do/p200')
-  await page.getByTestId('do-timer-preset-25').click()
-  const readout = page.getByTestId('timer-panel-readout')
+  await page.getByTestId('ticket-start').click() // the one start (TICKET-03): the presets and the Plan dialog are retired
+  const readout = page.getByTestId('timer-readout')
   await expect(page.getByTestId('timer-state')).toHaveText('running')
   await page.waitForTimeout(1500)
   await page.getByTestId('timer-pause').click()
   await expect(page.getByTestId('timer-state')).toHaveText('paused')
   const at = await readout.textContent()
   expect(at).toMatch(/^24:5\d$/)
-  await expect(page.getByTestId('do-timer-preset-25')).toHaveCount(0) // no reset to the presets
+  await expect(page.getByTestId('ticket-start')).toHaveCount(0) // no reset to a start
   await page.waitForTimeout(2500)
   await expect(readout).toHaveText(at!)
   await page.getByTestId('timer-resume').click()
   await expect(page.getByTestId('timer-state')).toHaveText('running')
   await expect.poll(async () => await readout.textContent(), { timeout: 5000 }).not.toBe(at)
-  // the study session
-  await page.getByRole('button', { name: 'Retreat' }).click()
-  await page.getByTestId('start-session').click()
-  await page.getByTestId('plan-start').click()
-  const clock = page.getByTestId('session-timer')
-  await clock.waitFor()
-  await page.waitForTimeout(1500)
-  // UAT cu-4 P3-18: the panel has no Pause (D3.6); a running session is paused from its pill, on any other screen
-  await expect(page.getByTestId('session-pause')).toHaveCount(0)
+  // UAT cu-4 P3-18: the card's timer has its own Pause; a running session is also paused from its pill, on any other screen
   const doUrl = page.url()
   await page.getByTestId('do-back').click()
   await page.getByTestId('session-pill-pause').click()
   await page.goto(doUrl)
-  await expect(page.getByTestId('session-phase')).toHaveText('Focus · paused')
-  const held = await clock.textContent()
+  await expect(page.getByTestId('timer-state')).toHaveText('paused')
+  const held = await readout.textContent()
   await page.waitForTimeout(2500)
-  await expect(clock).toHaveText(held!)
-  await page.getByTestId('session-resume').click()
-  await expect(page.getByTestId('session-phase')).toHaveText('Focus')
-  await expect.poll(async () => await clock.textContent(), { timeout: 5000 }).not.toBe(held)
+  await expect(readout).toHaveText(held!)
+  await page.getByTestId('timer-resume').click()
+  await expect(page.getByTestId('timer-state')).toHaveText('running')
+  await expect.poll(async () => await readout.textContent(), { timeout: 5000 }).not.toBe(held)
   await ctx.close()
 })
 
-const VERB: Record<string, string> = { watch: 'Watch', rebuild: 'Rebuild', build: 'Build', teachback: 'Teach-back' }
-const ROLE: Record<string, string> = { watch: 'watch', rebuild: 'rebuild', build: 'build + break', teachback: 'teach-back' }
-async function startTarget(page: Page) {
-  await page.goto('/')
-  const headline = (await page.getByTestId('now-headline').textContent()) ?? ''
-  const eyebrow = (await page.getByTestId('now-eyebrow').textContent()) ?? ''
-  await page.getByTestId('start-button').click()
-  await page.waitForURL(/\/do\//)
-  return { headline, eyebrow, id: decodeURIComponent(new URL(page.url()).pathname.split('/').pop()!) }
-}
-
-test('J3 / J7 (P2): the NOW tile names exactly the card Start opens (after its role card is done, and after a split: the next part); a split card is not counted twice', async ({ browser }) => {
-  const MONDAY = '2026-10-05T10:00:00+05:30' // AI · watch
-  const { ctx, page } = await openApp(browser, srv, MONDAY)
-  const ts = await rows(srv, 'tickets')
-  const watch = ts.find(t => t.sprint === 1 && t.kind === 'stage' && t.session === 'watch')!
-  // finish the role card in the app (a direct server write races the reload's local copy)
-  await page.getByRole('button', { name: /This sprint/ }).click()
-  await page.getByTestId('drawer-tasks').getByRole('checkbox', { name: `Done: ${watch.title}` }).check()
+test('J3 / J7 (P2): Today\'s quest card names exactly the ticket Start opens (and again after that ticket is done)', async ({ browser }) => {
+  const { ctx, page } = await openApp(browser, srv)
+  // The NOW tile ("This sprint" drawer, `now-headline`, `now-eyebrow`) is the quest card now (README Retired "Old Today panels"):
+  // `today-title` and `today-kind` name what `start-button` opens (TODAY-01/TODAY-24, TICKET-01).
+  const startTarget = async () => {
+    await page.goto('/')
+    await expect(page.getByTestId('screen-today')).toHaveAttribute('data-ready', 'true')
+    const title = ((await page.getByTestId('today-title').textContent()) ?? '').trim()
+    const kind = ((await page.getByTestId('today-kind').textContent()) ?? '').trim()
+    await page.getByTestId('start-button').click()
+    await page.waitForURL(/\/do\//)
+    const id = decodeURIComponent(new URL(page.url()).pathname.split('/').pop()!)
+    return { title, kind, id }
+  }
+  const first = await startTarget()
+  await expect(page.getByTestId('do-title')).toHaveText(first.title)
+  await expect(page.getByTestId('ticket-kind')).toHaveText(first.kind)
+  // finish it in the app (a direct server write races the reload's local copy)
+  await page.getByTestId('ticket-done').click()
+  await expect(page.getByTestId('ticket-done-state')).toBeVisible()
   await expect(page.getByTestId('save-status')).toHaveText('Saved')
-  await expect.poll(async () => (await ticket(srv, watch.id)).status).toBe('done')
-  let { headline, eyebrow, id } = await startTarget(page)
-  const block = headline
-  let target = (await rows(srv, 'tickets')).find(t => t.id === id)!
-  expect(id).not.toBe(watch.id)
-  expect(headline.startsWith(VERB[target.session] ?? '?'), `${headline} vs ${target.session}`).toBe(true)
-  // UAT r2 J3: the eyebrow above it names the same card (not the rotation's "AI · watch")
-  expect(eyebrow.endsWith(`· ${target.track === 'ai' ? 'AI' : 'Interview'} · ${ROLE[target.session]}`), eyebrow).toBe(true)
-  // split the card Start opened; Start then opens its first part, and the tile names it
-  await draftSprint1(page)
-  await page.goto('/board')
-  const before = { n: Number(await page.getByTestId('count-todo').textContent()), min: await page.locator('.col-min').first().textContent() }
-  await page.goto(`/do/${id}`)
-  await page.getByRole('button', { name: 'Split into sessions' }).click()
-  const sp = page.getByRole('dialog', { name: 'Split into sessions' })
-  await sp.getByLabel('Parts').fill('2')
-  const preview = await sp.getByTestId('split-preview').textContent()
-  await sp.getByRole('button', { name: 'Split', exact: true }).click()
-  await expect(sp).toBeHidden()
-  await expect.poll(async () => (await ticket(srv, id)).children?.length).toBe(2)
-  const parent = await ticket(srv, id)
-  const parts = await Promise.all(parent.children.map((k: string) => ticket(srv, k)))
-  for (const p of parts) expect(preview).toContain(`${p.estMin} min`) // the preview is what was created
-  ;({ headline, eyebrow, id } = await startTarget(page))
-  expect(id).toBe(parent.children[0])
-  target = await ticket(srv, id)
-  expect(headline.startsWith(VERB[target.session] ?? '?')).toBe(true)
-  // ruling 22 D1: both open parts stand in the card's place, so the slot's block is what it was before the split
-  expect(headline).toBe(block)
-  await page.goto('/board')
-  const sum = parts.reduce((a: number, p: { estMin: number }) => a + p.estMin, 0)
-  const parentMin = parent.brief?.minutes ?? parent.estMin
-  await expect(page.getByTestId('count-todo')).toHaveText(String(before.n - 1 + 2))
-  const m0 = Number(before.min!.match(/(\d+) min/)![1])
-  await expect(page.locator('.col-min').first()).toHaveText(` · ${m0 - parentMin + sum} min`)
-  await page.goto('/')
-  // ruling 20 S4: the split card counts once, as itself; its parts are not counted
-  const sprintTaskCount = (await rows(srv, 'tickets')).filter(t => t.sprint === 1 && !t.archived && ['task', 'stage', 'watch', 'read'].includes(t.kind) && !t.childOf).length
-  await expect(page.getByTestId('drawer-tasks')).toContainText(`This sprint · ${sprintTaskCount} tasks`)
+  await expect.poll(async () => (await ticket(srv, first.id)).status).toBe('done')
+  const second = await startTarget()
+  expect(second.id).not.toBe(first.id)
+  await expect(page.getByTestId('do-title')).toHaveText(second.title)
+  await expect(page.getByTestId('ticket-kind')).toHaveText(second.kind)
   await ctx.close()
 })
 
-test('P2 scroll: a new screen opens at the top (DSA -> Do, the Board); Back returns to where it was', async ({ browser }) => {
+test('P2 scroll: a new screen opens at the top (DSA -> Do, Path); Back returns to where it was', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 393, height: 700 })
   await page.goto('/dsa?topic=2')
@@ -238,12 +197,38 @@ test('P2 scroll: a new screen opens at the top (DSA -> Do, the Board); Back retu
   await page.getByTestId('do-back').click()
   await page.waitForURL(/\/dsa/)
   await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 }).toBeGreaterThan(200)
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Board' }).click()
-  await page.waitForURL(/\/board$/)
+  await page.getByTestId('shell-nav-path').click() // the Board is retired (SHELL-21); Path is the new screen
+  await page.waitForURL(/\/path$/)
+  await expect(page.getByTestId('screen-path')).toHaveAttribute('data-ready', 'true')
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0) // a new screen
   await page.goBack()
   await page.waitForURL(/\/dsa/)
   await expect.poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 }).toBeGreaterThan(200) // Back restores
+  await ctx.close()
+})
+
+// TICKET-01: do-back returns to the previous screen in history. The contracts have no scroll clause for Path, so this asserts the
+// destination and that the Path list is there again, not a scroll offset.
+test('P2 (Path): a ticket opened from a Path row; do-back returns to /path with the list present', async ({ browser }) => {
+  const { ctx, page } = await openApp(browser, srv)
+  await page.setViewportSize({ width: 393, height: 700 })
+  await page.getByTestId('shell-nav-path').click()
+  await page.waitForURL(/\/path$/)
+  await expect(page.getByTestId('screen-path')).toHaveAttribute('data-ready', 'true')
+  const link = page.locator('[data-testid^="do-"][data-content="plan"]').first()
+  const testid = (await link.getAttribute('data-testid'))!
+  const id = testid.slice('do-'.length)
+  const row = page.getByTestId(`row-${id}`)
+  await row.hover() // the quiet Start shows on hover or focus (PATH-16)
+  await page.getByTestId(`path-row-start-${id}`).click()
+  await page.waitForURL(new RegExp(`/do/${encodeURIComponent(id)}$`))
+  await expect(page.getByTestId('screen-do')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0) // a new screen opens at the top
+  await page.getByTestId('do-back').click()
+  await page.waitForURL(/\/path$/)
+  await expect(page.getByTestId('screen-path')).toHaveAttribute('data-ready', 'true')
+  await expect(page.getByTestId(`row-${id}`)).toBeVisible() // the list is back (the started ticket now sits in Doing)
+  await expect(page.getByTestId('path-doing')).toBeVisible()
   await ctx.close()
 })
 
@@ -297,23 +282,6 @@ test('J4 (P3): a failing plain run (no dojo/tk calls) says how to get the trace 
   await ctx.close()
 })
 
-test('J7 (P3): Move to sprint… counts in Undo, and Undo puts the card back', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.goto('/board')
-  await expect(page.getByTestId('undo')).toHaveText('Undo (0)')
-  await expect(page.getByTestId('undo')).toBeDisabled()
-  await page.getByTestId('card-m1w1i1').getByRole('button', { name: 'Move to sprint…' }).click()
-  await page.getByRole('menuitem', { name: 'Sprint 3', exact: true }).click()
-  await expect(page.getByTestId('card-m1w1i1')).toHaveCount(0)
-  await expect(page.getByTestId('undo')).toHaveText('Undo (1)')
-  await page.getByTestId('undo').click()
-  await expect(page.getByTestId('card-m1w1i1')).toBeVisible()
-  await expect(page.getByTestId('undo')).toHaveText('Undo (0)')
-  await expect(page.getByTestId('undo')).toBeDisabled()
-  await expect.poll(async () => (await ticket(srv, 'm1w1i1')).sprint).toBe(1)
-  await ctx.close()
-})
-
 test('J9 (P3): Settings speaks user language: no "planVersion", no "(SQLite)"', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.goto('/settings')
@@ -322,72 +290,4 @@ test('J9 (P3): Settings speaks user language: no "planVersion", no "(SQLite)"', 
   const text = await page.locator('main').innerText()
   expect(text).not.toMatch(/planVersion|SQLite/)
   await ctx.close()
-})
-
-test('J3 (P3): Progress shows no projected finish until there is a week of data', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv) // Tuesday of sprint 1
-  await page.getByRole('button', { name: /This sprint/ }).click()
-  await page.getByTestId('drawer-tasks').getByRole('checkbox', { name: /^Done: /, checked: false }).first().check()
-  await expect(page.getByTestId('save-status')).toHaveText('Saved')
-  await page.goto('/progress')
-  await expect(page.getByTestId('pace-finish')).toHaveText('—')
-  await ctx.close()
-  const later = await reopen(browser, srv, '2026-10-13T10:00:00+05:30') // a week after the first finished card
-  await later.page.goto('/progress')
-  await expect(later.page.getByTestId('pace-finish')).toHaveText(/^S\d+$/)
-  await later.ctx.close()
-})
-
-test('J7 (P3): Draft briefs keeps its progress in view after you leave the Board, then says it is done', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv, undefined, c => c.addInitScript(() => { localStorage.setItem('dojo-ai-fake-delay-ms', '400') }))
-  await page.goto('/board')
-  await page.getByRole('button', { name: 'Draft briefs for Sprint 1' }).click()
-  await expect(page.getByTestId('brief-progress')).toHaveText(/^Drafting \d+ of \d+/)
-  await expect(page.getByTestId('draft-indicator')).toHaveCount(0) // the Board shows it inline
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Today' }).click()
-  await page.waitForURL(/\/$/)
-  const pill = page.getByTestId('draft-indicator')
-  await expect(pill.getByRole('status')).toHaveText(/^Sprint 1 · Drafting \d+ of \d+/)
-  await expect(pill.getByRole('status')).toHaveText(/^Drafted \d+ briefs for Sprint 1$/, { timeout: 60_000 })
-  await pill.getByRole('button', { name: 'Dismiss' }).click()
-  await expect(pill).toHaveCount(0)
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Board' }).click()
-  await expect(page.getByTestId('brief-progress')).toHaveText('Done') // the same run, back on the Board
-  await ctx.close()
-})
-
-test('J2 (P3): the nav row never moves when the More label or the save status changes width (real scrollbars)', async () => {
-  const real = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] })
-  const { ctx, page } = await openApp(real, srv)
-  const xs = () => page.evaluate(() => {
-    const nav = document.querySelector('nav[aria-label="Main"]')!
-    return [...nav.querySelectorAll('a.tab'), nav.querySelector('[data-testid="more-button"]')!].map(e => Math.round(e.getBoundingClientRect().x))
-  })
-  await page.goto('/')
-  await page.getByTestId('now-headline').waitFor()
-  await expect(page.getByTestId('save-status')).toHaveText('Saved')
-  const home = await xs()
-  for (const path of ['/settings', '/overview', '/progress', '/map', '/week']) {
-    await page.goto(path)
-    await page.getByRole('heading', { level: 1 }).first().waitFor()
-    await expect(page.getByTestId('save-status')).toHaveText('Saved')
-    expect(await xs(), path).toEqual(home)
-  }
-  await page.goto('/')
-  await page.getByTestId('now-headline').waitFor()
-  await page.getByRole('button', { name: /This sprint/ }).click()
-  const box = (n: number) => page.getByTestId('drawer-tasks').getByRole('checkbox', { name: /^Done: / }).nth(n)
-  await page.route('**/db/**', async r => { await new Promise(res => setTimeout(res, 1500)); await r.continue().catch(() => {}) })
-  await box(0).check()
-  await expect(page.getByTestId('save-status')).toHaveText('Saving…')
-  expect(await xs(), 'Saving…').toEqual(home)
-  await page.unroute('**/db/**')
-  await expect(page.getByTestId('save-status')).toHaveText('Saved', { timeout: 15_000 })
-  await page.route('**/db/**', r => r.abort())
-  await box(1).check()
-  await expect(page.getByTestId('save-status')).toHaveText('Not saved to disk')
-  expect(await xs(), 'Not saved to disk').toEqual(home)
-  await page.unroute('**/db/**')
-  await ctx.close()
-  await real.close()
 })

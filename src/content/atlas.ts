@@ -1,7 +1,7 @@
 // The Algorithm Atlas as static data (labs contract §2): 16 atoms, 36 patterns in the prototype's order
 // (lab/Algorithm Atlas.dc.html section 01 `pat(...)` calls: same main and side atoms), each row's
 // walkthroughs and coverage line (§2.2, D-2), the 45-entry walkthrough library (§2.1, D-1), the DSA topic
-// warm-ups (§2.3, D-5) and the Two-up partners (§4.5, D-9).
+// warm-ups (§2.3, D-5) and the Two-up partners (§4.5, D-9). W7 adds nine walkthroughs: 54 in all, one or more per row.
 
 export const ATOMS = [
   'ARRAY', 'GRID', 'GRAPH', 'TREE', 'LIST', 'STACK', 'QUEUE', 'HASH',
@@ -39,39 +39,39 @@ const P = (slug: string, label: string, main: Atom[], side: Atom[], walkthroughs
 export const PATTERNS: readonly Pattern[] = [
   P('two-pointers', 'Two pointers', ['ARRAY'], ['LIST'], ['twoSum'], 'library', 'pointers l / r walk inward'),
   P('sliding-window', 'Sliding window', ['ARRAY'], ['HASH', 'TAPE'], ['slidingWindow'], 'library', 'window band + running sum in vars'),
-  P('prefix-sum', 'Prefix sum', ['ARRAY'], ['GRID'], [], 'recipe', 'second array fills from the first; compare pair = range query'),
+  P('prefix-sum', 'Prefix sum', ['ARRAY'], ['GRID'], ['prefixSum'], 'live', 'second array fills from the first; compare pair = range query'),
   P('binary-search', 'Binary search', ['ARRAY', 'NUMLN'], [], ['binarySearch', 'bsAnswer'], 'library', 'lo / hi / mid pointers'),
   P('sorting', 'Sorting', ['ARRAY'], ['FRAME', 'SETS'], ['bubbleSort', 'insertionSort', 'selectionSort', 'mergeSort', 'quickSort', 'buckets'], 'library', 'compare + swap'),
   P('greedy', 'Greedy', ['INTVL'], ['ARRAY', 'GRAPH'], ['greedy', 'mergeIntervals'], 'live', 'take, skip, never look back'),
   P('backtracking', 'Backtracking', ['TREE', 'GRID'], ['FRAME'], ['nQueens'], 'library', 'bad = conflict, path = placed'),
   P('dp-memo', 'DP · memo', ['TREE', 'ARRAY'], ['FRAME', 'HASH'], ['memo'], 'live', 'a tree you prune with a cache'),
   P('dp-tabulation', 'DP · tabulation', ['GRID', 'ARRAY'], [], ['tab', 'coinChange', 'knapsack', 'lcs', 'lis', 'kadane'], 'live', 'a table you fill in order'),
-  P('dp-bitmask', 'DP · bitmask', ['BITS', 'GRID'], [], [], 'recipe', 'mask row, city column'),
+  P('dp-bitmask', 'DP · bitmask', ['BITS', 'GRID'], [], ['bitmaskTsp'], 'live', 'mask row, city column'),
   P('bfs-dfs', 'BFS / DFS', ['GRAPH', 'GRID'], ['QUEUE', 'FRAME'], ['bfs', 'dfs', 'bfsGrid', 'islands'], 'library', 'visited · frontier · current'),
   P('shortest-path', 'Shortest path', ['GRAPH'], ['ARRAY', 'QUEUE'], ['dijkstra', 'bellmanFord'], 'live', 'settle the nearest, relax its edges'),
   P('mst', 'MST', ['GRAPH'], ['FOREST'], ['kruskal'], 'live', 'sorted edges, union-find rejects cycles'),
   P('topo-sort', 'Topo sort', ['GRAPH'], ['QUEUE', 'ARRAY'], ['topoSort'], 'live', 'ready queue + order'),
   P('union-find', 'Union-find', ['FOREST'], ['ARRAY'], ['dsu'], 'live', 'a forest that flattens itself'),
   P('heap-pq', 'Heap / PQ', ['TREE', 'ARRAY'], [], ['heapPush'], 'library', 'heap as tree, array as storage'),
-  P('trie', 'Trie', ['TREE'], ['HASH'], [], 'recipe', 'children = letters; done = word end'),
-  P('segment-fenwick', 'Segment / Fenwick', ['TREE', 'ARRAY'], [], [], 'recipe', 'query = path of visited nodes'),
+  P('trie', 'Trie', ['TREE'], ['HASH'], ['trie'], 'live', 'children = letters; done = word end'),
+  P('segment-fenwick', 'Segment / Fenwick', ['TREE', 'ARRAY'], [], ['segTree'], 'live', 'query = path of visited nodes'),
   P('monotonic-stack', 'Monotonic stack', ['ARRAY', 'STACK'], [], ['mono', 'validParens'], 'live', 'next greater element'),
   P('bit-tricks', 'Bit tricks', ['BITS'], [], ['bitCount'], 'library', 'Kernighan count'),
   P('number-theory', 'Number theory', ['NUMLN', 'ARRAY'], ['GRID'], ['sieve'], 'live', 'sieve live; GCD, modular, fast power are recipes'),
   P('geometry', 'Geometry', ['PLANE'], ['STACK'], ['hull'], 'live', 'gift wrapping on a plane'),
   P('game-theory', 'Game theory', ['TREE', 'GRID'], [], ['minimax', 'payoff', 'nim'], 'live', 'trees you prune, tables you circle'),
   P('streaming', 'Streaming', ['TAPE'], ['HASH', 'SETS'], ['majority', 'reservoir'], 'live', 'one pass, tiny memory'),
-  P('string-match', 'String match', ['ARRAY'], ['HASH'], [], 'recipe', 'pattern array + failure array; pointers i / j'),
+  P('string-match', 'String match', ['ARRAY'], ['HASH'], ['kmp'], 'live', 'pattern array + failure array; pointers i / j'),
   P('divide-conquer', 'Divide & conquer', ['ARRAY'], ['FRAME'], ['mergeSort', 'quickSort'], 'library', 'merge sort is the model'),
   P('all-pairs-paths', 'All-pairs paths', ['GRID'], ['GRAPH'], ['floyd'], 'live', 'k outermost'),
   P('cycle-fast-slow', 'Cycle · fast/slow', ['LIST'], ['GRAPH'], ['cycle'], 'live', 'tortoise and hare'),
-  P('scc-bridges', 'SCC · bridges', ['GRAPH'], ['STACK'], [], 'recipe', 'labels = low-link; stack side panel'),
-  P('flow-matching', 'Flow · matching', ['GRAPH'], [], [], 'gap', 'edge labels show one number; needs cap/flow pairs'),
+  P('scc-bridges', 'SCC · bridges', ['GRAPH'], ['STACK'], ['bridges'], 'live', 'labels = low-link; stack side panel'),
+  P('flow-matching', 'Flow · matching', ['GRAPH'], [], ['matching'], 'gap', 'edge labels show one number; needs cap/flow pairs'),
   P('lru-design', 'LRU · design', ['HASH', 'LIST'], [], ['hashInsert', 'reverseList'], 'recipe', 'move-to-front = link ops'),
-  P('combinatorics', 'Combinatorics', ['GRID', 'TREE'], [], [], 'recipe', 'triangle fill; cellHl the two parents'),
+  P('combinatorics', 'Combinatorics', ['GRID', 'TREE'], [], ['pascal'], 'live', 'triangle fill; cellHl the two parents'),
   P('probability', 'Probability', ['ARRAY', 'NUMLN'], [], ['reservoir'], 'recipe', 'weights as bars; numberline for CDF'),
   P('sweep-line', 'Sweep line', ['PLANE'], ['INTVL'], ['mergeIntervals'], 'recipe', 'line op x = c moves; window = strip'),
-  P('simulation', 'Simulation', ['GRID'], ['QUEUE'], [], 'recipe', 'one cell op per generation change'),
+  P('simulation', 'Simulation', ['GRID'], ['QUEUE'], ['life'], 'live', 'one cell op per generation change'),
   P('sieve-primes', 'Sieve · primes', ['NUMLN'], [], ['sieve'], 'live', 'strike multiples from p²'),
 ]
 
@@ -96,7 +96,7 @@ export interface WalkDef {
 const L = (key: string, title: string, complexity: string, input: InputKind): WalkDef => ({ key, source: 'library', title, complexity, input })
 const F = (key: string, title: string, complexity: string): WalkDef => ({ key, source: 'piece', title, complexity })
 
-/** The library (D-1): the 28 SRAlgo.library classics, then the 17 Atlas worked examples. */
+/** The library (D-1): the 28 SRAlgo.library classics, then the 17 Atlas worked examples, then the 9 W7 examples. */
 export const WALKTHROUGHS: readonly WalkDef[] = [
   L('bfs', 'Breadth-first search', 'O(V + E)', 'graphStart'),
   L('dfs', 'Depth-first search', 'O(V + E)', 'graphStart'),
@@ -143,6 +143,16 @@ export const WALKTHROUGHS: readonly WalkDef[] = [
   F('islands', 'Flood fill · number of islands', 'O(R · C)'),
   F('floyd', 'Floyd–Warshall · all pairs', 'O(V³)'),
   F('nim', 'Nim · Grundy numbers by mex', 'O(N · moves)'),
+  // W7 (ATLAS-05): the nine rows that had no walkthrough; built in content/atlasPieces.ts
+  F('prefixSum', 'Prefix sums · range queries', 'O(n) build · O(1) per query'),
+  F('bitmaskTsp', 'Bitmask DP · shortest tour of 4 cities', 'O(2ⁿ · n²)'),
+  F('trie', 'Trie · insert and look up', 'O(L) per word'),
+  F('segTree', 'Segment tree · range sum', 'O(log n) per query'),
+  F('kmp', 'KMP · failure array and search', 'O(n + m)'),
+  F('bridges', 'Tarjan · bridges by low-link', 'O(V + E)'),
+  F('matching', 'Bipartite matching · augmenting paths', 'O(V · E)'),
+  F('pascal', 'Pascal’s triangle · binomials', 'O(n²)'),
+  F('life', 'Simulation · Game of Life, one generation', 'O(R · C) per generation'),
 ]
 
 /** DSA topic sprint → warm-up walkthroughs, default first (§2.3, D-5). */

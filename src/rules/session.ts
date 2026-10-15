@@ -27,6 +27,8 @@ export function closeSessionResult(i: CloseInput): CloseResult {
   const note = i.proof?.note?.trim()
   if (repo || note) ticket.proof = { ...ticket.proof, ...(repo ? { repo } : {}), ...(note ? { note } : {}) }
 
+  // a closed session leaves the ticket todo or done: neither carries a blocked/need-help reason (README Data fields)
+  delete ticket.blockedNote
   let xpDelta = 0
   let event: DojoEvent | null = null
   if (i.outcome === 'gave_up') {

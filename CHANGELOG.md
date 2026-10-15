@@ -3,7 +3,54 @@
 All notable changes to Dojo. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
-## 1.0.0 - unreleased
+## 2.0.0 - 2026-10-14
+
+Release 1 of the replan: Dojo is rebuilt around one flat queue of single-sitting tickets. This is a major version because
+your data is converted on first launch and the screens and keys changed. Back up `~/Dojo` first; see "Upgrading from 1.x"
+in the README.
+
+### Changed
+
+- **A flat queue replaces sprints.** The 72-sprint calendar, the weekly rotation, containers with child parts, unlock
+  gating and the sprint tools (Slide sprint, Shift plan, the load check) are gone. Tickets sit in lanes (AI, DSA,
+  Design and an optional Career lane); your weekly minutes (default 480 a week, set per weekday in Settings) set the pace
+  and the projected finish month. Nothing is trimmed or marked late.
+- **Six places in the rail, keys `1` to `6`:** Today, Path, Board, Journal, Skills, Review. Under them, Topics (AI, DSA,
+  Designs), Practice (Banks, Atlas) and the Guide, with a rail that collapses to icons. The Week, Overview, Mentors,
+  Ritual, Map, Progress and AI capstone screens are retired; their links land on Today, the Guide or Skills.
+- **Today** shows one ticket and why it is next, a "waits for a longer day" rule for long tickets, the daily AI pulse and
+  the weekly try-a-model ritual.
+- **Pom is back on Today:** a voxel companion in nine forms (BASE to SOVEREIGN) that follows your level, with a bar to the
+  next form. A form is never taken back. Settings has a Debug · Pom panel to preview any form; it changes nothing.
+- **AI areas open as a tree:** each AI area is laid out in rows by what its topics build on, the same way as DSA and Design.
+- **A new sample plan:** an AI-infrastructure plan (ten areas; Phase 1 of six fully written as 51 tickets, phases 2 to 6 as
+  outlines) with the DSA bank (17 topics, 170 problems) and the design bank (48 designs) as lanes of the same queue.
+- **Design sessions v2:** the AI partner is a thinking coach that asks one question at a time and never gives the answer;
+  a Hint button asks a sharper question; structured notes (requirements, API, data model with schema tables, trade-offs);
+  a partner card for playing the partner with a friend in a second window; canvas notes, boxes, tables and frames.
+- **Review is answer first:** write your answer, reveal the stored one and mark yourself.
+
+### Added
+
+- **Board:** a two-week sprint of your queue as To do, Backlog, Doing, Blocked, Need help and Done columns.
+- **Journal:** a two-minute daily entry (how hard each ticket was, whether you could explain it without notes), a "came up
+  hard" list with Add to Review, and a no-study-today button that carries no penalty.
+- **Skills:** AI areas as a map, DSA and Design as trees of topics in rows by prerequisite, a Stats tab, and a topic panel
+  that starts the next ticket.
+- **AI topics** page, and **Banks** with Design and AI question banks (about 490 questions) beside the DSA bank and Mine.
+- Explain-it-simply questions with reference answers on watch, read and build tickets, answered before Done; learner notes
+  and self-marks stored in your data.
+- A one-page in-app **Guide**.
+
+### Data
+
+- First launch converts a 1.x database once, after taking a snapshot: XP, sessions, attempt logs, redos and design sessions
+  are kept; cards the new plan does not contain are archived and keep their XP; old interviewer-mode design sessions open
+  as AI-partner sessions. Restoring an old backup converts it again.
+- A model-version gate makes an older window read-only against newer data. Builds before 2.0 have no such gate, so install
+  2.0 before opening your data anywhere else.
+
+## 1.0.0 - 2026-10-07
 
 The first public release. Summarised from the development history (September to October 2026).
 

@@ -2,11 +2,10 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { requestGrade } from '../../src/data/gradeActions'
 import { setNow } from '../../src/lib/clock'
 import { AtlasSearch } from '../../src/screens/atlas/AtlasSearch'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const SRC = join(process.cwd(), 'src')
@@ -26,18 +25,10 @@ describe('one AI door', () => {
     expect(offenders).toEqual([])
   })
 
-  it('grade writes one aiLog row', async () => {
-    setNow(() => T)
-    const d = await seededDb()
-    await d.artifacts.put({ id: 'art-x', title: 'x', block: 1, stage: 0, repo: 'https://github.com/a/b', commit: 'c0ffee1', status: 'runs', measures: [], links: [] } as never)
-    await requestGrade(d, 'art-x', '', () => T)
-    expect((await d.aiLog.toArray()).map(r => [r.job, r.ticketId])).toEqual([['grade', 'art-x']])
-  })
-
   it('Atlas classify search writes one aiLog row', async () => {
     setNow(() => T)
     const d = await seededDb()
-    renderWithApp(<AtlasSearch query="zzzz" onQuery={() => {}} visible={[]} onPick={() => {}} />, { db: d, plan: smallPlan })
+    renderWithApp(<AtlasSearch query="zzzz" onQuery={() => {}} visible={[]} onPick={() => {}} />, { db: d, plan: flatPlanV2 })
     fireEvent.keyDown(screen.getByRole('searchbox', { name: 'Search patterns or problems' }), { key: 'Enter' })
     await waitFor(async () => expect((await d.aiLog.toArray()).map(r => r.job)).toEqual(['classify']))
   })

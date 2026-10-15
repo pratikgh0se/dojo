@@ -1,0 +1,10 @@
+.gd { display: grid; gap: 24px; max-width: 760px; min-width: 0; }
+.gd-sec { display: grid; gap: 12px; min-width: 0; }
+.gd-h { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-m); font-weight: 400; letter-spacing: 1px; text-transform: uppercase; line-height: 1.2; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.gd-p { margin: 0; font-size: var(--type-body); line-height: var(--type-leading); max-width: var(--type-measure); }
+.gd-prompts { display: grid; gap: 8px; }
+.gd-pre { margin: 0; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.gd-title { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-l); font-weight: 400; letter-spacing: 1px; text-transform: uppercase; line-height: 1.2; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.gd-dests { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.gd-dest { margin: 0; font-size: var(--type-body); line-height: var(--type-leading); }
+.gd-dest a { font-weight: 700; color: var(--sr-label-accent, inherit); }

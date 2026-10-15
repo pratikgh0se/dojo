@@ -1,18 +1,18 @@
 # Dojo user guide
 
-Dojo is a study planner and practice app for a long, sprint-based study plan. It runs as a Mac app and keeps
+Dojo is a study planner and practice app for a long study plan. It runs as a Mac app and keeps
 all of your data on your own machine. It needs the internet only for the links you open, the optional link check
 on a brief, and the optional AI features.
 
-Dojo ships with a sample plan: 72 two-week sprints with an AI track and an interview track, a DSA problem bank,
-a system design bank, a skill tree and a set of communities. You can replace it with your own plan (see
+Dojo ships with a sample plan: a path of AI-infrastructure cards, a DSA track and a design track, a DSA problem bank,
+a system design bank and a skill tree. You can replace it with your own plan (see
 [Your own plan](#your-own-plan)).
 
 This guide is for someone using the installed app. If you want to change the code, read
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). If something is not working, see
 [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-Screenshots are not included yet.
+Screenshots of each screen are in the [README](README.md#a-day-in-dojo).
 
 ## Contents
 
@@ -49,15 +49,19 @@ Python needs nothing extra: a Python runtime (Pyodide) is bundled inside the app
 From a clone of this repository:
 
 ```sh
-cd <repo>/app
-npm install
+cd <repo>
+npm ci
 npm run install:app
 ```
 
-This builds `Dojo.app` and installs it in `~/Applications`. Open it from there, or drag it to the Dock.
+This builds `Dojo.app` and installs it in `~/Applications`. Open it from there, or drag it to the Dock. To install it in
+`/Applications` instead, run `npm run install:app -- --dest /Applications`.
 
-- **Update:** pull the new code and run `npm install` and `npm run install:app` again. Only the app bundle is
+- **Update:** pull the new code and run `npm ci` and `npm run install:app` again. Only the app bundle is
   replaced. Your data folder is never touched.
+  Moving from Dojo 1.x to 2.0 is the one exception to "nothing happens to your data": the first launch converts it to
+  the flat queue once, after taking a snapshot. Back up `~/Dojo` first; see
+  [Upgrading from 1.x](README.md#upgrading-from-1x).
 - **Install somewhere else:** `npm run install:app -- --dest <folder>`.
 - **Keep your data somewhere else:** `npm run install:app -- --home <folder>`. The folder is remembered inside
   that copy of the app.
@@ -71,8 +75,7 @@ The app is signed ad hoc on your machine during install. It is not notarized.
 When Dojo opens for the first time it creates its data folder (`~/Dojo`), starts its own small server on a free
 local port (on `127.0.0.1`, not reachable from your network) and opens one window.
 
-You see **Pick your start date**. Sprint 1 of 72 begins on this date at local midnight, and each sprint is 14
-days. The field defaults to the next Monday. Choose a date and press **Start the plan**. You can change the date
+You see **Pick your start date**. Your plan begins on this date at local midnight. The field defaults to the next Monday. Choose a date and press **START · PLAN**. You can change the date
 later in [Settings](#settings).
 
 After that Dojo opens on **Today**.
@@ -89,11 +92,23 @@ A few things to know about the app itself:
 
 ## Finding your way around
 
-The top bar has five tabs: **Today**, **Board**, **DSA**, **Designs** and **AI**, then a **More** menu with
-**Map**, **Progress**, **Week**, **Overview**, **Atlas**, **Banks**, **Mentors**, **Ritual** and **Settings**.
-When the window is narrower than 768 pixels, Designs and AI move to the top of the More menu.
+Dojo has six main places, in a rail down the left side (a bar along the bottom on a phone, with Today, Path, Board and
+Review and a More sheet for the rest):
 
-On the right of the top bar is the save status:
+| Key | Place | What it is |
+|---|---|---|
+| 1 | **Today** | The one ticket that is next, and why. |
+| 2 | **Path** | The whole queue, in order. |
+| 3 | **Board** | A two-week sprint of your queue as columns, from To do to Done. |
+| 4 | **Journal** | A two-minute entry about how the day went. |
+| 5 | **Skills** | The map of what you are learning. |
+| 6 | **Review** | Things that come back to you because they are due. |
+
+Below them the rail has **Topics** (**AI**, **DSA**, **Designs**), **Practice** (**Banks**, **Atlas**) and, at the foot,
+the **Guide** and a button that collapses the rail to icons. The gear at the top right opens **Settings** and the
+shortcut list. **Ctrl or Cmd K** opens a search that jumps to any ticket, skill, screen or setting.
+
+The save status sits in the header:
 
 | Status | Meaning |
 |---|---|
@@ -103,31 +118,31 @@ On the right of the top bar is the save status:
 | Read-only | This window is not allowed to change data (see [Where your data lives](#where-your-data-lives)). |
 | N changes couldn't be saved | The server refused some changes. Click it to see them in Settings and retry. |
 
-The bottom of most screens shows a one-line reminder of the keyboard shortcuts. The Do screen and design sessions
-fill the whole window and hide the top bar.
+Press **?** (outside a text field) for the list of shortcuts. A ticket and a design session open inside the same
+window, with the rail beside them.
 
 ## How the plan works
 
-### Cards
+### Tickets
 
-Everything you do is a **card** (the code calls them tickets). The plan produces three families:
+Everything you do is a **ticket** (the guide and the app also say card). Each one fits a single sitting: a video, a
+reading, a build, a problem, a design or a short ritual. The plan produces them in a queue, in lanes (AI, DSA, Design
+and Career); Today shows the one that is next, Path shows all of them.
 
-| Card | Where it comes from | Default time |
-|---|---|---|
-| AI-track and interview-track tasks | Each sprint's task lists. A task can also be a "watch", "read" or capstone "stage" card. | 50 min |
-| DSA problems | The DSA bank, one topic per sprint | 30 min |
-| Designs | The design bank, spread across the sprints named in each tier | 45 min |
+| Ticket | Where it comes from |
+|---|---|
+| AI-track tickets (watch, read, build, write-up, ritual) | The plan's skill areas and phases |
+| DSA problems | The DSA bank |
+| Designs | The design bank |
 
-A card's time can be changed by its brief (see [Briefs](#briefs-and-learning-checks)).
+A ticket is **Start**ed from Today, Path or Review and finished with **Done**. An unfinished ticket simply stays
+next; nothing is trimmed or marked late.
 
-### Sprints and the weekly rotation
+### Pace
 
-A sprint is 14 days. The plan has 72 of them. Each weekday has a role from the plan's rotation. In the sample
-plan: Monday AI watch, Tuesday interview code, Wednesday AI rebuild, Thursday interview design, Friday off,
-Saturday AI build and break, Sunday interview and teach-back.
-
-For suggestions, Dojo treats Monday to Wednesday as **focus** days (room for about 120 minutes), Thursday and
-Friday as **light** days (60) and Saturday and Sunday as **long** days (240).
+Your weekly minutes set the pace, not a calendar. **Settings, Pace** holds one box per weekday (minutes you can
+give that day). Change a box and the finish month moves at once. There are no sprints to plan or to slip; the Board
+shows a two-week window of your queue.
 
 ### XP and level
 
@@ -141,142 +156,126 @@ Finishing a card earns XP:
 | Codeforces problem | rating / 100, rounded, minus 7, at least 1 |
 
 Help you open on the Do screen costs XP (see [The help ladder](#the-help-ladder)). A card's XP never goes below 0.
-Your level (LV) is your total XP divided by 10. Your **form** (BASE up to SOVEREIGN, shown in Vitals) follows the
-share of the plan's possible XP you have earned on plan cards. Problems from the practice banks that are not on your
+Your level (LV) is your total XP divided by 10. Your **form** (BASE up to SOVEREIGN) follows the
+share of the plan's possible XP you have earned on plan tickets. Problems from the practice banks that are not on your
 plan raise your level but not your form.
-
-### Moving cards between sprints
-
-| Action | Where | What it does |
-|---|---|---|
-| Roll-over | Automatic | When a sprint ends, its unfinished cards move to the current sprint. They keep their XP and note where they rolled from. Today says "N cards rolled from Sprint X". Sprints that had already ended when you set your start date do not roll. |
-| Slide | Board card, or key `s` | Moves one unfinished card to the next sprint (or to the current sprint, if the card is further behind) and marks it as slid. Done cards never slide, and nothing slides back before the current sprint. You can also drag a card onto a sprint in the sprint strip. |
-| Slide sprint | Board header | Moves every unfinished card of the sprint you are viewing to the next one, after a confirmation that shows the target sprint's size. |
-| Shift plan | Board header | Moves every unfinished card from the viewed sprint (or the current one, whichever is later) onward by one sprint. |
-| Move to sprint… | Board card | Moves a card to any sprint. |
-| Rebalance? | Board, when a sprint is over budget | Proposes moving the latest, not-started, unpinned cards to the next sprint until the sprint fits. You choose which to accept. |
-| Pin | Board card | A pinned card is never proposed by Rebalance. |
-| Undo | Board header | Undoes the last slide, shift, move or rebalance. The button shows how many steps can be undone (up to 20 events). |
-
-At most 3 cards can be in **Doing** at once.
-
-### The workload budget
-
-**Core minutes per sprint** (Settings, default 1440, which is 24 hours) is your time budget. Today and the Board
-compare the minutes of the sprint's unfinished cards against it. A split card counts through its sessions.
 
 ## The screens
 
 ### Today
 
-The first screen, top to bottom:
+One ticket, and why it is next ("you started this one", "next in your queue", "reviews are piling up", or that a
+longer ticket waits for a longer day). **Start** (or Enter) opens it; **Done** marks it finished from the ticket page.
+If something is due again, a badge points to Review. **Pick something else** lists a few other tickets that fit; picking
+one changes nothing until you start it. Beside the ticket sit two optional rituals, the daily AI pulse (a 15-minute
+check with an AI tool) and the weekly try-a-model run; skip either and it simply closes. Above them, **Pom** is a small
+companion that changes form as your level rises (nine forms, BASE to SOVEREIGN, at levels 0, 10, 40, 100, 180, 300, 450,
+650 and 900), with a bar to the next form. A form is never taken back. A drawer at the foot holds your stats.
 
-- **Now**: what to do next, with the study block time from your schedule on block days. **Spar · 50** and
-  **Spar · 25** start a timer for that card without leaving Today. **Open** opens the card's main link.
-  **Start** (or Enter) opens the card on the Do screen.
-- **Vitals**: your level, XP and progress toward the next form; the **Sprint clock** (sprint dates, a strip of the
-  14 days, "Carrot HP", which is how many tasks are left, focus minutes today and milestone badges); and
-  **Consistency**, a calendar of the last 8 weeks.
-- **Sprint by sprint**: done, left behind and to-do cards per sprint.
-- **Load check**: whether the sprint fits, and real focus minutes in the last 7 days. When the sprint is heavy, an
-  **Ask what to slide** button asks the AI which cards to push to the next sprint; you confirm with
-  **Slide these**.
-- **Workload**: planned hours against the budget, the roll-over note, and up to 5 cards that fit today's day type
-  and the time you have left today.
-- **Dig in**: drawers you can open: **This sprint** (the sprint's AI and interview tasks), **Left behind**
-  (unticked tasks from earlier sprints), **Redo** (redos and redesigns due today or earlier), the sprint's **DSA**
-  topic with study links, and the design for the week.
+### Path
+
+The whole queue in order: **Doing**, **Up next** and **Done**, with lane chips (AI, DSA, Design, and Career if you
+switch it on in Settings) and a search box. You can reorder what is up next, within its lane or into Doing. Start any
+ticket from here. At most 3 tickets are shown as Doing before Path suggests finishing one.
 
 ### Board
 
-One sprint at a time. The title shows the sprint you are viewing and "now" for the current one.
+Your queue laid out as a sprint, two weeks of your weekly minutes, in columns: **To do** (what fits in the minutes that
+are left), **Backlog** (the rest of the queue), **Doing**, **Blocked**, **Need help** and **Done**. Move a card by
+dragging it or with its menu. **Blocked** is for a ticket something outside you is holding up, and **Need help** is for
+one where you want a person to look; you set both yourself, with a short reason, and the queue goes on without them. The
+header shows how many of the sprint's tickets and hours are done. Lane chips narrow the columns.
 
-- **Sprint strip**: one cell per sprint. Click a cell, or use the arrow keys, to view another sprint.
-- **Load bar**: cards that belong to this sprint, cards slid in from earlier sprints, and the plan average.
-- **Columns**: **Slid in**, **Todo** (with its total minutes), **Doing** and **Done**. Drag cards between
-  columns, or use the keyboard.
-- **Each card** shows its source, chips for bank, pinned, split and brief status, the **Pin** and
-  **Move to sprint…** tools, and **Do**, **Slide** and **Done** buttons.
-- **Header**: **Slide sprint**, **Shift plan**, **Undo**, and **Draft briefs for Sprint N**.
+### Journal
 
-Moving a learning card to Done opens its learning check instead (see [Briefs](#briefs-and-learning-checks)).
+A two-minute entry about the day. A strip of the last week shows which days have an entry, and **No study today** marks a
+day off without any penalty. For each ticket you worked on, choose how hard it was (**Again**, **Hard**, **Good**,
+**Easy**) and whether you could explain it without notes (**No**, **Partly**, **Yes**). **Came up hard this week** lists
+tickets that got two rough signals in 14 days, each with **Add to Review** to bring it back for another try.
+
+### Skills
+
+The map of what you are learning, in tabs: **AI** (ten areas, each with its progress and the areas it needs first; open an area and its topics are a tree too),
+**DSA** and **Design** (each a tree of topics laid out in rows by what they build on, with the next topic highlighted), and
+**Stats** (how much you have done and your pace). Pick an area or a topic to open its panel: what it builds on, its tickets
+and the next one in it, which you can start from there.
+
+### Review
+
+What has come back because it is due, one card at a time, answer first: write your answer, then **Reveal**, compare it
+with the stored one and mark yourself. Learning checks come back as questions; problems you gave up on or solved with help
+come back as a replay, and designs that scored low as a redesign. A redo you pass moves out to 10 days and then 30 days.
+**Skip for today** moves a card to the back of the queue and writes nothing.
+
+### AI topics
+
+Reached from the rail under Topics. Every AI topic on one page, grouped by area, with its tickets, how many are done, their
+kinds and the hours. Filter by phase or kind; a row opens that topic in Skills.
+
+### Guide
+
+A short in-app page, "How Dojo works": the daily loop, where things live, Board and sprints, Review and banks, Skills,
+rituals and getting unstuck, design sessions, asking people, and the shortcuts. It is at the foot of the rail.
 
 ### DSA
 
-The DSA bank of the plan: problems solved, hard problems solved, premium problems left, a chart by difficulty and
+Reached from the rail under Topics, or with Ctrl or Cmd K. The DSA bank of the plan: problems solved, hard problems solved, premium problems left, a chart by difficulty and
 a heatmap with one row per topic. Click a cell to tick or untick that problem. Click a topic to see its warm-up
 walkthroughs, the pattern, a note, study links, and the problem list with LeetCode and NeetCode links, a tick box
 and a **Do** button for each problem.
 
 ### Designs
 
-The design bank: designs done, deep dives covered, the **Next Sunday design**, charts, evidence from your sessions,
+Reached from the rail under Topics, or with Ctrl or Cmd K. The design bank: designs done, deep dives covered, the **Next design**, charts, evidence from your sessions,
 the **Tier ladder** and the **Rubric** (20 points). Pick a tier to see its designs; each has a **Start session**
 button.
 
 A **design session** is a 45-minute box:
 
-1. **Setup**: read the deep dives and references, choose **Solo** or **Interviewer**, and press **Start · 45 min**.
-2. **Drawing**: build your diagram on the canvas. In Interviewer mode an AI interviewer asks questions and you
-   answer in a chat panel. The canvas locks at 45 minutes, or when you end the drawing.
-3. **Five-question close**: answer the closing questions, then **Next: score**.
-4. **Score the session**: score each deep dive and each of the seven lenses (load, data, consistency, failure,
+1. **Setup**: read the prompt, the deep dives and the references, then choose who plays the person across the table.
+   **Solo · AI partner** (the default) gives you an AI partner; tick **Skip the AI partner** to work alone (Solo).
+   **With someone** lets a friend play the partner with a card in a second window; no AI speaks in that mode.
+   Press **START · DESIGN**.
+2. **Drawing**: build your diagram on the canvas and write in the **Notes** tab (requirements, assumptions, API,
+   data model with schema tables, trade-offs, open questions). The **Deep dives** tab lists the questions to cover. The
+   canvas locks at 45 minutes, or at once when you press **CLOSE · DESIGN**.
+3. **Five-question close**: answer the closing questions, then **NEXT · SCORE**.
+4. **Score the session**: score each deep dive 0, 1 or 2, each of the seven lenses (load, data, consistency, failure,
    latency, cost, evolution) 0, 1 or 2, add trade-offs (chose, over, because), and enter the rubric score 0 to 20.
-   In Interviewer mode the interviewer's grade appears here. Press **Complete session**.
-5. **Done**: your diagram next to an AI reference diagram, the differences ("information, not a score"), and
-   **Export PNG** for either diagram.
+   With the AI partner its grade appears here (five scored items, checks to review, what a stronger version does); with
+   a human partner their scores are filled in for you to change. Press **COMPLETE · SESSION**.
+5. **Done**: your diagram next to an AI reference diagram (not drawn for a With someone session, which uses no AI), the
+   differences ("information, not a score"), and **Export PNG** for either diagram. When a redesign is due, **REDO · DESIGN**
+   starts a new session in the same mode.
+
+**The AI partner is a thinking coach.** It speaks first, asks one question at a time, and never gives you the answer or a
+list of options. You answer in the chat in your own words. **Hint** asks a sharper question (three at most per session).
+It reads your notes and your diagram, so what you write in the Notes tab counts.
+
+**With someone.** Open the partner card from the **Partner** tab: it opens in a second window so your friend can read it
+while you draw. It shows the prompt, an opening line, follow-up questions to ask, a read-only copy of your design so far,
+and a scoring sheet (five rubric rows 0 to 4, four deep dives 0 to 2). If the window is blocked, **Show card here** puts the
+same card in the tab. Their sheet pre-fills your score form; you can change anything before you confirm.
+
+**Canvas.** Click a kind in the palette (or drag it onto the canvas) to add a block. Four more items sit beside the kinds:
+**Box** (your own component with a name, a description and a glyph), **Note** (a sticky text note, up to 20), **Table**
+(a block linked to a schema table in the notes, which shows its columns) and **Frame** (a labelled group, up to 8; a block
+belongs to at most one). **2D** and **Iso** switch the view.
+
+**Keys on the canvas.** Press **?** to see the list. N adds a note, C a box, T a table; G puts the selected block in a new
+frame and Shift+G removes its frame; the arrow keys move the selected block or note; Delete removes it; L starts a link from
+the selected block; Esc leaves link mode or goes back to the canvas; Ctrl/Cmd+. swaps focus between the canvas and the notes;
+Ctrl/Cmd+Enter sends your chat answer.
+
+**Discard session** (top bar, while a session is running) deletes the session after you confirm; the card itself is
+unchanged and you can start again from Setup. A finished session cannot be discarded.
 
 A redesign is scheduled 30 days later when the rubric is under 14 or a deep dive scored 0. Due redesigns appear in
-Today's Redo drawer.
-
-### AI (capstone)
-
-The AI track's capstone project, stage by stage:
-
-- **Evidence** tiles.
-- **Learn → build → prove**: three cubes per stage. Learn is a watch card; build is a build card plus a commit;
-  prove is a teach-back plus a grade of at least 3 out of 5, or a solved blank test. Each stage has a
-  **Blank test** button: rebuild one piece from a blank file, with no video and no agent.
-- **Learn board**, **Build board** and **Artifact timeline**. **Add artifact** records something you built:
-  title, stage, repo URL, commit, write-up link, proof note and status (not started, building, runs, measured,
-  written up). An artifact can carry measures and can be **graded** by the AI.
-- **Measures wall**, with **Export Markdown** (saves `dojo-measures.md`).
-- **Stage ladder** and stage detail, **Session balance** (watch, rebuild, build, teach-back done against total),
-  the **Optional shelf** of extra resources, and **Working with AI** (tutor prompts to copy).
-
-### Map
-
-- **Journey**: the plan's phases. Click one to open its first sprint.
-- **Sprint path**: every sprint; click one to see its AI and interview tasks. In the sprint panel the left and
-  right arrow keys step between sprints.
-- **Skill tree**: skills and what they need. A skill unlocks when each skill it needs is 70 percent done. Pick a
-  node to see what it is, why it matters, what holds it back, and the sprints that carry it.
-
-### Progress
-
-Rings for All, AI, Interview, DSA and Designs; a **Burn-up** chart of planned against done; **Pace** (ahead, on
-pace or behind per track, hours in, hard problems solved and a projected finish sprint); outcomes per sprint;
-study sessions; evidence; help ladder usage; redo hit rate; **Reviews**; and stage badges.
-
-**Reviews** builds a sprint review. Pick a sprint and press **Build review**. The numbers (planned, done, focus
-days, slipped cards, longest streak, redo and check pass rates) are computed by Dojo; the AI only writes the prose
-and a "Do better next sprint" list. When a sprint ends, Dojo also builds its review automatically (at most 3 per
-launch, newest first). If the AI is not available, the numbers are kept and **Build review** writes the prose later.
-
-### Week
-
-The days of this week, each with its role from the rotation, its cards, and the cards done and minutes spent; a
-14-day calendar of the current sprint; and minutes per week for the last 8 weeks against a 540-minute target.
-
-### Overview
-
-The plan on one page: a timeline of all sprints (with the checkpoint at sprint 38 and a line for today), what the
-plan covers, rules of the road, what "understanding everything" means here, and what is deliberately out of
-scope.
+Review.
 
 ### Atlas
 
-A map of algorithm patterns. Each row shows whether you have seen or predicted it, and whether your solutions reached
+Reached from the rail under Practice, or with Ctrl or Cmd K. A map of algorithm patterns. Each row shows whether you have seen or predicted it, and whether your solutions reached
 for it or avoided it.
 Search by LeetCode number, problem name or phrase; when nothing matches, press Enter to ask the AI which pattern
 fits. Open a pattern to see its walkthroughs (**Play**, **Predict**, **Two-up** to compare two, **Own input**),
@@ -284,26 +283,16 @@ fits. Open a pattern to see its walkthroughs (**Play**, **Predict**, **Two-up** 
 
 ### Banks
 
-Practice banks beyond the plan: the **Plan bank** (the problems on your plan) and **Mine** (your own list). Dojo
-ships no third-party problem lists. Filter by difficulty and pattern, search (press `/`), and tick problems. Ticking
-a problem that is on your plan ticks the plan card. Other problems become done cards with their own XP; unticking
-removes them.
+Reached from the rail under Practice. Three tabs, **DSA**, **Design** and **AI**.
 
-- **Mine**: starts empty. Paste a LeetCode or Codeforces link, or type a problem name, press **Classify**, and the AI
-  suggests the pattern and difficulty; accept it to add the problem. You can edit or remove your entries. A link to a
-  problem already on your plan reuses the plan card.
-
-### Mentors
-
-How to find and work with mentors: the protocol (from picking two communities to keeping a mentor log), a mentor
-log template, the communities from your plan grouped as learner rooms, contributor rooms and programs, a weekly
-community budget and people worth following.
-
-### Ritual
-
-The weekly rhythm: the rotation, a weekday timeline built from your schedule with the study block highlighted, the
-Saturday news slot, sprint close, block close, what to do when stuck for more than 30 minutes, and tutor prompts to
-copy.
+- **DSA** holds the **Plan bank** (the problems on your plan) and **Mine** (your own list). Dojo ships no third-party
+  problem lists. Filter by difficulty and pattern, search (press `/`), and tick problems. Ticking a problem that is on
+  your plan ticks the plan card. Other problems become done cards with their own XP; unticking removes them.
+  - **Mine** starts empty. Paste a LeetCode or Codeforces link, or type a problem name, press **Classify**, and the AI
+    suggests the pattern and difficulty; accept it to add the problem. You can edit or remove your entries. A link to a
+    problem already on your plan reuses the plan card.
+- **Design** and **AI** hold question banks for the plan's topics, answer first: write your answer, reveal the stored one,
+  then use **Add to Review** to see the question again later. Pick a topic filter to narrow the list.
 
 ### Settings tab
 
@@ -311,32 +300,32 @@ See [Settings](#settings) below.
 
 ## Working on a card: the Do screen
 
-Open a card with **Start** on Today, **Do** on the Board or in any list, or Enter on a focused Board card. Escape,
-or **Back**, returns to the Board.
+Open a ticket with **Start** on Today, Path or Review. Escape, or **Back**, returns to where you came from.
 
-The top line shows the card, its sprint, the save status, the card's net XP and the timer.
+The top line shows the ticket, the save status, the card's net XP and the timer.
 
 ### Statement, brief and links
 
 The **Statement** shows the title, difficulty, pattern and sources. Below it is the card's **Brief**, if it has
-one. **Open** buttons open the card's links; opening one starts the timer if it is not already running.
+one. **Open** buttons open the card's links. Opening a link does not start anything: **Start** is the one way to
+begin.
 
-### Timer and study sessions
+### The timer
 
-The **Timer** panel has **Start 25 min**, **Start 50 min** and a custom length from 1 to 240 minutes, then
-**Pause**, **Resume** and **Retreat** (abandon the block; its minutes still count for the attempt). Space starts,
-pauses or resumes it.
+Each ticket has one timer, a single block as long as the **Session length** in [Settings](#settings) (25 minutes
+until you change it; 5 to 180). **Start** (the accent button, for example **START · PROBLEM** or **START · WATCH**)
+begins the countdown. **Pause** and **Resume** stop and restart it. At zero it says "Time is up. Keep going or
+finish." and waits; nothing ends by itself. **End session** closes the block and asks three short questions: done,
+stuck on, next step. A timer that runs on one ticket stays one click away from other screens.
 
-**Start session** plans a longer study session: pick the cards it covers, write what you will do, choose a cycle
-(25/5, 50/10, or custom focus of 1 to 180 and break of 1 to 60 minutes) and whether a soft chime plays at each
-switch. Every fourth focus block is followed by a long break (three short breaks long). The session keeps running
-when you move to other screens. During a session:
-
-- **Focus mode** (or `f`) hides everything but the session.
-- If a focus block passes with no help opened, no note typed and no tick, a **Stuck?** dialog offers **Open the
-  next help rung**, **Take a 5-minute break** or **I'm fine**. Nothing happens unless you choose.
-- If the Mac sleeps past the end of a phase, the session waits for you to resume or end it.
-- **End session** asks three short questions: done, stuck on, next step.
+- A **problem** is finished with **Solved**, **Solved with help** or **Give up** (see below). **Space** starts,
+  pauses or resumes the timer, and `d` marks the problem solved.
+- Every other kind of ticket (watch, read, build, write-up, ritual, design) has **Start** and then **Done**
+  (**DONE · WATCH**, **DONE · BUILD** and so on). A ritual can also be finished with **Done** without starting the
+  timer. A design ticket opens its design session instead of a timer.
+- **Focus mode** (`f` while a timer is running, **Escape** to leave) hides everything but the brief, the clock and a
+  Notes box; **End session** and **Exit focus mode** stay at the foot.
+- If the Mac sleeps past the end of the block, the timer waits for you.
 
 ### The attempt log
 
@@ -345,7 +334,7 @@ a proof note.
 
 ### The help ladder
 
-The ladder on the right has five rungs. Each costs XP from that card:
+Problem tickets have a help ladder; the other kinds do not. The ladder on the right has five rungs. Each costs XP from that card:
 
 | Rung | Unlocks | Problem | Design | Task |
 |---|---|---|---|---|
@@ -373,7 +362,7 @@ use?**. Your answer feeds the approach coverage in Atlas.
 ### Redos
 
 Giving up, or solving with help at the Picture rung or deeper, schedules a **redo** 3 days later. Redos appear in
-Today's Redo drawer when due. A redo passes when you solve the card using at most a Hint. Passes move the redo on to
+Review when due. A redo passes when you solve the card using at most a Hint. Passes move the redo on to
 10 days and then 30 days; a failed redo keeps its stage and is rescheduled. During a redo, Picture, Video and
 Solution cost double. Passing refunds XP: up to half of the help you paid at the first pass, the rest at the second,
 and a bonus of 3 at the third.
@@ -383,14 +372,9 @@ and a bonus of 3 at the third.
 A **brief** turns a card into a concrete plan: a goal, steps with links, minutes, a day type, what you will learn,
 the outcome, a deliverable and, for learning cards, questions.
 
-- **Draft briefs.** On the Board, **Draft briefs for Sprint N** asks the AI for a brief for every unfinished card in
-  that sprint that has none, one card at a time. It keeps running if you leave the Board; a small indicator shows
-  its progress. A card that fails is skipped, and running it again picks up whatever is still missing.
 - **Edit and approve.** On the Do screen, **Edit brief** changes any part of it, and **Approve** marks it approved.
   **Check links** tests the brief's links and flags broken ones.
 - **AI-track build cards never get code from the AI.** Their deliverable is your own code, typed by hand.
-- **Split into sessions.** A large card can be split into 2 to 12 sessions. The card is done when all its sessions
-  are.
 
 **Mark done** depends on the card:
 
@@ -401,7 +385,7 @@ the outcome, a deliverable and, for learning cards, questions.
 - A **build card** asks for the **Deliverable**. **Get feedback** is optional and asks the AI for feedback only; it
   never writes code and never finishes the card for you.
 
-A card with no brief can be finished directly from the Board.
+A card with no brief can be finished directly from Today or its ticket page.
 
 ## Running code: Go and Python
 
@@ -437,9 +421,8 @@ stores no API key and has no account of its own.
 
 **What leaves your machine:** the text of each request is sent to Anthropic by the `claude` tool, the same as any
 other Claude Code session. That is the card's title and text, your attempt notes, your answers, your deliverable
-text, what you paste into Classify, your design interview messages, card titles for Ask what to slide, a sprint's
-review numbers, and for grading your proof note and commit summary plus, if you set a project repo, the last 20
-commit subjects, the graded commit's file list and `git diff --stat` of that repo.
+text, what you paste into Classify, your AI partner chat messages, and for grading your proof note and commit summary plus, if you set a project repo, the
+last 20 commit subjects, the graded commit's file list and `git diff --stat` of that repo.
 
 | Feature | Where |
 |---|---|
@@ -447,13 +430,10 @@ commit subjects, the graded commit's file list and `git diff --stat` of that rep
 | Picture (problem walkthrough) | Do, help ladder, on problems |
 | Diagram | Do, help ladder, on designs; the reference diagram at the end of a design session |
 | Solution | Do, help ladder, after Give up |
-| Interviewer and interview grade | Design sessions in Interviewer mode |
-| Grade | AI tab artifacts; **Get feedback** on a deliverable |
-| Ask what to slide | Today, Load check, when the sprint is heavy |
+| AI partner and its grade | Design sessions with the AI partner (Solo · AI partner) |
+| Grade | **Get feedback** on a deliverable |
 | Classify | Banks, Mine; Atlas search when nothing matches locally |
-| Draft briefs | Board |
 | Check your understanding | Mark done on learning cards (Dojo grades multiple-choice answers itself, but the check runs through the AI) |
-| Sprint review prose | Progress, Reviews, and the automatic review after a sprint ends |
 
 **Without Claude Code.** Everything that is not in the table above works without it. When you use an AI feature
 and Dojo cannot find `claude`, the panel shows **Claude Code is not installed or not on PATH.**, the raw error
@@ -473,64 +453,52 @@ Other messages you may see:
 | The AI returned something unusable. | The reply did not match the expected format, even after one automatic retry. |
 | That request is not allowed before you give up. | Solutions are only given after Give up. |
 
-**Grading and your project repo.** To let the grader read your commits, set your project repo in
-[profile.json](#your-profile-file) and restart Dojo. The grader then reads the repo read-only when an artifact's repo
-URL ends with the same folder name as your local repo. Until you set one, the AI tab says "Set your project repo
-..." and grading uses the repo URL and the commit summary you paste. **Request grade** needs a repo URL and a
-commit. A grade passes at 3 out of 5.
+**Grading and your project repo.** The artifact grader belongs to the capstone screen, which is not in this version (it returns later). Your project repo setting in [profile.json](#your-profile-file) is kept for it.
 
 ## Keyboard shortcuts
 
-Shortcuts do nothing while you are typing in a field, and the global ones are off on the Do screen and in design
-sessions.
+The number keys do nothing while you are typing in a field or an editor, on the design canvas, or with Ctrl, Cmd or
+Alt held.
 
 **Anywhere else**
 
-| Key | Goes to |
+| Key | Does |
 |---|---|
-| 1 or t | Today |
-| 2 | Board |
-| 3 | DSA |
-| 4 | Designs |
-| 5 | AI |
-| 6 | Map |
-| 7 | Progress |
-| 8 | Week |
-| 9 | Overview |
-| 0 | Settings |
-| a | Atlas |
-| b | Banks |
-| m | Opens the More menu (then Up, Down, Home, End, Enter, Escape) |
+| 1 | Today |
+| 2 | Path |
+| 3 | Board |
+| 4 | Journal |
+| 5 | Skills |
+| 6 | Review |
+| Ctrl or Cmd K | Opens the search that jumps to anything (also works inside a text field) |
+| ? | Opens the list of shortcuts |
+| Esc | Closes a menu or dialog |
 
 **On a screen**
 
 | Where | Key | Action |
 |---|---|---|
-| Today | Enter | Start the card shown in Now |
-| Board, card focused | Enter | Open it on the Do screen |
-| Board, card focused | d | Done |
-| Board, card focused | s | Slide to the next sprint |
-| Board, card focused | Shift+Right, Shift+Left | Move one column right or left |
-| Board, sprint strip | Left, Right | Previous or next sprint |
-| Do | Escape | Leave focus mode, or go back to the Board |
-| Do | Space | Start, pause or resume the timer (when no study session is running) |
-| Do, study session | f | Focus mode on or off |
+| Today | Enter | Start the ticket shown |
+| Do | Escape | Leave focus mode, or go back |
+| Do, a problem | Space | Start, pause or resume the timer |
+| Do, timer running | f | Focus mode on or off |
 | Banks | / | Search |
 | Atlas | Escape | Close the two-up view, then the pattern panel |
-| Map, sprint panel | Left, Right | Previous or next sprint |
 | Walkthrough players | Left, Right, Space | Step back, step forward, play or pause |
 | Do, Trace panel | Left, Right, Home, End, Space | Step back or forward, first or last step, play or pause |
-| AI tab, Build board, artifact focused | Shift+Right, Shift+Left | Move it to the next or previous status |
 | Design canvas, box focused | Arrows, Delete or Backspace, L, Escape | Move it, remove it, start a link, cancel a link |
-| Design interviewer | Cmd+Enter | Send |
+| Design canvas | ? | The list of canvas shortcuts (N, C, T, G, Shift+G, arrows, Delete, L, Ctrl/Cmd+., Esc) |
+| Design AI partner chat | Cmd+Enter | Send |
 
 ## Settings
 
 | Section | What you can do |
 |---|---|
-| Plan start | Change the start date (YYYY-MM-DD). Shows where today falls: "Today is sprint N, day D of 14". |
-| Workload | Core minutes per sprint, from 30 to 20160. Default 1440. |
+| Plan start | Change the start date (YYYY-MM-DD). |
+| Pace | Minutes you can give each weekday; the finish month follows at once. |
+| Preferences | Session length and display options. |
 | Changes that couldn't be saved | Appears only when the server refused changes. Lists them, with **Retry**. |
+| Debug · Pom | A preview only: pick a form to see it, play the form-up animation, or type a level to see which form it gives. It changes and saves nothing. |
 | Backups | Where your data is, **Back up now**, and the list of snapshots with **Restore**. |
 | Plan data | The plan version, the database file, your project repo (or "not set"), and cards archived because the plan changed (with the XP they keep). |
 
@@ -553,7 +521,7 @@ backup.
 **Export to Postgres SQL.** From your clone:
 
 ```sh
-cd <repo>/app
+cd <repo>
 npm run db:export-pg
 ```
 
@@ -592,7 +560,7 @@ An optional file, `~/Dojo/profile.json`, holds your own values without changing 
 | Key | Effect |
 |---|---|
 | `projectRepo` | The local repo the grader may read. An absolute path or one starting with `~/`. Unset by default. |
-| `plan.schedule` | Your day. `block` is the weekday study block shown on Today and highlighted in Ritual. `timeline` is the "A weekday, concretely" table in Ritual (the row with `"block": true` takes its time from `block`). `timelineNote` is the note under it. `restDay` is Today's sentence on the rest day. `inbox` is where links go (Ritual, Saturday news slot). `protects` finishes Overview's sentence "Compressing it means skipping ...". `intro` opens Ritual. Missing keys fall back to the sample. |
+| `plan.schedule` | Legacy field. The screens that showed it (Ritual, Overview) are gone, so it is kept in the file but not shown. |
 | `plan.learner.patternsRepo` | Your own coding-patterns notes. Used for the DSA study links and for any plan link written as `{{learner.patternsRepo}}`; such links are dropped while it is unset. |
 
 Only `schedule` and `learner` under `plan` are used; other plan keys in the file are ignored. A file that is not valid
@@ -613,10 +581,10 @@ the new one.
 
 Keep in mind:
 
-- The file needs a non-empty `sprints` list, a `rotation`, and `dsa_bank` and `design_bank` lists (either may be
-  empty; the DSA and Designs tabs then say so). Every id must be unique.
-- Sprints are always 14 days and the plan is laid out over 72 sprints, whatever the file says.
-- A design tier named "... (sprints 21 to 24)" spreads its designs across those sprints.
+- The file must be a plan v2: `planFormat` set to `2`, a `planVersion`, and the `areas`, `phases`, `nodes`, `tickets`,
+  `tasks`, `dsa_bank` and `design_bank` lists (any may be empty; the DSA and Designs tabs then say so) plus a `mix`
+  with seven weekly `budgets` (Sunday first). Every id must be unique. An older plan with a `sprints` list and a
+  `rotation` is no longer read.
 - If the file cannot be used, Dojo shows **Plan data problem** with the reason and does not seed a partial plan.
 
 The full shape of the file is described in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#the-plan-data-model).

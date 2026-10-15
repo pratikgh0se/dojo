@@ -7,3 +7,4 @@ scripts/banks/.cache/
 scripts/banks-private/.cache/
 .dojo-dev/
 .e2e-*/
+/out/

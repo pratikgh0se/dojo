@@ -1,13 +1,13 @@
 import { createDb, patchSettings, type DojoDB } from '../../src/data/db'
 import { runReconcile } from '../../src/data/seed'
-import type { PlanJson } from '../../src/data/types'
-import { smallPlan } from './plan'
+import type { PlanV2 } from '../../src/data/planV2'
+import { flatPlanV2 } from './plan'
 
 export function freshDb(): DojoDB {
   return createDb(`test-${Math.random().toString(36).slice(2)}`)
 }
 
-export async function seededDb(plan: PlanJson = smallPlan, startDate = '2026-09-07'): Promise<DojoDB> {
+export async function seededDb(plan: PlanV2 = flatPlanV2, startDate = '2026-09-07'): Promise<DojoDB> {
   const d = freshDb()
   await runReconcile(d, plan)
   await patchSettings(d, { startDate })

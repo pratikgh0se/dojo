@@ -1,4 +1,5 @@
 import { walkDef } from '../content/atlas'
+import { NEW_PIECES } from '../content/atlasPieces'
 import { PIECE_OVERRIDES } from '../content/pieceOverrides'
 import type { AlgoJson } from './algoJson'
 
@@ -22,6 +23,9 @@ export function resolveWalk(key: string, input: unknown, g: AlgoGlobals): WalkRe
       if (!g.SRAlgo || !g.SRAlgo.library[key]) return { ok: false, error: 'The algorithm engine is not loaded' }
       return { ok: true, json: g.SRAlgo.run(key, input === undefined ? undefined : input) }
     }
+    // W7: pieces built in the app need no Atlas page string
+    const built = NEW_PIECES[key]
+    if (built) return { ok: true, json: built() }
     const raw = g.SRAtlas?.[key]
     if (typeof raw !== 'string') return { ok: false, error: 'The Atlas pieces are not loaded' }
     // UAT r4 J6: a piece whose example disagrees with its own code is rebuilt in the app

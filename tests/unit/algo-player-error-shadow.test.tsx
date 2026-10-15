@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import type { AlgoJson } from '../../src/rules/algoJson'
 import { seededDb } from '../helpers/db'
 import { installAlgoEngines } from '../helpers/engines'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 import { AlgoPlayer } from '../../src/ui/algo/AlgoPlayer'
 
@@ -16,7 +16,7 @@ describe('AlgoPlayer injected shadow style (labs contract §4, Controller addend
 
   it('scopes hiding .say to the normal (has a .bar) render, not the engine\'s own error render', async () => {
     const d = await seededDb()
-    renderWithApp(<AlgoPlayer json={BROKEN} record={false} />, { db: d, plan: smallPlan })
+    renderWithApp(<AlgoPlayer json={BROKEN} record={false} />, { db: d, plan: flatPlanV2 })
     const host = await screen.findByRole('group')
     await new Promise(r => setTimeout(r, 0)) // let useLayoutEffect's engine build + style-inject settle
     const shadow = host.shadowRoot!

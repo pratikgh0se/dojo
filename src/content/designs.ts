@@ -22,7 +22,7 @@ export const DESIGN_PRACTICE: ProseSection = {
       lead: 'Where hands-on experience is the answer',
       text: ', the deep dive says so. Bring real numbers from systems you have built or operated (metrics, scheduling, logging, authorization), or work them out from first principles.',
     },
-    { lead: 'Sunday is design day.', text: 'One design per Sunday, recorded. The Thursday block is for the reading behind it.' },
+    { lead: 'One design at a time, recorded.', text: 'Do the design, then read the part of the book or the guide that goes with it.' },
   ],
 }
 
@@ -31,12 +31,12 @@ export const DESIGN_SOURCES: ProseSection = {
   items: [
     {
       lead: 'Designing Data-Intensive Applications',
-      text: 'is the one book worth buying, about the price of a month of any subscription. Read it with the tutor protocol, one chapter per Thursday.',
+      text: 'is the one book worth buying, about the price of a month of any subscription. Read it with the tutor protocol, one chapter at a time.',
       links: [{ label: 'book', url: 'https://dataintensive.net/' }],
     },
     {
-      lead: "Hello Interview's free guides",
-      text: "for the method; ByteByteGo's YouTube channel (free) for reference solutions to compare against after you have done your own. The paid tiers of both are not needed.",
+      lead: 'The free system design guides',
+      text: "for the method (the first link below); ByteByteGo's YouTube channel (free) for reference solutions to compare against after you have done your own. The paid tiers of both are not needed.",
       links: [
         { label: 'Hello Interview', url: 'https://www.hellointerview.com/learn/system-design/in-a-hurry/introduction' },
         { label: 'ByteByteGo channel', url: 'https://www.youtube.com/@ByteByteGo' },
@@ -49,7 +49,7 @@ export const DESIGN_SOURCES: ProseSection = {
     },
     {
       lead: 'Mocks',
-      text: "come from Exponent's and interviewing.io's free peer tiers, or a partner from the rooms. Nothing paid.",
+      text: 'come from the free peer tiers at the two sites linked below, or a partner from the rooms. Nothing paid.',
       links: [
         { label: 'Exponent', url: 'https://www.tryexponent.com/practice' },
         { label: 'interviewing.io', url: 'https://interviewing.io/' },

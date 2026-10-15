@@ -3,7 +3,6 @@
 import type { DojoEvent, Session, Ticket } from '../data/types'
 import type { ChartTone } from '../ui/charts/types'
 import { sprintOf } from './sprint'
-import { isPart, itemSessions } from './units'
 
 export interface DsaEvidence { solved: number; help: number; gaveUp: number; redoPassed: number; redoTotal: number }
 export interface RedoHitRate { passed: number; failed: number; refunded: number }
@@ -23,7 +22,6 @@ export function redoHitRate(events: readonly DojoEvent[]): RedoHitRate {
 
 /**
  * Problems with a Do session, each counted once by its latest session; ticks without a session are not evidence.
- * Ruling 20 S4 (UAT r4 P1): a split problem counts once, as its parent, when all its parts are done (itemSessions).
  */
 export function dsaEvidence(tickets: readonly Ticket[], sessions: readonly Session[], events: readonly DojoEvent[]): DsaEvidence {
   const problems = problemIds(tickets)
@@ -47,12 +45,12 @@ export function dsaEvidence(tickets: readonly Ticket[], sessions: readonly Sessi
 }
 
 const problemIds = (tickets: readonly Ticket[]): Set<string> =>
-  new Set(tickets.filter(t => t.kind === 'problem' && !t.archived && !isPart(t)).map(t => t.id))
+  new Set(tickets.filter(t => t.kind === 'problem' && !t.archived).map(t => t.id))
 
 /** Each problem's latest Do session that counts (a study session does not), parts folded into their parent (S4). */
 function latestSessions(problems: ReadonlySet<string>, sessions: readonly Session[], tickets: readonly Ticket[]): Map<string, Session> {
   const latest = new Map<string, Session>()
-  for (const s of itemSessions(sessions, tickets)) {
+  for (const s of sessions) {
     if (!problems.has(s.ticketId) || s.outcome === 'studied') continue
     const cur = latest.get(s.ticketId)
     if (!cur || s.end > cur.end || (s.end === cur.end && s.start > cur.start)) latest.set(s.ticketId, s)
@@ -67,7 +65,7 @@ function latestSessions(problems: ReadonlySet<string>, sessions: readonly Sessio
  */
 export function dsaTickedWithoutAttempt(tickets: readonly Ticket[], sessions: readonly Session[]): number {
   const latest = latestSessions(problemIds(tickets), sessions, tickets)
-  return tickets.filter(t => t.kind === 'problem' && t.origin === 'plan' && !t.archived && !isPart(t) && t.status === 'done' && !latest.has(t.id)).length
+  return tickets.filter(t => t.kind === 'problem' && t.origin === 'plan' && !t.archived && t.status === 'done' && !latest.has(t.id)).length
 }
 
 export const LADDER_SERIES = [

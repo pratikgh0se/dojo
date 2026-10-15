@@ -1,0 +1,41 @@
+/* R1 F1: Today's ritual column. The daily AI pulse and the weekly "Try a model" card (mockup 01-today-top, body1.html:74-169). */
+.rt-card { display: grid; gap: 12px; min-width: 0; }
+.rt-row { display: flex; align-items: center; gap: 8px; }
+.rt-grow { flex: 1 1 auto; min-width: 0; }
+.qc-cap.rt-ok, .rt-ok { color: var(--sr-label-ok); }
+.rt-cal { color: var(--sr-text-secondary); flex: none; }
+.rt-body { display: flex; align-items: center; gap: 14px; }
+.rt-tick { width: 36px; height: 36px; display: grid; place-items: center; flex: none; border: 2px solid var(--sr-label-ok); color: var(--sr-label-ok); background: var(--sr-surface-well); }
+.rt-text { font-size: var(--type-body); font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.rt-when { margin-top: 2px; }
+.rt-form { display: grid; gap: 8px; }
+.rt-label { font-size: var(--type-small); color: var(--sr-text-secondary); line-height: 1.4; }
+.rt-field { display: flex; gap: 8px; align-items: center; }
+.rt-field input { flex: 1 1 auto; min-width: 0; }
+/* the status line is a heading in the pixel face at 16 px: "Due Saturday" in the label accent, "Done Saturday" in the ok colour */
+.rt-status { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); font-weight: 400; line-height: 1.25; letter-spacing: 1px; text-transform: uppercase; color: var(--sr-label-accent); -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.rt-status[data-state='done'] { color: var(--sr-label-ok); }
+.rt-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.rt-cell { height: 36px; display: grid; place-items: center; box-sizing: border-box; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-meta); font-weight: 700; line-height: 1; color: var(--sr-text-secondary); }
+.rt-cell[data-state='past'] { opacity: .55; }
+.rt-cell[data-today='true'] { border-color: var(--sr-text-primary); color: var(--sr-text-primary); }
+.rt-cell[data-state='due'] { border: 2px dashed var(--sr-energy-accent); color: var(--sr-label-accent); }
+.rt-cell[data-state='due'][data-today='true'] { outline: 2px solid var(--sr-text-primary); outline-offset: 1px; }
+.rt-cell[data-state='done'] { border: 2px solid var(--sr-label-ok); color: var(--sr-label-ok); opacity: 1; }
+.rt-cell[data-state='done'][data-today='true'] { outline: 2px solid var(--sr-text-primary); outline-offset: 1px; }
+.rt-copy { margin: 0; font-size: var(--type-small); line-height: 1.45; color: var(--sr-text-secondary); }
+@media (max-width: 767px) {
+  .rt-card { gap: 10px; }
+  .rt-body { gap: 12px; }
+  .rt-text { font-size: var(--type-small); }
+  /* the phone drops the "Logged this morning" line (mockup) */
+  .rt-when { display: none; }
+  .rt-status { text-align: right; }
+}
+
+/* W2 (TODAY-49): the journal card is one plain line that links to /journal */
+.jc-card { padding: 12px 16px; }
+.jc-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; font-size: var(--type-body); font-weight: 700; line-height: 1.35; color: var(--sr-text-primary); text-decoration: none; overflow-wrap: anywhere; }
+.jc-link:hover { color: var(--sr-label-accent); }
+.jc-card[data-state='saved'] .jc-link { color: var(--sr-label-ok); }
+@media (max-width: 767px) { .jc-link { min-height: var(--sr-size-hit-touch); } }

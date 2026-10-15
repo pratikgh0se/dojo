@@ -1,6 +1,6 @@
-import { buildJobRequest, type AiErrorCode, type CheckResult } from '../ai/types'
+import { buildJobRequest, type AiErrorCode, type BriefQuestion, type CheckResult } from '../ai/types'
 import { newId } from '../lib/id'
-import { checkInputs, checkRedoDue, normalizeResults, passRule, unanswered, type CheckAnswer } from '../rules/check'
+import { checkInputs, checkRedoDue, explainQuestions, normalizeResults, passRule, unanswered, type CheckAnswer } from '../rules/check'
 import { CAPSTONE_STAGES } from '../content/capstoneStages'
 import { deliverableOf } from '../rules/brief'
 import { aiTicketOf } from '../rules/rungContent'
@@ -8,20 +8,22 @@ import { callJob } from './aiActions'
 import { moveTicket } from './boardActions'
 import type { DojoDB } from './db'
 import type { CheckAttemptRow, Deliverable, Redo, Ticket } from './types'
-import { containerState } from '../rules/split'
 
 export type CheckSubmit =
   | { ok: true; passed: boolean; results: CheckResult[]; attempt: CheckAttemptRow; xpDelta: number }
-  | { ok: false; code: AiErrorCode | 'incomplete' | 'no_brief'; error: string }
+  | { ok: false; code: AiErrorCode | 'incomplete' | 'no_brief' | 'skipped'; error: string }
 
 /**
  * "Mark done" on a learning card: grade the answers, keep the attempt. A pass finishes the card through
  * moveTicket (XP via netOf) and closes a redo an earlier failure scheduled; a fail leaves the card open,
  * and schedules (or pushes back) one redo 3 local days out.
  */
-export async function submitCheck(d: DojoDB, ticketId: string, answers: CheckAnswer[], at: number): Promise<CheckSubmit> {
+export async function submitCheck(
+  d: DojoDB, ticketId: string, answers: CheckAnswer[], at: number, opts: { finish?: boolean; questions?: BriefQuestion[] } = {},
+): Promise<CheckSubmit> {
+  const finish = opts.finish ?? true
   const t = await d.tickets.get(ticketId)
-  const questions = t?.brief?.questions ?? []
+  const questions = opts.questions ?? t?.brief?.questions ?? []
   if (!t || questions.length === 0) return { ok: false, code: 'no_brief', error: 'This card has no questions' }
   if (unanswered(questions, answers).length > 0) return { ok: false, code: 'incomplete', error: 'Answer every question first' }
   const res = await callJob(d, 'check', buildJobRequest('check', aiTicketOf(t), { questions: checkInputs(questions, answers) }), at)
@@ -49,19 +51,27 @@ export async function submitCheck(d: DojoDB, ticketId: string, answers: CheckAns
       await d.redos.add(redo)
     }
     // the attempt, the redo and the finished card land together or not at all
-    if (passed && t.status !== 'done') {
-      if (t.children?.length) {
-        // ruling 10 Q22: a split card's check stays on it; it finishes once every session is done too (no XP of its own)
-        const marked = { ...t, checkPassedAt: at }
-        const kids = (await d.tickets.bulkGet(t.children)).filter((c): c is Ticket => c !== undefined)
-        await d.tickets.put(containerState(marked, kids, at) ?? marked)
-      } else {
-        const r = await moveTicket(d, ticketId, 'done', at, true)
-        if (r.ok) xpDelta = r.xpDelta
-      }
+    if (passed && finish && t.status !== 'done') {
+      const r = await moveTicket(d, ticketId, 'done', at, true)
+      if (r.ok) xpDelta = r.xpDelta
     }
   })
   return { ok: true, passed, results, attempt, xpDelta }
+}
+
+/**
+ * A finished ticket's explain answers go to the same `check` job. Nothing is finished or reopened here: the attempt is
+ * stored and a failure schedules the usual three-day redo. Skipped (no AI call) unless every explain question has an
+ * answer and the ticket carries a reference answer for each question. Questions come from `explain` only, never a legacy
+ * brief, because the learner's answers are indexed by `explain`.
+ */
+export async function submitExplainCheck(d: DojoDB, ticketId: string, texts: string[], at: number): Promise<CheckSubmit> {
+  const t = await d.tickets.get(ticketId)
+  const qs = t ? explainQuestions(t) : []
+  // a reference answer for every question, or there is nothing to grade against
+  if (!t || qs.length === 0 || (t.explainAnswers?.length ?? 0) < qs.length) return { ok: false, code: 'skipped', error: 'No reference answers to check against' }
+  if (texts.length < qs.length || texts.slice(0, qs.length).some(x => !x.trim())) return { ok: false, code: 'skipped', error: 'Answer every question to have them checked' }
+  return submitCheck(d, ticketId, qs.map((q, i) => ({ id: q.id, answer: texts[i] })), at, { finish: false, questions: qs })
 }
 
 class Refused extends Error {}

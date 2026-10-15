@@ -41,6 +41,8 @@ export interface LoopOptions {
   now?: () => number
   /** Addendum 3: the X-Dojo-Writer header every post carries. */
   writerHeaders?: () => Record<string, string>
+  /** The model gate: while `modelLocked`, queued rows stay queued and nothing is posted (rows can be queued in the window before the gate engages). */
+  gate?: { modelLocked?: boolean }
 }
 
 export interface SyncLoop {
@@ -60,7 +62,7 @@ export interface SyncLoop {
   retryRejected(): Promise<boolean>
 }
 
-const toOp = (r: OutboxRow) => ({ tbl: r.tbl, op: r.op, id: r.id, doc: r.doc, at: r.at, opId: r.opId, ...(r.create ? { create: true } : {}), ...(r.known ? { known: true } : {}) })
+export const toOp = (r: OutboxRow) => ({ tbl: r.tbl, op: r.op, id: r.id, doc: r.doc, at: r.at, opId: r.opId, ...(r.create ? { create: true } : {}), ...(r.known ? { known: true } : {}) })
 
 export function createSyncLoop(o: LoopOptions): SyncLoop {
   const f: typeof fetch = o.fetchImpl ?? ((i, n) => globalThis.fetch(i, n))
@@ -104,6 +106,7 @@ export function createSyncLoop(o: LoopOptions): SyncLoop {
   }
 
   let why = '' // the server's reason for the last rejected batch
+  let whyStatus = 0 // ... and its HTTP status
 
   async function sendBatch(rows: OutboxRow[]): Promise<'ok' | 'down' | 'rejected' | 'mismatch' | 'not_writer'> {
     if (!adopted) return 'mismatch'
@@ -117,6 +120,7 @@ export function createSyncLoop(o: LoopOptions): SyncLoop {
       // Only the server's own "this op is malformed / too big / collides" answers park an op; anything else
       // (404 from some other server, 403, 5xx, 429...) is treated as the server being unavailable and retried.
       const err = await res.json().catch(() => null) as { error?: { code?: unknown; message?: unknown } } | null
+      whyStatus = res.status
       why = `HTTP ${res.status}${typeof err?.error?.message === 'string' ? `: ${err.error.message}` : ''}`
       if (res.status === 400 || res.status === 413 || res.status === 422) return 'rejected'
       if (res.status === 409 && err?.error?.code === 'conflict') return 'rejected' // I3: an append-only id collision
@@ -159,18 +163,50 @@ export function createSyncLoop(o: LoopOptions): SyncLoop {
     return parked
   }
 
+  /**
+   * A refused group is held whole. The server applies a request in one transaction, so a refused group
+   * changed nothing there; parking every row together (in order, `grp` kept) keeps it all-or-nothing, and
+   * retryRejected puts it back as one group. Only the cap on parked ops can refuse this (false); a group
+   * longer than the cap is still parked whole, since splitting it is what this exists to prevent.
+   */
+  async function quarantineGroup(rows: OutboxRow[]): Promise<boolean> {
+    const parked = await o.db.transaction('rw', o.db._outbox, o.db._meta, async () => {
+      const prev = await parkedRows()
+      if (prev.length >= rejectedCap) return false
+      await o.db._meta.put({ key: 'rejectedOps', value: [...prev, ...rows.map(r => ({ ...r, error: why }))] })
+      await o.db._outbox.bulkDelete(rows.map(r => r.seq as number))
+      setRejectedCount(prev.length + rows.length)
+      return true
+    })
+    if (parked) {
+      rows.forEach(r => memory.delete(r.opId))
+      console.error(`dojo: the server refused a group of ${rows.length} changes; listed in Settings (changes that could not be saved)`)
+    }
+    return parked
+  }
+
   async function run(): Promise<boolean> {
     for (;;) {
       if (!adopted) return false // C2: never post to a database this browser has not adopted
       if (notWriter) { set('offline', NOT_WRITER_MESSAGE); return false }
       if (await restoring()) return false // I-c: a restore is under way in some tab
-      const rows = await o.db._outbox.orderBy('seq').limit(BATCH_SIZE).toArray()
+      let rows = await o.db._outbox.orderBy('seq').limit(BATCH_SIZE).toArray()
+      const grp = rows[0]?.grp
+      if (grp) {
+        // a group is one all-or-nothing request, however long it is
+        rows = await o.db._outbox.where('seq').aboveOrEqual(rows[0].seq as number).until(r => r.grp !== grp).toArray()
+      } else {
+        // ungrouped rows stop where a group starts, so a group is never split across two requests
+        const cut = rows.findIndex(r => r.grp)
+        if (cut > 0) rows = rows.slice(0, cut)
+      }
       if (rows.length === 0) {
         complete = true
         failures = 0
         set('saved')
         return true
       }
+      if (o.gate?.modelLocked) return false // the data is from a newer model: the rows wait (never posted by this build)
       // ruling 16 Q22: a background retry while the server is down keeps "Not saved to disk"; the status leaves it
       // only once a write is accepted again (the 'ok' path below, then 'saved' when the outbox is empty)
       if (failures === 0) set('saving')
@@ -192,7 +228,13 @@ export function createSyncLoop(o: LoopOptions): SyncLoop {
         return false
       }
       let down = r === 'down'
-      if (r === 'rejected') {
+      if (r === 'rejected' && grp && whyStatus !== 413) {
+        // 400 / 422 / 409 on a group: the server rolled all of it back, so hold all of it (413 is only "too big" and falls through)
+        if (!(await quarantineGroup(rows))) {
+          set('offline', `The server refused ${rejectedCap} changes; the rest wait until those are retried (${why}).`)
+          return false
+        }
+      } else if (r === 'rejected') {
         // Find the poison op(s): send one by one.
         for (const row of rows) {
           const one = rows.length === 1 ? r : await sendBatch([row])
@@ -317,11 +359,12 @@ export function createSyncLoop(o: LoopOptions): SyncLoop {
    */
   function flushOnHide() {
     if (timer) { clearTimeout(timer); timer = null }
-    if (!adopted || !complete || notWriter) return
+    if (!adopted || !complete || notWriter || o.gate?.modelLocked) return
     const enc = new TextEncoder()
     const envelope = { clientId: o.clientId, dbId: adopted, ops: [] as ReturnType<typeof toOp>[] }
     let size = enc.encode(JSON.stringify(envelope)).length
     for (const r of memory.values()) {
+      if (r.grp) break // a group goes whole through the normal path; the hide path must not deliver half of it
       const op = toOp(r)
       const n = enc.encode(JSON.stringify(op)).length + (envelope.ops.length ? 1 : 0) // + the comma
       if (size + n > KEEPALIVE_LIMIT_BYTES) break

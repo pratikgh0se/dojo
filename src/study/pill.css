@@ -1,5 +1,7 @@
 /* Ruling 24 S1: the session pill. Type comes from the scale tokens only; colours and sizes from the token set. */
 .session-strip, .session-dock { max-width: 1200px; margin: 0 auto; padding: 12px 24px 0; box-sizing: border-box; }
+/* auto side margins switch off the column flex's stretch, so a bare strip took its nowrap title's width: pin it to the column (D1) */
+.session-strip { width: 100%; min-width: 0; }
 .session-dock { padding-bottom: 0; }
 .session-pill {
   display: flex; align-items: center; gap: 12px; min-width: 0; min-height: var(--sr-size-hit-touch); padding: 4px 8px 4px 12px;

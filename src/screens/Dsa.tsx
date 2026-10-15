@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { useNavigationType } from 'react-router-dom'
+import { Link, useNavigationType } from 'react-router-dom'
 import type { Ticket } from '../data/types'
 import { usePlan } from '../app/providers'
 import { DSA_INTRO, DSA_SOURCES, learnLinks } from '../content/dsaLearn'
 import { useTickets } from '../data/hooks'
 import { sprintParam, useQuery } from '../lib/useQueryParam'
+import { patternForProblem } from '../rules/atlasPattern'
 import { DIFFICULTIES, DIFFICULTY_LABELS, dsaTopics, dsaTotals, type DsaProblemView, type DsaTopicView } from '../rules/dsa'
 import { GroupedColumns } from '../ui/charts'
 import { ExtLink, ProseSectionView } from '../ui/Prose'
@@ -152,8 +153,21 @@ function HeatCell({ p, onTick }: { p: DsaProblemView; onTick: (t: Ticket) => Pro
   )
 }
 
+/** ATLAS-08: the Atlas pattern of a problem, linking to its row (which lists the problem, ATLAS-09). */
+function PatternChip({ problemId }: { problemId: string }) {
+  const plan = usePlan()
+  const ref = patternForProblem(problemId, plan)
+  if (!ref) return null
+  return (
+    <Link className="chip pattern-chip" to={`/atlas?pattern=${ref.slug}`} data-testid={`dsa-pattern-${problemId}`} title={`Atlas pattern: ${ref.label}`}>
+      {ref.label}
+    </Link>
+  )
+}
+
 function TopicDetail({ topic }: { topic: DsaTopicView }) {
-  const links = learnLinks(topic.sprint, usePlan().learner)
+  const plan = usePlan()
+  const links = learnLinks(topic.sprint, plan.learner)
   return (
     <Panel title={`S${topic.sprint} · ${topic.topic}`} data-testid="topic-detail">
       <Warmup key={topic.sprint} sprint={topic.sprint} />
@@ -174,6 +188,7 @@ function TopicDetail({ topic }: { topic: DsaTopicView }) {
           <TicketRow key={p.id} ticket={p.ticket} title={`${p.num} · ${p.name}`}>
             <span className={`chip diff-chip diff-${p.difficulty}`}>{p.difficulty}</span>
             {p.premium && <span className="chip">P</span>}
+            <PatternChip problemId={p.id} />
             <ExtLink link={{ label: 'LeetCode', url: p.url }} />
             {p.neetcode && <ExtLink link={{ label: 'NeetCode', url: p.neetcode }} />}
           </TicketRow>

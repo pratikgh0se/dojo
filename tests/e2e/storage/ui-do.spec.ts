@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { GO_VF } from '../../helpers/visualSolutions'
-import { openApp, rows } from './briefs-helpers'
+import { goClient, openApp, rows } from './briefs-helpers'
 import { ServerHarness } from './harness'
 
 // UI area A (ui-do.md, ui-dp-view.md, ui-visual-families.md): measured layout rules of the Do workbench, the trace
@@ -166,7 +166,7 @@ test('stacked panes, no page overflow and phone controls at 834, 393 and 375', a
   await ctx.close()
 })
 
-test('F6.17 / F6.18 / F6.15: gutter numbers on their own lines, timer row under Start session, a themed slider', async ({ browser }) => {
+test('F6.17 / F6.15: gutter numbers on their own lines, a themed slider, and the one timer card holds the single START (TICKET-08)', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 1280, height: 900 })
   await run(page, 'p91', P91_BOTH)
@@ -177,14 +177,17 @@ test('F6.17 / F6.18 / F6.15: gutter numbers on their own lines, timer row under 
     return lines.map((l, i) => [l.top, nums[i].top, l.height, nums[i].height])
   })
   for (const [lt, nt, lh, nh] of pairs) { expect(Math.abs(lt - nt)).toBeLessThanOrEqual(1); expect(lh).toBe(24); expect(nh).toBe(24) }
-  const start = await box(page, 'start-session')
-  const blocks = await page.locator('.timer .blocks').boundingBox()
-  const readout = await page.locator('.timer .timer-big').boundingBox()
-  expect(blocks!.y).toBeGreaterThanOrEqual(start.y + start.height + 4) // below the button and its 4 px drop
-  expect(Math.abs((blocks!.y + blocks!.height / 2) - (readout!.y + readout!.height / 2))).toBeLessThanOrEqual(2) // beside the readout
   const slider = await page.getByTestId('dp-scrubber').evaluate(e => ({ a: getComputedStyle(e).appearance, ac: getComputedStyle(e).accentColor }))
   expect(slider.a).toBe('none')
   expect(slider.ac).toBe('rgb(255, 138, 42)')
+  // F6.18's timer row (blocks beside the readout, under "Start session") is retired with the Plan dialog; the surviving rule is the
+  // one timer card (TICKET-08): a fresh problem shows exactly one timer reading and exactly one start control, inside the Timer region.
+  await page.goto('/do/p200')
+  await expect(page.getByTestId('timer-readout')).toHaveCount(1)
+  const timer = page.getByRole('region', { name: 'Timer' })
+  await expect(timer.getByTestId('ticket-start')).toHaveCount(1)
+  await expect(page.getByTestId('ticket-start')).toHaveCount(1)
+  await expect(page.getByTestId('start-session')).toHaveCount(0)
   await ctx.close()
 })
 
@@ -214,38 +217,35 @@ test('ui-visual-families V0.2–V0.4: graph left, heap right; SVG text exactly 1
   await ctx.close()
 })
 
-test('no horizontal page scroll at 375 on every Do variant (problem, pack, learning card, AI build), idle, planning and in a session; 44 px language switch', async ({ browser }) => {
+test('no horizontal page scroll at 375 on every ticket variant (problem, pack, watch, read, build), idle, in a session and ending it; 44 px language switch', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.setViewportSize({ width: 375, height: 800 })
+  // the plan's own tickets, one per kind (the Plan dialog is retired: starting is `ticket-start`, TICKET-03)
   const tickets = await rows(srv, 'tickets')
-  const ai = tickets.find(t => t.track === 'ai' && t.sprint === 1 && /rebuild/.test(t.id)) ?? tickets.find(t => t.track === 'ai' && t.sprint === 1)
-  const learning = tickets.find(t => t.sprint === 1 && t.brief && t.kind !== 'problem') ?? tickets.find(t => t.track !== 'interview' && t.kind === 'watch')
-  const ids = ['p200', 'p91', learning?.id, ai?.id].filter((x): x is string => !!x)
-  expect(ids.length).toBeGreaterThanOrEqual(3)
+  const pick = (kind: string, withExplain?: boolean) => tickets.find(t => t.kind === kind && !t.archived && (withExplain === undefined || (t.explain?.length ?? 0) > 0 === withExplain))?.id as string | undefined
+  const ids = ['p200', 'p91', pick('watch', true), pick('read'), pick('build')].filter((x): x is string => !!x)
+  expect(ids.length).toBe(5)
   for (const id of ids) {
-    await page.goto(`/do/${id}`)
+    await goClient(page, `/do/${id}`)
     await page.getByTestId('do-screen').waitFor()
     await page.waitForTimeout(300)
     expect(await overflow(page), `${id} idle`).toBeLessThanOrEqual(0)
-    const giveUp = await page.getByTestId('do-outcome-giveup').boundingBox()
-    expect(giveUp!.x + giveUp!.width, `${id} Give up inside the viewport`).toBeLessThanOrEqual(375)
-    const start = page.getByTestId('start-session')
-    if (await start.isEnabled()) {
-      await start.click()
-      const plan = page.getByTestId('plan-dialog')
-      await plan.waitFor()
-      expect(await overflow(page), `${id} planning`).toBeLessThanOrEqual(0)
-      await plan.getByRole('textbox').first().fill('Read the statement and try one approach')
-      await page.getByTestId('plan-start').click()
-      await page.getByTestId('session-panel').waitFor()
-      await page.waitForTimeout(200)
-      expect(await overflow(page), `${id} in a session`).toBeLessThanOrEqual(0)
-      await page.getByTestId('session-end').click()
-      await page.getByTestId('end-dialog').waitFor()
-      expect(await overflow(page), `${id} ending`).toBeLessThanOrEqual(0)
-      await page.getByTestId('end-save').click()
-      await page.getByTestId('end-dialog').waitFor({ state: 'hidden' })
+    const problem = id.startsWith('p')
+    if (problem) {
+      const giveUp = await page.getByTestId('do-outcome-giveup').boundingBox()
+      expect(giveUp!.x + giveUp!.width, `${id} Give up inside the viewport`).toBeLessThanOrEqual(375)
     }
+    const start = page.getByTestId('ticket-start')
+    await expect(start, `${id} start`).toBeEnabled()
+    await start.click()
+    await page.getByTestId('timer-pause').waitFor()
+    await page.waitForTimeout(200)
+    expect(await overflow(page), `${id} in a session`).toBeLessThanOrEqual(0)
+    await (problem ? page.getByTestId('session-end') : page.getByTestId('timer-end')).click()
+    await page.getByTestId('end-dialog').waitFor()
+    expect(await overflow(page), `${id} ending`).toBeLessThanOrEqual(0)
+    await page.getByTestId('end-save').click()
+    await page.getByTestId('end-dialog').waitFor({ state: 'hidden' })
   }
   await page.goto('/do/p91')
   await page.getByRole('radiogroup', { name: 'Language' }).waitFor()

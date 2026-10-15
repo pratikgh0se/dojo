@@ -18,6 +18,7 @@ afterEach(() => {
   // ports.test.ts runs `@vitest-environment node` (importing vite.config.ts trips an esbuild/jsdom
   // startup check), so this shared setup file cannot assume localStorage exists.
   if (typeof localStorage !== 'undefined') localStorage.clear()
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear() // Path remembers its filter for the tab (NAV-40): one test's filter must not reach the next
   giveWriterToken()
   resetNow()
   resetDraftJob()

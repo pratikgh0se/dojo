@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { Ticket } from '../data/types'
 import { rowMeta } from '../rules/board'
 import { useTick } from './useTick'
+import { Glyph } from './Glyph'
 import './ticketRow.css'
 
 export function TickBox({
@@ -21,12 +22,13 @@ export function TickBox({
       data-testid={testId ?? `tick-${ticket.id}`}
       onClick={() => void tick(ticket)}
     >
-      {done ? '✓' : ''}
+      {done ? <Glyph name="check" /> : null}
     </button>
   )
 }
 
-export function TicketRow({ ticket, title, children }: { ticket: Ticket | null; title: ReactNode; children?: ReactNode }) {
+/** `hideSprint` leaves out the sprint label ("S3") of the row, for screens whose queue has no schedule. */
+export function TicketRow({ ticket, title, children, hideSprint = false }: { ticket: Ticket | null; title: ReactNode; children?: ReactNode; hideSprint?: boolean }) {
   if (!ticket) {
     return (
       <div className="trow readonly" data-testid="row-readonly">
@@ -42,9 +44,9 @@ export function TicketRow({ ticket, title, children }: { ticket: Ticket | null; 
       <TickBox ticket={ticket} />
       <span className="trow-title">{title}</span>
       {children}
-      <span className="trow-meta">{rowMeta(ticket)}</span>
+      {!hideSprint && <span className="trow-meta">{rowMeta(ticket)}</span>}
       <Link to={`/do/${ticket.id}`} className="sr-btn sr-btn-quiet trow-do" aria-label={`Do: ${ticket.title}`} data-testid={`do-${ticket.id}`}>
-        Do ▸
+        Do <Glyph name="chevronR" />
       </Link>
     </div>
   )

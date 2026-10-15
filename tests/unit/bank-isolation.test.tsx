@@ -1,18 +1,11 @@
-import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { moveTicket } from '../../src/data/boardActions'
 import { runReconcile } from '../../src/data/seed'
-import { debtBar } from '../../src/rules/board'
 import { bankItemXp, bankTicket, linkLabel, originFor, originLabel } from '../../src/rules/bankTickets'
-import { leftBehind } from '../../src/rules/load'
-import { sprintPath } from '../../src/rules/map'
-import { burnUp, pace, rings } from '../../src/rules/progress'
-import { carrotHp, milestoneBadges } from '../../src/rules/vitals'
 import { cfXp, planXp, ticketBaseXp, totalXp } from '../../src/rules/xp'
-import { Vitals } from '../../src/ui/Vitals'
 import type { BankEntry } from '../../src/rules/banks'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { mkTicket, smallTickets } from '../helpers/tickets'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -68,16 +61,6 @@ describe('plan-side rules ignore bank tickets', () => {
     expect(totalXp(both) - totalXp(plan)).toBe(35)
     expect(planXp(both)).toBe(planXp(plan))
   })
-  it('Board load, progress, map cubes, Carrot HP, left-behind and badges are unchanged', () => {
-    expect(debtBar(both, 1)).toEqual(debtBar(plan, 1))
-    expect(rings(both)).toEqual(rings(plan))
-    expect(burnUp(both, '2026-09-07', 1, 3)).toEqual(burnUp(plan, '2026-09-07', 1, 3))
-    expect(pace(both, [], '2026-09-07', NOW)).toEqual(pace(plan, [], '2026-09-07', NOW))
-    expect(sprintPath(smallPlan, both, 1)).toEqual(sprintPath(smallPlan, plan, 1))
-    expect(carrotHp(both, 1)).toEqual(carrotHp(plan, 1))
-    expect(leftBehind(both, 2)).toEqual(leftBehind(plan, 2))
-    expect(milestoneBadges(both).filter(b => b.glyph !== '1')).toEqual(milestoneBadges(plan).filter(b => b.glyph !== '1'))
-  })
 })
 
 describe('reconcile keeps bank tickets', () => {
@@ -85,7 +68,7 @@ describe('reconcile keeps bank tickets', () => {
     const d = await seededDb()
     const t = bankTicket(entry({ id: 'p9001' }), 'blind75', NOW, 1)
     await d.tickets.put(t)
-    await runReconcile(d, smallPlan)
+    await runReconcile(d, flatPlanV2)
     expect(await d.tickets.get('p9001')).toEqual(t)
   })
 })
@@ -103,14 +86,5 @@ describe('moveTicket with bank tickets', () => {
     const id = smallTickets().find(t => t.kind === 'problem')!.id
     const res = await moveTicket(d, id, 'done', NOW)
     expect(res.ok).toBe(true)
-  })
-})
-
-describe('Vitals', () => {
-  it('uses formXp for the form and xp for LV and the XP total', () => {
-    render(<Vitals xp={600} formXp={0} possible={6015} pose="idle" />)
-    expect(screen.getByTestId('form-name')).toHaveTextContent('BASE')
-    expect(screen.getByTestId('level')).toHaveTextContent('LV 60')
-    expect(screen.getByTestId('xp-total')).toHaveTextContent('600 XP')
   })
 })

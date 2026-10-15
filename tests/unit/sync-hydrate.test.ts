@@ -196,7 +196,7 @@ describe('I10: hydrate never hangs', () => {
 })
 
 describe('Minor 1: a stale restore flag is dropped only when no restore started after it', () => {
-  const withBackups = (files: { file: string; at: string }[]): typeof fetch => async (i, init) => {
+  const withBackups = (files: { file: string; at: number }[]): typeof fetch => async (i, init) => {
     if (String(i).endsWith('/db/backups')) return new Response(JSON.stringify({ backups: files.map(f => ({ ...f, bytes: 1 })) }), { status: 200 })
     return fakeServer(i, init)
   }
@@ -205,7 +205,7 @@ describe('Minor 1: a stale restore flag is dropped only when no restore started 
   it('a pre-restore file newer than the flag: the restore may still be finishing, stay paused', async () => {
     await adopted()
     await d._meta.put({ key: 'restoring', value: { fromDb: store.health().dbId, at: flagAt } })
-    const f = withBackups([{ file: 'pre-restore-x.db', at: new Date(flagAt + 1000).toISOString() }])
+    const f = withBackups([{ file: 'pre-restore-x.db', at: flagAt + 1000 }])
     expect(await hydrate({ db: d, gate, loop, clientId: 'c', fetchImpl: f })).toBe('paused')
     expect(await d._meta.get('restoring')).toBeTruthy()
   })
@@ -213,7 +213,7 @@ describe('Minor 1: a stale restore flag is dropped only when no restore started 
   it('no such file: the flag was abandoned; it is dropped and the boot continues', async () => {
     await adopted()
     await d._meta.put({ key: 'restoring', value: { fromDb: store.health().dbId, at: flagAt } })
-    const f = withBackups([{ file: 'pre-restore-old.db', at: new Date(flagAt - 60_000).toISOString() }])
+    const f = withBackups([{ file: 'pre-restore-old.db', at: flagAt - 60_000 }])
     expect(await hydrate({ db: d, gate, loop, clientId: 'c', fetchImpl: f })).toBe('restored')
     expect(await d._meta.get('restoring')).toBeUndefined()
   })

@@ -3,8 +3,8 @@ import { IST, onboard } from './helpers'
 
 // F8: every routed screen has screen-<name>, data-ready="true" and exactly one h1; G1 at phone widths.
 const SCREENS: Array<[string, string]> = [
-  ['/atlas', 'atlas'], ['/map', 'map'], ['/week', 'week'], ['/overview', 'overview'],
-  ['/mentors', 'mentors'], ['/ritual', 'ritual'], ['/settings', 'settings'], ['/progress', 'progress'],
+  ['/path', 'path'], ['/skills', 'skills'], ['/review', 'review'], ['/guide', 'guide'],
+  ['/atlas', 'atlas'], ['/banks', 'banks'], ['/settings', 'settings'],
 ]
 
 for (const width of [1280, 834, 375]) {

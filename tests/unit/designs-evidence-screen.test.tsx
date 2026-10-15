@@ -4,7 +4,7 @@ import type { DesignSession } from '../../src/data/types'
 import { setNow } from '../../src/lib/clock'
 import { Designs } from '../../src/screens/Designs'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanProse } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -25,9 +25,9 @@ function s1(): DesignSession {
 
 async function setup(at: number, sessions: DesignSession[] = []) {
   setNow(() => at)
-  const d = await seededDb(smallPlan, '2026-09-07')
+  const d = await seededDb(flatPlanProse, '2026-09-07')
   for (const s of sessions) await d.designSessions.add(s)
-  renderWithApp(<Designs />, { db: d, plan: smallPlan, route: '/designs', path: '*' })
+  renderWithApp(<Designs />, { db: d, plan: flatPlanProse, route: '/designs', path: '*' })
   return screen.findByRole('region', { name: 'Design evidence' })
 }
 
@@ -84,6 +84,6 @@ describe('Design evidence (C-DESIGN §4.11)', () => {
     const ev = await setup(ist('2026-11-10T09:00:00'), [s1()])
     const row = within(ev).getByTestId('design-redesign-d-method')
     expect(row).toHaveTextContent('due')
-    expect(within(row).getByRole('link', { name: `Start redesign: ${TITLE}` })).toHaveAttribute('href', '/designs/session/d-method')
+    expect(within(row).getByRole('link', { name: `Start redesign: ${TITLE}` })).toHaveAttribute('href', '/designs/session/d-method?new=1')
   })
 })

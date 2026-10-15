@@ -111,22 +111,28 @@ function record(ctx: BrowserContext) {
   return seen
 }
 
-test('PY-01/PY-13-gate: a correct Python p91 Submit passes 5/5 and opens Solved', async ({ browser }) => {
+test('PY-01/PY-13-gate: a correct Python p91 Submit passes 5/5 and records the pass; Solved is never gated on it (TICKET-26)', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await openDo(page, 'p91')
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled()
+  const passKey = () => page.evaluate(() => localStorage.getItem('dojo:run-pass:p91'))
+  await expect(page.getByTestId('do-outcome-solved')).toBeEnabled() // TICKET-26: enabled before any Submit
+  await expect(page.getByTestId('do-outcome-help')).toBeEnabled()
+  await expect(page.getByTestId('do-run-gate-hint')).toHaveCount(0)
+  expect(await passKey()).toBeNull()
   await expect(language(page, 'Go')).toBeChecked() // the default
   await useLanguage(page, 'Python')
   await expect(page.getByRole('textbox', { name: 'Code' })).toContainText('def numDecodings(s: str) -> int:')
   await setCode(page, P91_OK, 'py')
   await run(page)
   await expect(status(page)).toHaveText('Passed 2/2', { timeout: 60_000 })
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled() // Run never opens the gate
+  expect(await passKey()).toBeNull() // Run never records a pass
   await submit(page)
   await expect(status(page)).toHaveText('Passed 5/5', { timeout: 60_000 })
   for (let k = 1; k <= 5; k++) await expect(page.getByTestId(`run-case-${k}`)).toHaveAttribute('data-pass', 'true')
+  expect(await passKey()).not.toBeNull() // only a passing Submit records the attempt's pass
   await expect(page.getByTestId('do-outcome-solved')).toBeEnabled()
   await expect(page.getByTestId('do-outcome-help')).toBeEnabled()
+  await expect(page.getByTestId('do-run-gate-hint')).toHaveCount(0)
   await ctx.close()
 })
 
@@ -193,6 +199,14 @@ test('PY-05/PY-06: a loop times out within 10 s and the next run passes; 5 MiB o
   await ctx.close()
 })
 
+/**
+ * The disk state as text, for "nothing changed" comparisons. The `navLabels` intro write (SHELL-09) lands a moment after the
+ * first load and never counts (README "Unchanged-data baselines"), so it is dropped from the snapshot.
+ */
+async function dataSnapshot(url: string): Promise<string> {
+  return JSON.stringify(await (await fetch(`${url}/db/state`)).json(), (k, v) => (k === 'navLabels' ? undefined : v))
+}
+
 test('PY-07: learner Python cannot reach Dojo, the network or the page, and the run still completes', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await page.evaluate(() => { (window as unknown as { __canary: number }).__canary = 41 })
@@ -229,7 +243,7 @@ def numDecodings(s):
   await setCode(page, program, 'py')
   // let the app's own sync settle, then compare disk state and watch the network around the run
   await page.getByTestId('save-status').filter({ hasText: 'Saved' }).waitFor()
-  const before = await (await fetch(`${srv.url}/db/state`)).text()
+  const before = await dataSnapshot(srv.url)
   const seen = record(ctx)
   await run(page)
   await expect(status(page)).not.toHaveText(/Loading|Running/, { timeout: 60_000 })
@@ -247,7 +261,7 @@ def numDecodings(s):
   expect(toApp.filter(x => !x.startsWith('GET /db/health'))).toEqual([])
   // Dojo's data and page are untouched
   await page.waitForTimeout(500)
-  expect(await (await fetch(`${srv.url}/db/state`)).text()).toBe(before)
+  expect(await dataSnapshot(srv.url)).toBe(before)
   expect(await page.evaluate(() => (window as unknown as { __canary: number }).__canary)).toBe(42)
   await expect(page.getByTestId('code-panel')).toBeVisible()
   expect(await page.evaluate(() => localStorage.getItem('dojo.writer'))).toBeTruthy()
@@ -296,7 +310,10 @@ test('PY-07 (walls): a sandboxed frame with the runner CSP, and its blob worker,
   await page.route('**/pyrunner/probe.html', route => route.fulfill({ status: 200, contentType: 'text/html', headers: { 'content-security-policy': frameCsp(srv.url), 'access-control-allow-origin': '*' }, body: '<!doctype html><script src="/pyrunner/probe.js"></script>' }))
   await page.route('**/pyrunner/probe.js', route => route.fulfill({ status: 200, contentType: 'text/javascript', headers: { 'access-control-allow-origin': '*' }, body: probe }))
   await page.evaluate(() => { (window as unknown as { __probe: unknown }).__probe = null; window.addEventListener('message', e => { if (e.data?.probe) (window as unknown as { __probe: unknown }).__probe = e.data }) })
-  const before = await (await fetch(`${srv.url}/db/state`)).text()
+  // README "Unchanged-data baselines": read after the first load has settled (Saved, then a second for late writes)
+  await page.getByTestId('save-status').filter({ hasText: 'Saved' }).waitFor()
+  await page.waitForTimeout(1000)
+  const before = await dataSnapshot(srv.url)
   const seen = record(ctx)
   await page.evaluate(() => { const f = document.createElement('iframe'); f.setAttribute('sandbox', 'allow-scripts'); f.src = '/pyrunner/probe.html'; document.body.appendChild(f) })
   await expect.poll(() => page.evaluate(() => (window as unknown as { __probe: unknown }).__probe), { timeout: 20_000 }).not.toBeNull()
@@ -309,11 +326,11 @@ test('PY-07 (walls): a sandboxed frame with the runner CSP, and its blob worker,
   const probed = seen.filter(r => r.url.includes(token))
   console.log('PROBE requests recorded', JSON.stringify(probed))
   expect(probed.filter(r => r.status !== undefined || !r.failed), 'no probe request got a response').toEqual([])
-  expect(await (await fetch(`${srv.url}/db/state`)).text()).toBe(before)
+  expect(await dataSnapshot(srv.url)).toBe(before)
   await ctx.close()
 })
 
-test('attack M1: learner code that patches the harness, reads its frames or runs JS cannot forge a pass or open the gate', async ({ browser }) => {
+test('attack M1: learner code that patches the harness, reads its frames or runs JS cannot forge a pass', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await openDo(page, 'p91')
   await useLanguage(page, 'Python')
@@ -370,8 +387,10 @@ def numDecodings(s):
   expect(out).not.toMatch(/run_js: OK|pyodide_js\.eval: OK|function_ctor: OK/)
   expect(out).toMatch(/function_ctor: ModuleNotFoundError/) // pyodide_js is hidden; (without that, new Function() is refused by the frame CSP: no unsafe-eval)
   expect(out).toMatch(/frames_with_expected: OK 0/) // `expected` is not in any frame of the worker
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled()
-  await expect(page.getByTestId('do-outcome-help')).toBeDisabled()
+  // TICKET-26: Solved is not gated, so the attack is judged by what it could forge: no "Passed 5/5", no passing case, no recorded pass
+  await expect(status(page)).not.toHaveText('Passed 5/5')
+  await expect(page.locator('[data-testid^="run-case-"][data-pass="true"]')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('dojo:run-pass:p91'))).toBeNull()
   await ctx.close()
 })
 
@@ -398,7 +417,10 @@ def numDecodings(s):
   await setCode(page, P91_WRONG, 'py')
   await run(page)
   await expect(status(page)).toHaveText('Failed 1/2', { timeout: 60_000 })
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled()
+  // TICKET-26: Solved is not gated; a failing run forges nothing and records no pass
+  await expect(status(page)).not.toHaveText('Passed 5/5')
+  await expect(page.locator('[data-testid^="run-case-"][data-pass="true"]')).toHaveCount(1) // only the case P91_WRONG really passes
+  expect(await page.evaluate(() => localStorage.getItem('dojo:run-pass:p91'))).toBeNull()
   await ctx.close()
 })
 

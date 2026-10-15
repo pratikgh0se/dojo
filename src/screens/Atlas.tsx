@@ -36,6 +36,7 @@ export function Atlas() {
   const [sortLeft, setSortLeft] = useState(loadSortLeft)
   const [query, setQuery] = useState('')
   const [opened, setOpened] = useState<Opened | null>(null)
+  const [focusReq, setFocusReq] = useState<{ slug: string; n: number } | null>(null)
   const pattern = patternBySlug(params.get('pattern') ?? '') ?? null
   const slugRef = useRef(pattern?.slug)
   slugRef.current = pattern?.slug
@@ -84,8 +85,16 @@ export function Atlas() {
   const rows = sortRows(sortLeft ? 'left' : 'map', tagged).filter(p => rowMatches(p, query, tagged))
   const select = (slug: string) => {
     if (slug !== pattern?.slug) { setOpened(null); reveal.current = true }
+    setFocusReq(null)
     set({ pattern: slug })
   }
+  // ATLAS-04: a main or side cell opens its row and puts focus on the row's problem list
+  const openProblems = (slug: string) => {
+    if (slug !== pattern?.slug) { setOpened(null); reveal.current = true } else revealDetail()
+    setFocusReq(r => ({ slug, n: (r?.n ?? 0) + 1 }))
+    set({ pattern: slug })
+  }
+  const counts = Object.fromEntries(Object.entries(tagged).map(([slug, list]) => [slug, list.length]))
 
   return (
     <div className="content-screen atlas">
@@ -105,6 +114,8 @@ export function Atlas() {
           <li><i className="atlas-lg atlas-lg-side" aria-hidden="true" />cell: side panel</li>
         </ul>
       </div>
+      {/* ATLAS-01: what the grid is, shown with or without a row selected */}
+      <p className="atlas-intro" data-testid="atlas-intro">Rows are patterns, columns are data structures; a cell shows where the pattern applies</p>
       <div className="atlas-tools">
         <AtlasSearch selected={pattern?.slug ?? null} query={query} onQuery={setQuery} visible={rows} onPick={select} />
         <Button
@@ -118,7 +129,7 @@ export function Atlas() {
         </Button>
       </div>
       <div className="atlas-top">
-        <AtlasMatrix rows={rows} states={states} coverage={coverage} left={left} selected={pattern?.slug ?? null} onSelect={slug => select(slug)} />
+        <AtlasMatrix rows={rows} states={states} coverage={coverage} left={left} counts={counts} selected={pattern?.slug ?? null} onSelect={slug => select(slug)} onCellLink={openProblems} />
         {pattern ? (
           <AtlasDetail
             key={pattern.slug}
@@ -127,6 +138,7 @@ export function Atlas() {
             coverage={coverage[pattern.slug]}
             problems={tagged[pattern.slug]}
             opened={opened}
+            focusProblems={focusReq}
             onOpen={setOpened}
             onClose={close}
           />

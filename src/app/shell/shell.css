@@ -1,0 +1,122 @@
+/* The shell: a rail (or a bottom tab bar on a phone), a 48 px header, and the screen. Classes are prefixed sh- (shell) and pal- (palette). */
+.sh-app { --sh-chrome: 48px; display: grid; grid-template-columns: auto minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
+.sh-app[data-phone='true'] { --sh-chrome: 120px; grid-template-columns: minmax(0, 1fr); padding-bottom: 68px; }
+.sh-col { display: flex; flex-direction: column; min-width: 0; }
+/* TICKET-29 / UX-08: focus mode shows only the brief, the timer and Notes, so the rail and the phone tab bar go while it is mounted
+ * (Esc and focus-exit unmount it and they return). The grid column the rail held, and the room the tab bar held, go with them. */
+.sh-app:has(.do-focus) { grid-template-columns: minmax(0, 1fr); padding-bottom: 0; }
+.sh-app:has(.do-focus) .sh-rail, .sh-app:has(.do-focus) .sh-tabbar { display: none; }
+.sh-main.page { --sh-pad-y: 84px; flex: 1 1 auto; max-width: none; padding: 28px 48px 56px; margin: 0; align-content: start; }
+/* A ticket and a design session sit under the header and beside the rail: their own full-height wrappers (the design
+ * session's .ds, the study focus view) fill what is left of the viewport (less the header and the screen's own padding) instead of a whole viewport, so nothing overflows. */
+.sh-main[data-work='true'] .ds, .sh-main[data-work='true'] .do-focus { min-height: calc(100vh - var(--sh-chrome) - var(--sh-pad-y)); min-height: calc(100dvh - var(--sh-chrome) - var(--sh-pad-y)); }
+/* The design session lays out its own rail and side margins (.ds-rail, and 24 px on .ds-setup / .ds-body / .ds-done), so the main column adds only a little
+ * space above and below and none at the sides: DESIGN-23b (canvas top at most 200 px at 1280 x 800) and a canvas wider than 700 px at 834 hold beside the 56 px rail. */
+.sh-main.page:has(.ds) { --sh-pad-y: 28px; padding: 12px 0 16px; }
+.sh-rail { position: sticky; top: 0; align-self: start; height: 100vh; height: 100dvh; width: 56px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 10px 0; background: var(--sr-surface-panel); border-right: 3px solid var(--sr-edge-dark); }
+.sh-rail[data-expanded='true'] { width: 200px; align-items: stretch; padding: 10px 8px; }
+/* the groups: items 2 px apart inside a group, 14 px (a wider gap) between groups; the foot sits at the bottom of the rail */
+.sh-rg { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.sh-rg + .sh-rg { margin-top: 14px; }
+.sh-rail[data-expanded='true'] .sh-rg { align-items: stretch; }
+.sh-rfoot { margin-top: auto; }
+.sh-rg + .sh-rfoot { margin-top: auto; }
+.sh-rgt { display: none; margin: 4px 0 2px; padding: 0 10px; font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); }
+.sh-rail[data-expanded='true'] .sh-rgt { display: block; }
+.sh-header .sh-mark { margin: 0; }
+.sh-mark { width: 28px; height: 28px; margin-bottom: 8px; flex-shrink: 0; background: var(--sr-energy-accent); border: 3px solid var(--sr-edge-dark); box-shadow: inset 3px 3px 0 var(--sr-energy-accent-glow), inset -3px -3px 0 var(--sr-energy-accent-shade); }
+.sh-ri { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 10px; width: 44px; height: 40px; box-sizing: border-box; flex-shrink: 0; color: var(--sr-text-secondary); background: transparent; border: 2px solid transparent; text-decoration: none; font: inherit; cursor: pointer; }
+.sh-rail[data-expanded='true'] .sh-ri { justify-content: flex-start; width: auto; padding: 0 10px; }
+.sh-ri:hover { color: var(--sr-text-primary); }
+/* the toggle's label is its name, "Collapse navigation" / "Expand navigation" (SHELL-10): sentence case on one line (14 px floor) in the 200 px rail, which the toggle fits with a tighter gap and padding */
+.sh-toggle .sh-rl { text-transform: none; letter-spacing: 0; white-space: nowrap; line-height: 1.2; text-align: left; }
+.sh-rail[data-expanded='false'] .sh-toggle:hover .sh-rl, .sh-rail[data-expanded='false'] .sh-toggle:focus .sh-rl, .sh-rail[data-expanded='false'] .sh-toggle:focus-visible .sh-rl { white-space: nowrap; }
+.sh-rail[data-expanded='true'] .sh-toggle { gap: 6px; padding: 0 6px; }
+.sh-ri.on { background: transparent; color: var(--sr-text-primary); border-color: var(--sr-edge-dark); border-left: 4px solid var(--sr-energy-accent); box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile); }
+.sh-ri.on .glyph, .sh-tb.on .glyph { color: var(--sr-label-accent); }
+.sh-key { font-family: var(--sr-font-mono); font-size: var(--type-meta); font-weight: 700; }
+.sh-rail[data-expanded='false'] .sh-key { display: none; }
+.sh-rail[data-expanded='true'] .sh-key { margin-left: auto; }
+.sh-rail[data-expanded='true'] .sh-badge ~ .sh-key { margin-left: 8px; }
+.sh-rl { display: none; font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.sh-rail[data-expanded='true'] .sh-rl { display: inline; }
+/* hidden labels come back on hover and on focus (:focus as well as :focus-visible: a scripted focus() does not always match the latter) */
+.sh-rail[data-expanded='false'] .sh-ri:hover .sh-rl, .sh-rail[data-expanded='false'] .sh-ri:focus .sh-rl, .sh-rail[data-expanded='false'] .sh-ri:focus-visible .sh-rl { display: flex; align-items: center; position: absolute; left: 50px; top: 1px; z-index: var(--sr-z-tooltip); height: 34px; padding: 0 12px; color: var(--sr-text-primary); background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); }
+.sh-badge { position: absolute; top: -2px; right: -8px; min-width: 24px; height: 24px; padding: 0 5px; display: flex; align-items: center; justify-content: center; background: var(--sr-surface-well); border: 2px solid var(--sr-energy-accent); color: var(--sr-label-accent); font-size: var(--type-meta); font-weight: 700; }
+.sh-rail[data-expanded='true'] .sh-badge { position: static; margin-left: auto; }
+.sh-header { display: flex; align-items: center; gap: 16px; height: 48px; box-sizing: border-box; padding: 0 24px; background: var(--sr-surface-panel); border-bottom: 3px solid var(--sr-edge-dark); min-width: 0; }
+.sh-title { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); font-weight: 400; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.sh-search { display: flex; align-items: center; gap: 10px; margin-left: auto; width: 340px; max-width: 40vw; min-width: 0; height: 32px; padding: 0 8px 0 12px; background: transparent; border: 2px solid var(--sr-edge-mid); color: var(--sr-text-secondary); font-family: var(--sr-font-body); font-size: var(--type-meta); cursor: pointer; }
+.sh-stext { flex: 1 1 auto; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sh-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; padding: 0 6px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); color: var(--sr-text-primary); font-family: var(--sr-font-mono); font-size: var(--type-meta); font-weight: 700; }
+.sh-lv { display: inline-flex; align-items: baseline; gap: 8px; font-size: var(--type-meta); white-space: nowrap; }
+.sh-xp { color: var(--sr-text-secondary); }
+/* the placeholder (LV –, – XP) takes the width of a typical value, so the chips do not jump when the data loads */
+.sh-lvn { display: inline-block; min-width: 4ch; }
+.sh-xp { display: inline-block; min-width: 6ch; text-align: right; }
+.sh-ibtn { display: grid; place-items: center; width: 40px; height: 40px; background: transparent; border: 0; color: var(--sr-text-secondary); cursor: pointer; }
+.sh-gear { position: relative; }
+.sh-menu { position: absolute; right: 0; top: 44px; z-index: var(--sr-z-dropdown); width: 250px; padding: 8px; display: grid; gap: 2px; }
+.sh-mi { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; color: var(--sr-text-primary); background: transparent; border: 0; font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 600; text-decoration: none; cursor: pointer; text-align: left; }
+.sh-mi:hover, .sh-mi:focus-visible { background: var(--sr-surface-tile); }
+.sh-mi .sh-key { margin-left: auto; }
+.sh-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 24px; background: var(--sr-surface-well); border-bottom: 2px solid var(--sr-edge-mid); font-size: var(--type-small); }
+.sh-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--sr-z-sticky); box-sizing: border-box; height: 68px; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--sr-surface-panel); border-top: 3px solid var(--sr-edge-dark); }
+.sh-tb { position: relative; box-sizing: border-box; min-width: 0; padding: 0; background: transparent; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--sr-text-secondary); border-top: 4px solid transparent; text-decoration: none; }
+.sh-tb .sh-rl { display: inline; }
+.sh-tb.on { color: var(--sr-text-primary); background: transparent; border-top-color: var(--sr-energy-accent); box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile); }
+.sh-tb .sh-badge { top: 6px; right: 4px; }
+/* the More sheet: directly above the tab bar, never over it; a tap above it, outside, closes it */
+.sh-more-back { position: fixed; left: 0; right: 0; top: 0; bottom: 68px; z-index: var(--sr-z-sidebar); background: var(--sr-scrim); }
+.sh-more { position: fixed; left: 0; right: 0; bottom: 68px; z-index: var(--sr-z-sidebar); box-sizing: border-box; max-height: calc(100vh - 68px - 56px); max-height: calc(100dvh - 68px - 56px); overflow-y: auto; padding: 8px 16px 12px; display: grid; gap: 4px; }
+.sh-more.sr-panel { animation: none; box-shadow: inset 3px 3px 0 var(--sr-edge-light-panel), inset -3px -3px 0 var(--sr-edge-shade-panel); } /* no slide-in and no drop shadow: its bottom edge meets the bar's top edge exactly (NAV-10) */
+.sh-more:focus { outline: 0; }
+.sh-more-group { display: grid; gap: 2px; }
+.sh-more-group + .sh-more-group { margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--sr-edge-mid); }
+.sh-more-title { margin: 0; padding: 4px 8px; font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); }
+.sh-sheet-item { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; min-width: 44px; padding: 0 8px; box-sizing: border-box; color: var(--sr-text-primary); text-decoration: none; border: 2px solid transparent; }
+.sh-sheet-item .sh-rl { display: inline; }
+.sh-sheet-item.on { border-color: var(--sr-edge-dark); border-left: 4px solid var(--sr-energy-accent); box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile); }
+.sh-sheet-item.on .glyph { color: var(--sr-label-accent); }
+.pal-back { position: fixed; inset: 0; z-index: var(--sr-z-commandpalette); display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; background: var(--sr-scrim); }
+.pal { width: min(600px, 92vw); max-height: calc(88vh - 16px); max-height: calc(88dvh - 16px); display: grid; gap: 0; padding: 0; overflow: hidden; }
+.pal-row { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 16px; border-bottom: 2px solid var(--sr-edge-mid); }
+.pal-input { flex: 1 1 auto; min-width: 0; height: 100%; background: transparent; border: 0; outline: 0; color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-body); }
+/* the focus mark is an inset accent bar over the row's own 2px rule: the row keeps its size, so nothing below it moves */
+.pal-row:focus-within { box-shadow: inset 0 -4px 0 var(--sr-energy-accent); }
+/* the row carries the focus mark (an accent rule under it), so the field itself draws no second box */
+.pal-input:focus, .pal-input:focus-visible { outline: 0; }
+.pal-list { list-style: none; margin: 0; padding: 8px; max-height: 50vh; max-height: 50dvh; overflow-y: auto; }
+.pal-foot { margin: 0; padding: 10px 16px; border-top: 2px solid var(--sr-edge-mid); font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.pal-item { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 4px 12px; cursor: pointer; }
+.pal-item[aria-selected='true'] { background: var(--sr-surface-tile); box-shadow: inset 2px 2px 0 var(--sr-edge-light-tile), inset -2px -2px 0 var(--sr-edge-shade-tile); }
+.pal-sect { padding: 8px 12px 4px; font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); }
+.pal-sect:not(:first-child) { padding-top: 14px; }
+.pal-ico { flex: none; color: var(--sr-text-secondary); }
+.pal-item[aria-selected='true'] .pal-ico { color: var(--sr-label-accent); }
+.pal-foot[data-testid='shell-palette-hint'] { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.pal-foot-end { margin-left: auto; }
+.pal-label { font-size: var(--type-small); font-weight: 600; }
+.pal-hint { margin-left: auto; font-size: var(--type-meta); color: var(--sr-text-secondary); }
+.pal-item .sh-kbd { margin-left: 8px; }
+.pal-empty { margin: 0; padding: 16px; font-size: var(--type-small); color: var(--sr-text-secondary); }
+.sh-sc-guide { color: var(--sr-label-accent); font-size: var(--type-small); font-weight: 700; }
+.sh-sc { padding: 20px 20px 0; gap: 12px; overflow-y: auto; }
+/* the dialog box takes programmatic focus on open: no ring on the container itself, the controls inside keep theirs */
+.sh-sc:focus, .sh-sc:focus-visible { outline: 0; }
+.sh-sc .pal-foot { margin: 8px -20px 0; }
+.sh-sch { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-s); font-weight: 400; letter-spacing: 1px; text-transform: uppercase; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.sh-cap { margin: 8px 0 0; font-size: var(--type-meta); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sr-text-secondary); }
+.sh-dl { display: grid; gap: 6px; margin: 0; }
+.sh-dl > div { display: flex; align-items: center; gap: 12px; }
+.sh-dl dt { min-width: 120px; }
+.sh-dl dd { margin: 0; font-size: var(--type-small); }
+.sh-sl { margin: 0; padding-left: 20px; font-size: var(--type-small); }
+@media (max-width: 767px) {
+  .sh-main.page { --sh-pad-y: 48px; padding: 20px 16px 28px; }
+  .sh-header { height: 52px; box-sizing: border-box; padding: 0 12px 0 16px; gap: 8px; }
+  .sh-search { width: 44px; height: 44px; padding: 0; justify-content: center; border: 0; background: transparent; margin-left: auto; }
+  .sh-stext, .sh-search .sh-kbd, .sh-xp { display: none; }
+  .sh-notice { padding: 10px 16px; }
+}
+.sh-fallback { min-height: 50vh; min-height: 50dvh; }

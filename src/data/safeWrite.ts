@@ -1,6 +1,8 @@
 import { getSaveState, setSaveState, syncControls } from './sync/status'
 import { isReadOnlyError, READ_ONLY_MESSAGE } from './writer'
 import { copy } from '../lib/platform'
+import { syncGate } from './db'
+import { MODEL_GATE_MESSAGE } from './modelGate'
 
 export const QUOTA_MESSAGE = copy('quotaFull')
 
@@ -31,7 +33,7 @@ export async function safeWrite<T>(fn: () => Promise<T>, onError: (msg: string) 
         return undefined
       }
       if (isReadOnlyError(e)) {
-        onError(READ_ONLY_MESSAGE) // Addendum 4 Q1: the refusal is a visible toast
+        onError(syncGate.modelLocked ? MODEL_GATE_MESSAGE : READ_ONLY_MESSAGE) // Addendum 4 Q1: the refusal is a visible toast (the model gate says why)
         return undefined
       }
       throw e

@@ -1,7 +1,7 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const load = vi.fn<() => Promise<void>>()
@@ -12,7 +12,7 @@ describe('AlgoPlayer when the engine script fails (offline, 404)', () => {
   it('says so and retries on demand', async () => {
     load.mockRejectedValueOnce(new Error('engine algo failed to load')).mockReturnValue(new Promise(() => {}))
     const d = await seededDb()
-    renderWithApp(<AlgoPlayer walkKey="bfs" />, { db: d, plan: smallPlan })
+    renderWithApp(<AlgoPlayer walkKey="bfs" />, { db: d, plan: flatPlanV2 })
     expect(await screen.findByRole('alert')).toHaveTextContent('The algorithm engine did not load.')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Loading the player…')).toBeInTheDocument()

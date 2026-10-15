@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { newCycle, cycleElapsedMs } from '../../src/lib/cycle'
-import { applyAdvance, blockTimer, sessionLabel } from '../../src/lib/studyTimer'
+import { blockTimer, sessionLabel, timerView } from '../../src/lib/timer'
+import { applyAdvance } from '../../src/study/runner'
 import { advance, startStudy } from '../../src/rules/studySession'
 import { loadStudy, saveStudy, clearStudy, loadChimePref, saveChimePref, STUDY_KEY } from '../../src/lib/studyStore'
-import { timerView } from '../../src/lib/timer'
 
 const MIN = 60_000
 const T0 = new Date('2026-10-06T09:00:00+05:30').getTime()

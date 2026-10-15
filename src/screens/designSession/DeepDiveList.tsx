@@ -3,7 +3,7 @@ export function DeepDiveList({ dives, active = 0 }: { dives: string[]; active?: 
   return (
     <ol className="ds-dives">
       {dives.map((q, i) => (
-        <li key={i} className="ds-dive" data-testid={`session-dive-${i + 1}`} aria-current={active === i + 1 ? 'step' : undefined}>
+        <li key={i} className="ds-dive" data-testid={`session-dive-${i + 1}`} data-content="plan" aria-current={active === i + 1 ? 'step' : undefined}>
           {q}
         </li>
       ))}

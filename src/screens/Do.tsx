@@ -1,17 +1,16 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { tipProps } from '../ui/Tip'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useScreenKeys } from '../app/legend'
 import { useDb, usePlan } from '../app/providers'
 import { buildJobRequest, type DiagramJson, type JobContext, type JobName, type SolutionOutput, type SrAlgoJson } from '../ai/types'
 import { approachesFor } from '../content/approaches'
 import { callJob } from '../data/aiActions'
 import { setSessionApproach } from '../data/atlasActions'
-import { useChildren, useDoQuery, useSessions, useSettings, useTicket, useTickets } from '../data/hooks'
+import { useDoQuery, useSessions, useSettings, useTicket, useTickets } from '../data/hooks'
 import { closeLadderSession, markUnderstood, recordRung, type RungOutput } from '../data/ladderActions'
 import { safeWrite } from '../data/safeWrite'
-import { startDoing } from '../data/sessionActions'
 import type { EndLog, HelpRung, Kind, Outcome, Redo, RungUse, Ticket } from '../data/types'
-import { playChime, primeChime } from '../lib/chime'
+import { playChime } from '../lib/chime'
 import { now } from '../lib/clock'
 import { appRoute } from '../lib/appLinks'
 import { openCheck } from '../lib/checkGate'
@@ -22,10 +21,9 @@ import {
 import { localDayKey, pad2 } from '../lib/dates'
 import { clearDraft, closingNotes, isEmptyDraft, loadDraft, saveDraft, type Draft } from '../lib/drafts'
 import { isActivatable, isPlainKey, isStrayBackgroundKey, isTypingTarget } from '../lib/keys'
-import { clearStudy, loadChimePref, loadStudy, notifyStudy, saveChimePref, subscribeStudy } from '../lib/studyStore'
-import { sessionLabel } from '../lib/studyTimer'
-import { blockingTimerTicketId, clearTimer, isPaused, loadTimer, pauseTimer, resumeTimer, saveTimer, startTimer, timerView, type TimerState } from '../lib/timer'
-import { useNow } from '../lib/useNow'
+import { clearStudy, loadChimePref, loadStudy, notifyStudy, subscribeStudy } from '../lib/studyStore'
+import { clearTimer, loadTimer, saveTimer, sessionLabel, timerView, type TimerState } from '../lib/timer'
+import { useSecondsNow } from '../lib/useNow'
 import { shortSource } from '../rules/board'
 import {
   announceText, helpUsed, HINT_UNLOCK_SECONDS, ladderView, newlyUnlocked, RUNG_NAMES, RUNG_OF, spentOf, spentOn, type RungName, type RungView,
@@ -35,44 +33,48 @@ import {
   aiTicketOf, designDeepDives, diagramSummary, NO_VIDEO, NO_WATCH_LINK, pairedWatchId,
   pictureSummary, QUIZ_PASS, quizResultText, quizScore, taskPictureLinks, videoLinks,
 } from '../rules/rungContent'
-import { isContainer, needsCheck } from '../rules/brief'
-import { partIndexOf } from '../rules/split'
-import { nextSlideTarget } from '../rules/slide'
-import { currentSprint } from '../rules/sprint'
+import { needsCheck } from '../rules/brief'
 import { lastDraftFailure, useDraftStore } from '../data/draftJob'
 import { shownText } from '../rules/ticketText'
 import { CardBrief } from './brief/CardBrief'
-import { SessionList, SplitButton } from './brief/SplitDialog'
 import { ApproachQuestion, ApproachStrip } from '../ui/algo/ApproachStrip'
 import { useLeaveDo } from '../app/origin'
-import { Sized } from '../ui/Sized'
+import { verbObject } from '../rules/ticketMeta'
+import { sessionMinutesOf } from '../rules/prefs'
+import type { Study } from '../rules/studySession'
+import { pauseSession, resumeSession } from '../study/controls'
+import { SessionDock } from '../study/SessionPill'
+import { useStartTicket } from '../study/useStartTicket'
+import { TicketFacts } from './do/kinds/TicketFacts'
+import { TicketMissing } from './do/kinds/TicketMissing'
+import { TicketTimer } from './do/kinds/TicketTimer'
+import { TicketView } from './do/kinds/TicketView'
+import { BlockedNote } from './do/BlockedNote'
+import { Glyph } from '../ui/Glyph'
 import type { AiFailure } from '../ui/ai/AiStates'
-import { SaveStatus } from '../ui/SaveStatus'
 import { Button, Panel, useFlash, usePowerUp, useToast } from '../ui/primitives'
-import { useCardActions } from '../ui/useCardActions'
 import { Ladder, type LadderContent, type PictureBody } from './do/Ladder'
-import { TimerBusyDialog } from './do/TimerBusyDialog'
 import { EndLogDialog } from './do/study/EndLogDialog'
 import { SessionHistory } from './do/study/SessionHistory'
 import { FocusView } from './do/study/FocusView'
-import { PlanDialog, type PlanResult } from './do/study/PlanDialog'
 import { SessionPanel } from './do/study/SessionPanel'
 import { StuckDialog } from './do/study/StuckDialog'
-import { beginStudy, finishStudy, resumeSession } from '../study/runner'
+import { finishStudy, focusMinutesOf } from '../study/runner'
 import { useStudyFor } from '../study/useStudy'
-import { SessionDock } from '../study/SessionPill'
-import { isReadOnly, READ_ONLY_MESSAGE } from '../data/writer'
+import { isReadOnly } from '../data/writer'
 import { RedoReplay, replayPicture } from './do/RedoReplay'
 import { CodePanel } from '../runner/CodePanel'
 import { hasPack } from '../runner/client'
 import { usePassGate } from '../runner/gate'
 import './do.css'
+import './do/ticket.css'
 import { Loading } from '../ui/Loading'
 import { WithFileRefs } from '../ui/FileRefs'
 
-const RUN_GATE_HINT_ID = 'do-run-gate-hint'
 const SESSION_NOTE_ID = 'do-session-ends-note'
 const blocksText = (n: number) => `${n} focus block${n === 1 ? '' : 's'}`
+/** What a closed session says it recorded: a single session its focus minutes, an older multi-block one its blocks. */
+export const focusDoneText = (s: Study, nowMs: number): string => (s.single ? `${focusMinutesOf(s, nowMs)} min focus` : blocksText(s.blocks))
 /** UAT cu-4 P3-11: said before the click, while a study session runs, and again after it: finishing the card ends the session too. */
 /** UAT cu-4 P3-5: the Stuck? prompt's reason for having no help rung to open, with the minutes the Hint still needs when that is the reason. */
 export function noRungText(elapsedSec: number, hint: RungView['state']): string {
@@ -82,52 +84,25 @@ export function noRungText(elapsedSec: number, hint: RungView['state']): string 
   }
   return 'No help rung is unlocked yet.'
 }
-export const sessionEndsNote = (blocks: number) =>
-  `Solved ✓, Solved with help and Give up also end your study session (${blocksText(blocks)} so far). It stays under Earlier sessions.`
-export const RUN_GATE_HINT = 'Submit 5/5 to unlock Solved'
+export const sessionEndsNote = (s: Study, nowMs: number) =>
+  `Solved, Solved with help and Give up also end your session (${focusDoneText(s, nowMs)} so far). It stays under Earlier sessions.`
 
 const DIFF: Record<string, string> = { E: 'Easy', M: 'Medium', H: 'Hard' }
 
-/** UAT r3 J3: "Retreat" is the design's word (handoff README, the Spar timer); its name and tooltip say what it does.
- * The accessible name keeps the visible word first (label in name). */
-const RETREAT_LABEL = 'Retreat: stop the timer'
-const RETREAT_TITLE = 'Stop the timer'
-/** UAT cu-4 P3-3: what the Custom minutes field says, on the page, while its value is wrong (a toast was gone in 1.4 s). */
-export const CUSTOM_MINUTES_ERROR = 'Custom minutes must be a whole number from 1 to 240.'
-const CUSTOM_ERROR_ID = 'do-custom-error'
-/** The minutes in the Custom field, or null when it is empty, not a number, or outside 1 to 240. */
-export function customMinutes(raw: string): number | null {
-  if (raw.trim() === '') return null
-  const n = Number(raw)
-  return Number.isFinite(n) && n >= 1 && n <= 240 ? Math.round(n) : null
-}
-/** UAT r2 J3: Pause and Resume share one width, so Retreat beside them never moves. */
-const PAUSE_LABELS = ['Pause', 'Resume'] as const
-
 export function Do() {
   const { ticketId = '' } = useParams()
-  const leave = useLeaveDo()
   const q = useDoQuery(ticketId)
   if (q === undefined) return <Loading />
   const { ticket, redo, uses } = q
-  if (ticket === null) {
-    // ui-do D9: one .do-missing paragraph and do-back
-    return (
-      <main className="do-missing-screen" data-testid="do-screen">
-        <button type="button" className="do-back" data-testid="do-back" onClick={leave}>‹ Back</button>
-        <p className="do-missing">No ticket {ticketId}.</p>
-      </main>
-    )
-  }
-  return <DoScreen key={ticket.id} ticket={ticket} redo={redo} allUses={uses} />
+  if (ticket === null || ticket.archived) return <TicketMissing />
+  if (ticket.kind === 'problem' || ticket.kind === 'stage') return <DoScreen key={ticket.id} ticket={ticket} redo={redo} allUses={uses} />
+  return <TicketView key={ticket.id} ticket={ticket} />
 }
 
 interface CycleState { cycle: Cycle | null; gaveUp: GaveUp | null }
 
 /** C-LADDER §2.2/§2.4: resume the cycle, or start one (a redo session when the redo is due right now). */
 function initialCycle(ticket: Ticket, redo: Redo | null, allUses: RungUse[], t: number): CycleState {
-  // ruling 21 (r6 P3 #1): a split card has no attempt of its own; its parts do. Visiting it opens no cycle.
-  if (isContainer(ticket)) return { cycle: null, gaveUp: null }
   const gaveUp = gaveUpFor(ticket.id, t)
   if (gaveUp) return { cycle: null, gaveUp }
   const timer = loadTimer()
@@ -170,21 +145,18 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
   const leave = useLeaveDo()
   const toast = useToast()
   const flash = useFlash()
+  const startTicket = useStartTicket()
+  const readOnly = isReadOnly()
+  useScreenKeys(['F focus mode', 'D mark solved', 'Space start or pause'])
   const { fire: powerUp } = usePowerUp()
-  const t = useNow(1000)
   const [{ cycle, gaveUp }, setCycleState] = useState<CycleState>(() => initialCycle(ticket, redo, allUses, now()))
   const [timer, setTimer] = useState<TimerState | null>(() => loadTimer())
-  const [custom, setCustom] = useState('')
-  const [customBad, setCustomBad] = useState(false)
-  /** UAT cu-4 P3-5: Start was refused because another card owns the one timer or session; what it was, and what to do next */
-  const [blocked, setBlocked] = useState<{ id: string; kind: 'timer' | 'session'; then: { kind: 'session' } | { kind: 'timer'; min: number } } | null>(null)
   const [draft, setDraft] = useState<Draft>(() => loadDraft(ticket.id))
   const [busy, setBusy] = useState<RungName | null>(null)
   const [errors, setErrors] = useState<Partial<Record<RungName, AiFailure>>>({})
   const [announce, setAnnounce] = useState('')
   const [quizResult, setQuizResult] = useState<string | null>(null)
   const openLock = useRef(false)
-  const [planOpen, setPlanOpen] = useState(false)
   const [endOpen, setEndOpen] = useState(false)
   const [savingEnd, setSavingEnd] = useState(false)
   const [focusMode, setFocusModeRaw] = useState(false)
@@ -201,8 +173,9 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
   const allTickets = useTickets()
   const allSessions = useSessions()
   const settings = useSettings()
-  const { slide } = useCardActions()
   const study = useStudyFor(ticket.id)
+  // ticks on the study session's own seconds (anchored at its phase start), so the header reading is not a second late after Start (TICKET-03)
+  const t = useSecondsNow(study.study?.phaseStart)
   // the session can end away from Do's own buttons (a passed check, another tab): leave focus mode with it
   const hasStudy = study.study !== null
   useEffect(() => { if (!hasStudy) setFocusMode(false) }, [hasStudy]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -222,12 +195,7 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
     setCycleState(s => ({ ...s, cycle: stored ?? (closed ? null : s.cycle) }))
   }), [ticket.id])
   const pair = useTicket(pairedWatchId(ticket.id) ?? '') ?? null
-  const kids = useChildren(ticket.children) ?? []
-  const container = isContainer(ticket)
-  // ruling 20 S3: a part is its parent's work: the parent's brief, approaches and problem label (LC 200, not LC 200~1)
-  const parent = useTicket(ticket.childOf ?? '') ?? null
-  const itemId = ticket.childOf ?? ticket.id
-  const partNo = ticket.childOf ? partIndexOf(ticket) : null
+  const itemId = ticket.id
   // ruling 20 S7: the last Draft briefs run failed because Claude Code isn't signed in (re-read as the run ends)
   const draftJob = useDraftStore().job
   const signedOut = useMemo(() => lastDraftFailure() === 'claude_signed_out', [draftJob]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -254,13 +222,13 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
   const rungs = ladderView({ kind: ticket.kind, uses, elapsedSec, gaveUp: gaveUp !== null, redo: redoSession })
   const byName = (n: RungName): RungView => rungs.find(r => r.name === n) as RungView
   const used = helpUsed(uses)
-  const outcomesLocked = cycle === null || gaveUp !== null || container
-  // C-RUNNER §4 Solved gate: on a pack ticket, Solved and Solved with help wait for a Submit passing 5/5 in this attempt.
+  // a finished problem with no redo due offers no way to finish it again (TICKET-05); a read-only browser writes nothing (SHELL-23)
+  const finished = ticket.status === 'done' && !(redo !== null && isRedoDue(redo, t))
+  const outcomesLocked = cycle === null || gaveUp !== null || readOnly || finished
+  // TICKET-25/26: Solved is available from the moment the ticket is started. A pack ticket's Submit is a self-check the learner runs,
+  // not a gate (the C-RUNNER §4 "Submit 5/5 to unlock Solved" gate is gone); the pass is still recorded for the attempt.
   const pack = hasPack(ticket.id)
-  const { passCycle, onSubmitPassed } = usePassGate(ticket.id, cycleId)
-  const runGate = pack && (cycleId === '' || passCycle !== cycleId)
-  // L6: the "Submit 5/5" hint only when the run gate is what keeps the buttons disabled
-  const gateHint = runGate && !outcomesLocked
+  const { onSubmitPassed } = usePassGate(ticket.id, cycleId)
   const ai = ticket.ai ?? {}
   const hintUses = uses.filter(u => u.rung === 2)
 
@@ -304,86 +272,13 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
       saveTimer(n)
       setTimer(n)
       flash()
-      powerUp()
+      powerUp(undefined, false) // a timer end grants no XP
       if (loadChimePref()) playChime() // a run that ends unseen is still heard (the same soft chime as a session's block)
       toast(`Power up · ${mine.min} min`)
     }
   }, [mine, view.expired, study.active, flash, powerUp, toast]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** True when another card owns the timer or a study session (the Open links, being silent, just do not start one). */
-  function blockedFor(then: NonNullable<typeof blocked>['then'], silent = false): boolean {
-    const id = blockingTimerTicketId(loadTimer(), ticket.id)
-    if (!id) return false
-    if (!silent) setBlocked({ id, kind: loadStudy()?.ticketId === id ? 'session' : 'timer', then })
-    return true
-  }
-  /** "Stop it and start here": the other card keeps the minutes it ran (banked into its attempt), its timer is cleared. */
-  function stopOtherThenGo() {
-    if (!blocked) return
-    const tm = loadTimer()
-    const theirs = loadCycle(blocked.id)
-    if (tm && theirs && tm.ticketId === blocked.id) {
-      const next = bankRun(theirs, tm, now())
-      if (next !== theirs) saveCycle(next)
-    }
-    if (tm && tm.ticketId === blocked.id) clearTimer()
-    const then = blocked.then
-    setBlocked(null)
-    if (then.kind === 'session') setPlanOpen(true)
-    else void start(then.min)
-  }
-
-  async function start(min: number, opts: { silent?: boolean } = {}) {
-    if (loadChimePref()) primeChime() // inside the click: the autoplay policy lets the end-of-run chime sound later
-    if (blockedFor({ kind: 'timer', min }, opts.silent)) return
-    if (ticket.status !== 'done') {
-      const r = await safeWrite(() => startDoing(d, ticket.id, now()), onError)
-      if (!r) return
-      if (!r.ok) {
-        toast(r.message, 'danger')
-        return
-      }
-    }
-    const next = startTimer(loadTimer(), ticket.id, min, now())
-    saveTimer(next)
-    setTimer(next)
-  }
-
-  /** UAT J3 (D3.5): Pause keeps the rest of the block (the minutes so far are banked); Resume runs it on. */
-  function pause() {
-    if (!mine) return
-    bank(mine)
-    const n = pauseTimer(mine, now())
-    saveTimer(n)
-    setTimer(n)
-  }
-  function resume() {
-    if (!mine) return
-    const n = resumeTimer(mine, now())
-    saveTimer(n)
-    setTimer(n)
-  }
-
-  /** Retreat: the block is abandoned (its minutes still count toward the attempt), and the timer is cleared. */
-  function retreat() {
-    if (!mine) return
-    bank(mine)
-    clearTimer()
-    setTimer(null)
-  }
-
   const fx = { chime: () => {}, toast, onError }
-
-  async function startSession(plan: PlanResult) {
-    if (isReadOnly()) {
-      toast(READ_ONLY_MESSAGE, 'danger')
-      return
-    }
-    if (!(await beginStudy({ d, ticket, plan, nowMs: now(), ...fx }))) return
-    setTimer(loadTimer())
-    setCycleState(s => ({ ...s, cycle: loadCycle(ticket.id) ?? s.cycle }))
-    setPlanOpen(false)
-  }
 
   async function endSession(log: EndLog) {
     setSavingEnd(true)
@@ -416,8 +311,7 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
 
   /** One click, no confirm; charged only once the content exists (C-LADDER §2.1). */
   async function openRung(name: RungName, level: 1 | 2 = 1) {
-    // ruling 21: help is spent on a split card's parts, never on the card itself
-    if (openLock.current || asking || container) return
+    if (openLock.current || asking || readOnly) return
     const r = byName(name)
     const allowed = level === 2 ? name === 'hint' && r.state === 'open' && hintUses.length === 1 : r.state === 'unlocked'
     if (!allowed || r.cost === null) return
@@ -455,12 +349,11 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
 
   async function finish(outcome: Outcome) {
     if (!cycle || gaveUp) return
-    if (runGate && outcome !== 'gave_up') return
     if (checkGate && outcome !== 'gave_up') return openCheck(ticket.id) // a learning card is finished through its check
     const t0 = now()
     const tm = loadTimer()
     const banked = bankRun(cycle, tm && tm.ticketId === ticket.id ? tm : null, t0)
-    // A stopped timer's sessionStart can be stale (Spar → Retreat); trust it only while running or same-day (N1).
+    // A stopped timer's sessionStart can be stale (an abandoned timer); trust it only while running or same-day (N1).
     const sessionStart = mine && (mine.running || localDayKey(mine.sessionStart) === localDayKey(t0)) ? mine.sessionStart : t0
     const r = await safeWrite(
       () => closeLadderSession(d, {
@@ -468,7 +361,7 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
         netAtStart: cycle.netAtStart, redoId: cycle.redoId,
         notes: closingNotes(draft, isAi),
         proof: isAi ? { repo: draft.repo, note: draft.note } : undefined,
-        ...(study.study ? { goal: study.study.goal, focusMinutes: study.study.blocks * study.study.focusMin } : {}),
+        ...(study.study ? { goal: study.study.goal, focusMinutes: focusMinutesOf(study.study, t0) } : {}),
       }),
       onError,
     )
@@ -481,11 +374,12 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
       clearTimer()
       setTimer(null)
     }
-    if (study.active) {
+    if (study.study) {
+      const ended = study.study
       clearStudy()
       notifyStudy()
       setFocusMode(false)
-      toast(`Study session ended with the card · ${blocksText(study.study?.blocks ?? 0)}`)
+      toast(ended.single ? `Session ended · ${focusMinutesOf(ended, t0)} min focus` : `Study session ended with the card · ${blocksText(ended.blocks)}`)
     }
     clearDraft(ticket.id)
     clearCycle(ticket.id)
@@ -506,7 +400,7 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
       return
     }
     if (outcome !== 'gave_up' || r.effect.kind === 'none') {
-      navigate('/board')
+      navigate('/')
       return
     }
     const g: GaveUp = {
@@ -531,22 +425,11 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
     await safeWrite(() => setSessionApproach(d, asking.sessionId, approach), onError)
   }
 
-  /** The d key is the outcome button that is enabled: Solved ✓, or Solved with help once help was used. */
+  /** The d key is the outcome button that is enabled: Solved, or Solved with help once help was used. */
   function doneKey() {
     if (outcomesLocked) return
-    if (runGate) {
-      toast(RUN_GATE_HINT, 'warn')
-      return
-    }
     void finish(used ? 'solved_help' : 'solved')
   }
-  async function slideKey() {
-    const row = settings ?? (await d.settings.get('main')) // the screen may be a moment old: read the start date when it is not here yet
-    if (!row) return
-    const cur = currentSprint(now(), row.startDate)
-    await slide(ticket.id, cur, () => toast(`Slid ${ticket.title} to Sprint ${nextSlideTarget(ticket, cur)}`))
-  }
-
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {})
   keyRef.current = e => {
     // ui-dp-view M2 / ruling 7 Q19: an Esc the trace (or a dialog) already used, to clear a press, stays there
@@ -564,18 +447,21 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
       setFocusMode(m => !m)
       return
     }
-    // ruling 23 K1: d marks the card done (a learning card opens its check), s slides it to the next sprint
-    if ((e.key === 'd' || e.key === 's') && !stray && isPlainKey(e) && !e.repeat && !asking && !container && !isTypingTarget(e.target)) {
+    // ruling 23 K1: d marks the card done (a learning card opens its check)
+    if (e.key === 'd' && !stray && isPlainKey(e) && !e.repeat && !asking && !isTypingTarget(e.target)) {
       e.preventDefault()
-      if (e.key === 'd') doneKey()
-      else void slideKey()
+      doneKey()
       return
     }
-    if (e.key === ' ' && !stray && !asking && !study.active && !container && !isTypingTarget(e.target) && !isActivatable(e.target)) {
+    // space starts the session, then pauses and resumes it (one timer: the session's)
+    if (e.key === ' ' && !stray && !asking && !isTypingTarget(e.target) && !isActivatable(e.target)) {
       e.preventDefault()
-      if (mine?.running) pause()
-      else if (isPaused(mine)) resume()
-      else void start(mine?.min ?? 25)
+      // a finished problem with no redo due has nothing to start, pause or resume (TICKET-05); a redo due makes it unfinished (REVIEW-14)
+      if (finished) return
+      if (study.study && !study.study.over) {
+        if (study.study.paused != null) resumeSession(now())
+        else pauseSession(now())
+      } else if (!study.study && cycle !== null && gaveUp === null && !readOnly) void startTicket(ticket)
     }
   }
   useEffect(() => {
@@ -599,8 +485,8 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
     solution: byName('solution').state === 'open' ? ai.solution ?? null : null,
   }
   const spentByRung = Object.fromEntries(RUNG_NAMES.map(n => [n, spentOn(uses, RUNG_OF[n])])) as Record<RungName, number>
-  // ui-do D3.5: idle, running, paused or done (a run that reached 00:00 stays "done", with 00:00, until the next Start)
-  const timerState = isPaused(mine) ? 'paused' : view.done || (mine?.running && view.expired) ? 'done' : !mine?.running ? 'idle' : 'running'
+  // the one reading of the header: the session's clock, or the length a Start would run
+  const idleReading = study.study ? sessionLabel(study.study, t) : ticket.status === 'done' ? '--:--' : `${pad2(sessionMinutesOf(settings))}:00`
   const sessionCards = study.study
     ? study.study.cardIds.map(id => (id === ticket.id ? ticket : allTickets?.find(x => x.id === id))).filter((x): x is Ticket => !!x)
     : []
@@ -614,7 +500,7 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
   const setNotes = (v: string) => typed({ ...draft, sessionNotes: v })
   const nextRung = rungs.find(r => r.state === 'unlocked' && r.name !== 'attempt')
   const stuckOpen = study.study?.stuck === true && !endOpen
-  const outcomeDesc = [gateHint ? RUN_GATE_HINT_ID : '', study.active ? SESSION_NOTE_ID : ''].filter(Boolean).join(' ') || undefined
+  const outcomeDesc = study.active ? SESSION_NOTE_ID : undefined
 
   const focusOn = study.study !== null && focusMode
   const stuckDialog = stuckOpen && (
@@ -636,18 +522,24 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
     <>
     <div hidden={focusOn} style={focusOn ? { display: 'none' } : undefined}>
     <main className="do" data-testid="do-screen">
-      <header className="do-rail" role="banner">
-        <button type="button" className="do-back" data-testid="do-back" onClick={leave}>‹ Back</button>
-        <span className="do-rail-title" title={ticket.title}>{ticket.title}</span>
+      <header className="do-rail" role="group" aria-label="Ticket">
+        <button type="button" className="do-back" data-testid="do-back" onClick={leave}><Glyph name="chevronL" /> Back</button>
+        <span className="do-rail-title" data-content="plan" title={ticket.title}>{ticket.title}</span>
         <span className="do-rail-meta">
-          <span className="do-rail-sprint">S{ticket.sprint}</span>
-          <SaveStatus />
-          <span className="do-rail-xp" data-testid="do-ticket-xp" data-xp={ticket.xp}>Net {ticket.xp} xp</span>
-          <span className="do-rail-timer" data-testid="timer-readout">{study.study ? sessionLabel(study.study, t) : view.mmss}</span>
+          <TicketFacts ticket={ticket}>
+            <span className="do-rail-xp" data-testid="do-ticket-xp" data-xp={ticket.xp}>Net {ticket.xp} xp</span>
+          </TicketFacts>
+          {/* the save state is the shell header's: one save-status per page (GLOBAL-10) */}
+          {/* the one visible timer reading (TICKET-08): the sticky rail's, so it stays in view beside the code; the session hook rides on it while one runs */}
+          {study.study && !focusOn ? (
+            <span className="do-rail-timer" data-testid="session-timer" role="timer"><span data-testid="timer-readout">{idleReading}</span></span>
+          ) : (
+            <span className="do-rail-timer" data-testid="timer-readout">{idleReading}</span>
+          )}
         </span>
       </header>
-      {/* ruling 24 S1: a running session stays in view here, on its own card too, with Pause and Resume (Do has no header strip; UAT cu-2p P3-6) */}
-      <SessionDock />
+      {/* a session running on ANOTHER ticket stays one click away; on its own ticket the one timer below is the control */}
+      {study.other && <SessionDock />}
       <div className="do-work">
       {redoSession && redoStage !== null && (
         <p className="redo-banner" role="status" data-testid="redo-banner" data-stage={redoStage}>{redoBannerText(redoStage)}</p>
@@ -655,109 +547,59 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
       <div className="do-cols">
         <div className="do-left">
           <Panel title="Statement" className="statement">
-            <h1 className="st-title" data-testid="do-title">{ticket.title}</h1>
+            <h1 className="st-title" data-testid="do-title" data-content="plan">{ticket.title}</h1>
+            <BlockedNote ticket={ticket} className="st-text" />
             <div className="st-chips">
               {ticket.difficulty && <span className={`chip diff-${ticket.difficulty}`}>{DIFF[ticket.difficulty]}</span>}
               {lc && <span className="chip">LC {lc}</span>}
-              {ticket.pattern && <span className="chip">{ticket.pattern}</span>}
-              {ticket.links.map(l => <span key={`chip-${l.url}`} className="chip chip-src" title={l.label}>{shortSource(l.label)}</span>)}
+              {ticket.pattern && <span className="chip" data-content="plan">{ticket.pattern}</span>}
+              {ticket.links.map(l => <span key={`chip-${l.url}`} className="chip chip-src" data-content="plan" title={l.label}>{shortSource(l.label)}</span>)}
             </div>
-            {shownText(ticket.text) && <p className="st-text"><WithFileRefs text={shownText(ticket.text)} /></p>}
+            {shownText(ticket.text) && <p className="st-text" data-content="plan"><WithFileRefs text={shownText(ticket.text)} /></p>}
           </Panel>
 
-          <CardBrief ticket={ticket} />
-          {parent?.brief && partNo && <CardBrief ticket={parent} part={{ n: partNo, of: parent.children?.length ?? partNo, minutes: ticket.estMin }} />}
-          {!ticket.brief && !parent?.brief && (
+          <CardBrief ticket={ticket} actions={false} />
+          {!ticket.brief && (
             <p className="brief-note" data-testid="no-brief">
-              No brief yet. Draft briefs for this sprint from the Board.{signedOut ? ' Drafting needs Claude Code signed in.' : ''}
+              No brief for this ticket yet.{signedOut ? ' Drafting needs Claude Code signed in.' : ''}
             </p>
           )}
-          <SplitButton ticket={ticket} />
-          {ticket.childOf && <p className="brief-note">Part of <Link to={`/do/${ticket.childOf}`}>the split card</Link></p>}
 
           <div className="open-row">
             {ticket.links.map(l => {
               const route = appRoute(l.url)
-              // An in-app link (#bank, #mentors, ...) opens that screen and never starts the timer.
-              if (route) return <Link key={l.url} to={route} className="sr-btn sr-btn-accent open-link" title={l.label}>Open ▸ {l.label}</Link>
+              // An in-app link (#bank, ...) opens that screen. No Open link starts anything: Start is the one way to begin.
+              if (route) return <Link key={l.url} to={route} className="sr-btn open-link" title={l.label}>Open · <span data-content="plan">{l.label}</span></Link>
               return (
                 <a
-                  key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="sr-btn sr-btn-accent open-link" title={l.label}
-                  onClick={() => { if (!mine?.running && !container) void start(mine?.min ?? 25, { silent: true }) }}
-                >
-                  Open ▸ {l.label}
+                  key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="sr-btn open-link" title={l.label}>
+                  Open · <span data-content="plan">{l.label}</span>
                 </a>
               )
             })}
           </div>
 
-          {/* UAT r5 P3 #3: a split card has no timer or outcomes of its own; it points to its sessions instead */}
-          {container && <SessionList items={kids} />}
           {study.study ? (focusOn ? null : (
-            <SessionPanel
-              study={study.study} now={t} cards={sessionCards} elapsedSec={elapsedSec} notes={notesValue} onNotes={setNotes}
-              onFocus={() => setFocusMode(true)} onEnd={() => setEndOpen(true)}
-              onChime={on => { saveChimePref(on); study.setChime(on) }}
-              onResume={() => resumeSession(now())}
-            />
-          )) : container ? null : (
-          <Panel title="Timer" className="timer">
-            <Button
-              variant="accent" data-testid="start-session" disabled={cycle === null || gaveUp !== null}
-              onClick={() => {
-                if (isReadOnly()) toast(READ_ONLY_MESSAGE, 'danger')
-                else if (!blockedFor({ kind: 'session' })) setPlanOpen(true)
-              }}
+            <TicketTimer
+              ticket={ticket} showReadout={false} withEnd={false}
+              trailing={<Button variant="quiet" data-testid="session-end" onClick={() => setEndOpen(true)}>End session</Button>}
             >
-              Start session
-            </Button>
-            <div className="timer-row" {...tipProps('Block timer: counts down the 25 or 50 minute block you start here', 'right')}>
-              <div className="blocks" aria-hidden="true">
-                {Array.from({ length: 5 }, (_, i) => <span key={i} className="block" data-on={i < view.blocksOn ? 'true' : 'false'} />)}
-              </div>
-              <div className="timer-big" data-testid="timer-panel-readout">{view.mmss}</div>
-            </div>
-            <div className="timer-state" data-testid="timer-state">{timerState}</div>
-            <span className="timer-elapsed" data-testid="do-timer-elapsed" data-seconds={elapsedSec} {...tipProps('This attempt: the total time you have put into this card in this attempt, across blocks', 'above')}>
-              This attempt {pad2(Math.floor(elapsedSec / 60))}:{pad2(elapsedSec % 60)}
-            </span>
-            {mine?.running || isPaused(mine) ? (
-              // ui-do D3.5 / _common 17: while running, Pause and a quiet Retreat replace the presets; paused, Resume
-              <div className="timer-controls">
-                {mine?.running
-                  ? <Button data-testid="timer-pause" onClick={pause}><Sized label="Pause" alts={PAUSE_LABELS} /></Button>
-                  : <Button data-testid="timer-resume" onClick={resume}><Sized label="Resume" alts={PAUSE_LABELS} /></Button>}
-                <Button variant="quiet" onClick={retreat} aria-label={RETREAT_LABEL} {...tipProps(RETREAT_TITLE, 'right')}>Retreat</Button>
-              </div>
-            ) : (
-              <div className="timer-controls">
-                <Button data-testid="do-timer-preset-25" onClick={() => void start(25)}>Start 25 min</Button>
-                <Button data-testid="do-timer-preset-50" onClick={() => void start(50)}>Start 50 min</Button>
-                <label>
-                  Custom minutes
-                  <input
-                    type="number" min={1} max={240} value={custom} data-testid="do-custom-minutes"
-                    aria-invalid={customBad ? true : undefined} aria-describedby={customBad ? CUSTOM_ERROR_ID : undefined}
-                    onChange={e => {
-                      setCustom(e.target.value)
-                      // a value that is out of range says so as it is typed; an empty field only on Start, a good one clears it
-                      setCustomBad(e.target.value.trim() !== '' && customMinutes(e.target.value) === null)
-                    }}
-                  />
-                </label>
-                <Button
-                  onClick={() => {
-                    const m = customMinutes(custom)
-                    setCustomBad(m === null)
-                    if (m !== null) void start(m)
-                  }}
-                >
-                  Start custom
+              <SessionPanel study={study.study} cards={sessionCards} elapsedSec={elapsedSec} />
+            </TicketTimer>
+          )) : (
+            <TicketTimer ticket={ticket} showReadout={false}>
+              {/* the one accent before the start; none once it is finished, given up on or still being set up */}
+              {finished ? (
+                <span className="dk-done" data-testid="ticket-done-state"><Glyph name="check" size={3} /> Done.</span>
+              ) : cycle !== null && gaveUp === null ? (
+                <Button variant="accent" data-accent="primary" data-testid="ticket-start" disabled={readOnly} onClick={() => void startTicket(ticket)}>
+                  {verbObject('START', 'problem')}
                 </Button>
-              </div>
-            )}
-            {customBad && !(mine?.running || isPaused(mine)) && <p role="alert" className="form-error" id={CUSTOM_ERROR_ID} data-testid="do-custom-error">{CUSTOM_MINUTES_ERROR}</p>}
-          </Panel>
+              ) : null}
+              <span className="timer-elapsed" data-testid="do-timer-elapsed" data-seconds={elapsedSec}>
+                This attempt {pad2(Math.floor(elapsedSec / 60))}:{pad2(elapsedSec % 60)}
+              </span>
+            </TicketTimer>
           )}
 
           <SessionHistory sessions={allSessions ?? []} ticketId={ticket.id} />
@@ -768,56 +610,49 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
               <>
                 <label>
                   Repo / commit URL
-                  <input type="url" value={draft.repo} onChange={e => typed({ ...draft, repo: e.target.value })} />
+                  <input type="url" disabled={readOnly} value={draft.repo} onChange={e => typed({ ...draft, repo: e.target.value })} />
                 </label>
                 <label>
                   Proof
-                  <textarea value={draft.note} placeholder="What runs, what you measured" onChange={e => typed({ ...draft, note: e.target.value })} />
+                  <textarea disabled={readOnly} value={draft.note} placeholder="What runs, what you measured" onChange={e => typed({ ...draft, note: e.target.value })} />
                 </label>
               </>
             ) : (
               <label>
                 What is the invariant? What did you try?
-                <textarea data-testid="do-attempt-log" value={draft.notes} onChange={e => typed({ ...draft, notes: e.target.value })} />
+                <textarea data-testid="do-attempt-log" disabled={readOnly} value={draft.notes} onChange={e => typed({ ...draft, notes: e.target.value })} />
               </label>
             )}
           </Panel>
 
         </div>
 
-        {(ticket.kind === 'problem' || !container) && (
         <aside className="do-right">
           {ticket.kind === 'problem' && <ApproachStrip problemId={itemId} />}
-          {/* ruling 21 (r6 P3 #1): a split card has no help ladder; help is spent on its parts */}
-          {!container && (
           <Ladder
-            title={displayTitle(ticket)} rungs={rungs} spent={spentOf(uses)} spentByRung={spentByRung} announce={announce}
+            title={displayTitle(ticket)} rungs={rungs} readOnly={readOnly} spent={spentOf(uses)} spentByRung={spentByRung} announce={announce}
             busy={busy} errors={errors} content={content} quizResult={quizResult}
             onOpen={n => void openRung(n)} onMoreHint={() => void openRung('hint', 2)} onRetry={n => void openRung(n, n === 'hint' && hintUses.length === 1 ? 2 : 1)}
             onCheckQuiz={a => void checkQuiz(a)} elapsedSec={elapsedSec}
           />
-          )}
         </aside>
-        )}
       </div>
       {/* ui-do D1: full-width workbench rows: B code, C trace (inside CodePanel's fragment), D outcomes */}
       {pack && (
         <CodePanel ticketId={ticket.id} onSubmitPassed={onSubmitPassed} />
       )}
       <div className="do-outcome-row">
-      {container ? null : asking ? (
-            <ApproachQuestion problemId={itemId} chosen={asking.chosen} onChoose={a => void choose(a)} onBack={() => navigate('/board')} />
+      {asking ? (
+            <ApproachQuestion problemId={itemId} chosen={asking.chosen} onChoose={a => void choose(a)} onBack={leave} />
           ) : (
             <div className="outcomes">
-              <Button variant="accent" data-testid="do-outcome-solved" aria-describedby={outcomeDesc} disabled={outcomesLocked || used || runGate} onClick={() => void finish('solved')}>Solved ✓</Button>
-              <Button data-testid="do-outcome-help" aria-pressed={used} aria-describedby={outcomeDesc} disabled={outcomesLocked || runGate} onClick={() => void finish('solved_help')}>Solved with help</Button>
+              <Button data-testid="do-outcome-solved" aria-describedby={outcomeDesc} disabled={outcomesLocked || used} onClick={() => void finish('solved')}>Solved</Button>
+              <Button data-testid="do-outcome-help" aria-pressed={used} aria-describedby={outcomeDesc} disabled={outcomesLocked} onClick={() => void finish('solved_help')}>Solved with help</Button>
               <Button variant="quiet" data-testid="do-outcome-giveup" aria-describedby={study.active ? SESSION_NOTE_ID : undefined} disabled={outcomesLocked} onClick={() => void finish('gave_up')}>Give up</Button>
             </div>
           )}
           {/* UAT cu-4 P3-11: while a study session runs, say that the outcome buttons end it too */}
-          {!asking && !container && study.study && <p className="do-session-note" id={SESSION_NOTE_ID} data-testid="do-session-note">{sessionEndsNote(study.study.blocks)}</p>}
-          {/* M6 / ui-do D7: why Solved is disabled on a pack ticket, on its own line below the buttons */}
-          {!asking && gateHint && <p className="do-run-gate-hint" id={RUN_GATE_HINT_ID} data-testid="do-run-gate-hint">{RUN_GATE_HINT}</p>}
+          {!asking && study.study && <p className="do-session-note" id={SESSION_NOTE_ID} data-testid="do-session-note">{sessionEndsNote(study.study, t)}</p>}
           {gaveUp && <p className="do-given-up" role="status" data-testid="do-given-up">{givenUpText(gaveUp.redoDue)}</p>}
       </div>
       </div>
@@ -829,17 +664,6 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
         onEnd={() => setEndOpen(true)} onExit={() => setFocusMode(false)}
       />
     )}
-    {blocked && (
-      <TimerBusyDialog
-        kind={blocked.kind}
-        title={allTickets?.find(x => x.id === blocked.id)?.title ?? blocked.id}
-        startLabel={blocked.then.kind === 'session' ? 'Stop it and plan a session here' : `Stop it and start ${blocked.then.min} min here`}
-        onStop={stopOtherThenGo}
-        onGo={() => { const id = blocked.id; setBlocked(null); navigate(`/do/${id}`) }}
-        onCancel={() => setBlocked(null)}
-      />
-    )}
-    {planOpen && <PlanDialog ticket={ticket} chime={loadChimePref()} onStart={p => void startSession(p)} onCancel={() => setPlanOpen(false)} />}
     {endOpen && <EndLogDialog saving={savingEnd} onSave={l => void endSession(l)} onCancel={() => setEndOpen(false)} />}
     {stuckDialog}
     </>

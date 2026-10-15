@@ -36,6 +36,10 @@ export interface Study {
   away?: number | null
   /** UAT J3 (D3.5): set while paused: the ms left in the phase. Nothing advances until Resume. */
   paused?: number | null
+  /** R1 "one timer": one focus block of `focusMin` and no break. At its end the session waits (`over`) for Done. */
+  single?: boolean
+  /** a `single` session whose block has run out: the clock reads 00:00 and nothing else advances */
+  over?: boolean
 }
 
 export interface FinishedBlock { index: number; start: number; end: number; minutes: number }
@@ -53,37 +57,45 @@ export function isStudy(v: unknown): v is Study {
 }
 
 export function startStudy(i: {
-  id: string; ticketId: string; goal: string; cardIds: string[]; focusMin: number; breakMin: number; chime: boolean; now: number
+  id: string; ticketId: string; goal: string; cardIds: string[]; focusMin: number; breakMin: number; chime: boolean; now: number; single?: boolean
 }): Study {
   return {
     id: i.id, ticketId: i.ticketId, goal: i.goal, cardIds: i.cardIds,
     focusMin: i.focusMin, breakMin: i.breakMin, longBreakMin: i.breakMin * LONG_FACTOR,
     startedAt: i.now, phase: 'focus', phaseStart: i.now, phaseMin: i.focusMin,
     blocks: 0, progress: false, stuck: false, chime: i.chime,
+    ...(i.single ? { single: true } : {}),
   }
 }
 
 export const phaseEnd = (s: Study): number => s.phaseStart + s.phaseMin * MIN
 export const phaseLabel = (s: Study) => PHASE_LABEL[s.phase]
 // UAT J3: a lagging screen clock never reads more than the phase's own length (25:00, not 25:01)
-export const remainingMs = (s: Study, now: number): number => (s.paused != null ? s.paused : Math.min(s.phaseMin * MIN, Math.max(0, phaseEnd(s) - now)))
+export const remainingMs = (s: Study, now: number): number => (s.over ? 0 : s.paused != null ? s.paused : Math.min(s.phaseMin * MIN, Math.max(0, phaseEnd(s) - now)))
 export const isStudyPaused = (s: Study): boolean => s.paused != null
 
 /** Pause: the phase stops where it is (the ms left are kept). */
 export function pauseStudy(s: Study, now: number): Study {
-  if (s.paused != null || s.away) return s
+  if (s.paused != null || s.away || s.over) return s
   return { ...s, paused: Math.max(0, phaseEnd(s) - now) }
 }
 
 /** Resume from a pause: the phase runs on from now with what was left (its start moves by the pause). */
 export function resumePausedStudy(s: Study, now: number): Study {
-  if (s.paused == null) return s
+  if (s.paused == null || s.over) return s
   return { ...s, paused: null, phaseStart: now - (s.phaseMin * MIN - s.paused) }
 }
 
 /** Move the session forward to `now`, one phase boundary at a time. A gap past AWAY_MS parks it as away. */
 export function advance(s: Study, now: number): Advanced {
-  if (s.away || s.paused != null) return { study: s, finished: [], switched: false, away: false }
+  if (s.away || s.paused != null || s.over) return { study: s, finished: [], switched: false, away: false }
+  if (s.single) {
+    // one block, no break: when it runs out (even after sleep) credit it once and wait for Done
+    if (now < phaseEnd(s)) return { study: s, finished: [], switched: false, away: false }
+    const blocks = s.blocks + 1
+    const done: Study = { ...s, blocks, over: true, stuck: false, progress: false }
+    return { study: done, finished: [{ index: blocks, start: s.phaseStart, end: phaseEnd(s), minutes: s.phaseMin }], switched: true, away: false }
+  }
   if (now > phaseEnd(s) + AWAY_MS) {
     // sleep or wake: credit at most the block that was running, then wait for the user
     if (s.phase !== 'focus') return { study: { ...s, away: now }, finished: [], switched: true, away: true }
@@ -134,8 +146,4 @@ export function dismissStuck(s: Study): Study {
 /** "Take a 5-minute break": the running break becomes exactly `min` minutes from `now`. */
 export function takeBreak(s: Study, now: number, min: number = STUCK_BREAK_MIN): Study {
   return { ...s, phase: 'break', phaseStart: now, phaseMin: min, stuck: false, progress: false }
-}
-
-export function setChime(s: Study, chime: boolean): Study {
-  return s.chime === chime ? s : { ...s, chime }
 }

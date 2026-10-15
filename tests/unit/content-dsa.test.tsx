@@ -27,7 +27,7 @@ describe('Prose renderer', () => {
     const items = screen.getAllByRole('listitem')
     expect(items).toHaveLength(5)
     expect(items[4].textContent).toMatch(/^Skip AlgoMonster \(overlaps Grokking\)/)
-    const link = within(items[0]).getByRole('link', { name: 'course ↗' })
+    const link = within(items[0]).getByRole('link', { name: 'course' })
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })

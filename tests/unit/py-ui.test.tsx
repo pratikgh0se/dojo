@@ -9,7 +9,7 @@ import { stdoutText as stdoutShown } from '../../src/runner/status'
 import type { PyHooks } from '../../src/runner/py/pyClient'
 import type { PublicPack, RunResult } from '../../src/runner/types'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 vi.mock('../../src/runner/CodeEditor', () => ({
@@ -71,7 +71,7 @@ async function panel(opts: { before?: (d: Awaited<ReturnType<typeof seededDb>>) 
   const d = await seededDb()
   await opts.before?.(d)
   const onPass = vi.fn()
-  const view = renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={onPass} />, { db: d, plan: smallPlan })
+  const view = renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={onPass} />, { db: d, plan: flatPlanV2 })
   await screen.findByRole('textbox', { name: 'Code' })
   return { d, onPass, view }
 }
@@ -116,7 +116,7 @@ describe('the Language switch', () => {
       ['go', 'package main // my go', false], ['py', 'def numDecodings(s):\n    return 7  # my py\n', true],
     ]))
     view.unmount()
-    renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={() => {}} />, { db: d, plan: smallPlan })
+    renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={() => {}} />, { db: d, plan: flatPlanV2 })
     await waitFor(() => expect(editor().value).toContain('# my py'))
     expect(radio('Python')).toBeChecked()
     fireEvent.click(radio('Go'))
@@ -270,7 +270,7 @@ describe('PY-13: a read-only browser', () => {
   it('a Python Run or Submit shows the Read-only toast and never starts the runtime', async () => {
     localStorage.removeItem('dojo.writer')
     const d = await seededDb()
-    renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={() => {}} />, { db: d, plan: smallPlan })
+    renderWithApp(<CodePanel ticketId="p91" onSubmitPassed={() => {}} />, { db: d, plan: flatPlanV2 })
     await screen.findByRole('textbox', { name: 'Code' })
     fireEvent.click(radio('Python'))
     await waitFor(() => expect(editor().value).toContain('def numDecodings'))
@@ -321,7 +321,7 @@ describe('L4: a result lands only where it was asked for', () => {
       const [id, setId] = useState('p91')
       return <><button onClick={() => setId('p198')}>other</button><CodePanel ticketId={id} onSubmitPassed={onPass} /></>
     }
-    renderWithApp(<Switch />, { db: d, plan: smallPlan })
+    renderWithApp(<Switch />, { db: d, plan: flatPlanV2 })
     await screen.findByRole('textbox', { name: 'Code' })
     fireEvent.change(editor(), { target: { value: 'package main // only for p91' } })
     fireEvent.click(screen.getByRole('button', { name: 'other' }))

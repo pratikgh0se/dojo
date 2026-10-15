@@ -9,14 +9,17 @@ import { renderWithApp } from '../helpers/render'
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const NOW = ist('2026-10-12T09:00:00')
 
-async function setup(route = '/banks') {
+async function setupRoute(route = '/banks') {
   setNow(() => NOW)
   const plan = realPlan()
   const d = await seededDb(plan, '2026-10-05')
-  renderWithApp(<Banks />, { db: d, plan, route, path: '/banks' })
+  const view = renderWithApp(<Banks />, { db: d, plan, route, path: '/banks' })
   await screen.findByTestId('banks-page')
   await screen.findByTestId('banks-visible-count')
-  return d
+  return { d, unmount: view.unmount }
+}
+async function setup(route = '/banks') {
+  return (await setupRoute(route)).d
 }
 const count = (id: string) => screen.getByTestId(`banks-tab-count-${id}`).textContent
 const flashes = () => Number(document.documentElement.dataset.flashes ?? '0')
@@ -28,12 +31,26 @@ describe('Banks screen', () => {
     expect(tabs.map(t => t.textContent?.replace(/\s+\d+\/\d+$/, ''))).toEqual(['Plan bank', 'Fixture Set A', 'Fixture Set B', 'Fixture Set C', 'Fixture Ladder', 'Fixture Designs', 'Mine'])
     expect(screen.getByRole('tab', { name: /^Plan bank/ })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('heading', { level: 2, name: 'Plan bank' })).toBeInTheDocument()
-    expect(screen.getByTestId('banks-visible-count')).toHaveTextContent('Showing 169 of 169')
-    expect(count('plan')).toBe('0/169')
+    expect(screen.getByTestId('banks-visible-count')).toHaveTextContent('Showing 170 of 170')
+    expect(count('plan')).toBe('0/170')
     expect(screen.getByTestId('banks-header')).toHaveTextContent('From your plan')
     expect(screen.queryByTestId('banks-source-link')).toBeNull()
     expect(screen.queryByTestId('banks-snapshot')).toBeNull()
     expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'banks-tab-plan')
+  })
+
+  it('GLOBAL-10: every source tab is a role=tab inside the tablist under its banks-tab-<id> test id, at /banks and at /banks?area=dsa', async () => {
+    for (const route of ['/banks', '/banks?area=dsa']) {
+      const { unmount } = await setupRoute(route)
+      const list = screen.getByRole('tablist', { name: 'Banks' })
+      for (const id of ['plan', 'neetcode150', 'blind75', 'striver', 'codeforces', 'hellointerview', 'mine']) {
+        const tab = screen.getByTestId(`banks-tab-${id}`)
+        expect(tab, `${route} ${id}`).toHaveAttribute('role', 'tab')
+        expect(tab.id).toBe(`banks-tab-${id}`)
+        expect(list.contains(tab)).toBe(true)
+      }
+      unmount()
+    }
   })
 
   it('shows a pack with its source, snapshot, groups, plan markers and link cubes', async () => {
@@ -91,7 +108,7 @@ describe('Banks screen', () => {
     expect(screen.getByRole('progressbar', { name: 'Fixture Set B progress' })).toHaveAttribute('aria-valuenow', '1')
     expect(screen.getByTestId('banks-group-count-lists')).toHaveTextContent('1/3')
     expect(count('neetcode150')).toBe('1/6')
-    expect(count('plan')).toBe('0/169')
+    expect(count('plan')).toBe('0/170')
     expect(await d.tickets.get('p9001')).toMatchObject({ origin: 'bank:blind75', status: 'done', sprint: 1 })
     fireEvent.click(screen.getByRole('checkbox', { name: 'Done: Pair Finder' }))
     await waitFor(() => expect(count('blind75')).toBe('0/6'))
@@ -103,7 +120,7 @@ describe('Banks screen', () => {
     const d = await setup('/banks?bank=blind75')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Done: Region Counter' }))
     expect(await screen.findByText('+10 xp · Saved')).toBeInTheDocument()
-    await waitFor(() => expect(count('plan')).toBe('1/169'))
+    await waitFor(() => expect(count('plan')).toBe('1/170'))
     expect(await d.tickets.get('p200')).toMatchObject({ origin: 'plan', status: 'done' })
   })
 

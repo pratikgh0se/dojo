@@ -37,7 +37,7 @@ export interface DesignTotals {
 }
 
 export type DesignCallout =
-  | { kind: 'none' | 'before' | 'all-done'; text: string }
+  | { kind: 'none' | 'all-done'; text: string }
   | { kind: 'next'; item: DesignItemView; tier: DesignTierView }
 
 export function tierLabel(name: string): string {
@@ -80,20 +80,14 @@ export function designTotals(tiers: DesignTierView[]): DesignTotals {
 const firstUndone = (tiers: DesignTierView[]): DesignItemView | null =>
   tiers.flatMap(t => t.items).find(i => !i.done) ?? null
 
-export function nextDesign(tiers: DesignTierView[], currentSprint: number): DesignItemView | null {
-  if (tiers.length === 0) return null
-  const first = Math.min(...tiers.map(t => t.from))
-  if (currentSprint < first) return null
-  const k = tiers.findIndex(t => currentSprint >= t.from && currentSprint <= t.to)
-  if (k >= 0) return firstUndone(tiers.slice(k)) ?? firstUndone(tiers)
+/** The next design is the first one not done, in plan order: the queue is flat, no schedule says when a design is due. */
+export function nextDesign(tiers: DesignTierView[]): DesignItemView | null {
   return firstUndone(tiers)
 }
 
-export function designCallout(tiers: DesignTierView[], currentSprint: number): DesignCallout {
+export function designCallout(tiers: DesignTierView[]): DesignCallout {
   if (tiers.length === 0) return { kind: 'none', text: 'No design bank in this plan' }
-  const first = Math.min(...tiers.map(t => t.from))
-  if (currentSprint < first) return { kind: 'before', text: `Design bank starts S${first}` }
-  const item = nextDesign(tiers, currentSprint)
+  const item = nextDesign(tiers)
   if (!item) return { kind: 'all-done', text: `All ${tiers.reduce((a, t) => a + t.total, 0)} done` }
   return { kind: 'next', item, tier: tiers[item.tier - 1] }
 }
@@ -139,4 +133,20 @@ export function planDesigns(plan: PlanJson): PlanDesignRef[] {
 
 export function findDesign(plan: PlanJson, id: string): PlanDesignRef | null {
   return planDesigns(plan).find(d => d.id === id) ?? null
+}
+
+/** A write-up has no deep dives of its own: the session falls back to the rubric's four themes. */
+export const GENERIC_DIVES = [
+  'Requirements and the numbers you design to',
+  'API and data model before boxes',
+  'A design that meets the numbers, with the trade-off named',
+  'Failure modes and operations',
+]
+
+/** Design and write-up tickets outside the design bank still open the session (contract route `/designs/session/<ticketId>`). */
+export function designRefFromTicket(t: Ticket): PlanDesignRef {
+  return {
+    id: t.id, title: t.title, difficulty: 'M', deepDives: GENERIC_DIVES, refs: t.links ?? [],
+    tier: 0, tierName: '', tierLabel: '', tierShort: '', order: 0,
+  }
 }

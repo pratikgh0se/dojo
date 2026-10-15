@@ -1,7 +1,7 @@
 import type { AiErrorCode } from '../ai/types'
 import { buildJobRequest, type BriefOutput } from '../ai/types'
 import { aiTicketOf } from '../rules/rungContent'
-import { isDraftable, isLearning, isTeachback, briefContext, enforceForge, forgeCodeProblem, sprintDraftQueue, toBrief } from '../rules/brief'
+import { isDraftable, isLearning, briefContext, sprintDraftQueue, toBrief } from '../rules/brief'
 import { callJob } from './aiActions'
 import type { DojoDB } from './db'
 import type { Brief, Ticket } from './types'
@@ -14,20 +14,14 @@ export type DraftResult =
 export async function draftBrief(d: DojoDB, ticketId: string, at: number): Promise<DraftResult> {
   const t = await d.tickets.get(ticketId)
   if (!t || t.archived) return { ok: false, code: 'bad_request', error: 'Ticket not found' }
-  if (t.brief || !isDraftable(t)) return { ok: true, drafted: false } // a split card or a part is never drafted (ruling 25 R3)
+  if (t.brief || !isDraftable(t)) return { ok: true, drafted: false } // only problem, design and task tickets are drafted
   const res = await callJob(d, 'brief', buildJobRequest('brief', aiTicketOf(t), briefContext(t)), at)
   if (!res.ok) return { ok: false, code: res.code, error: res.error }
-  if (isLearning(t) && (res.output.deliverable.kind !== 'answers' || res.output.questions.length === 0)) {
-    return { ok: false, code: 'invalid_output', error: 'invalid brief output: a watch or read card needs an answers deliverable with questions' }
-  }
-  const forge = briefContext(t).forge
-  const problem = forge ? forgeCodeProblem(res.output) : null
-  if (problem) return { ok: false, code: 'invalid_output', error: `invalid brief output: ${problem}` }
-  const brief = toBrief(enforceForge(res.output, forge, isTeachback(t)))
+  const brief = toBrief(res.output)
   return d.transaction('rw', d.tickets, async (): Promise<DraftResult> => {
     const fresh = await d.tickets.get(ticketId)
     if (!fresh || fresh.archived) return { ok: false, code: 'bad_request', error: 'Ticket not found' }
-    if (fresh.brief || !isDraftable(fresh)) return { ok: true, drafted: false } // split while the draft was written
+    if (fresh.brief || !isDraftable(fresh)) return { ok: true, drafted: false } // changed while the draft was written
     await d.tickets.put({ ...fresh, brief })
     return { ok: true, drafted: true }
   })

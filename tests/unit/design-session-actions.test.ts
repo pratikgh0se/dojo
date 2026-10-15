@@ -4,12 +4,13 @@ import { moveTicket } from '../../src/data/boardActions'
 import type { CloseAnswers, DojoEvent } from '../../src/data/types'
 import {
   appendInterview, completeDesignSession, discardDesignSession, enterScore, flushThenLock, lockDesignSession, saveCanvas,
-  saveClose, saveFinal, saveReference, saveScore, saveView, startDesignSession,
+  saveClose, saveFinal, saveNotes, savePartner, saveReference, saveScore, saveView, startDesignSession,
 } from '../../src/data/designSessionActions'
+import { emptyNotes } from '../../src/rules/designNotes'
 import { addNode, emptyCanvas } from '../../src/rules/designCanvas'
 import { seededDb } from '../helpers/db'
 
-// smallPlan: design tickets d-method and d-estimate (xp 20 each when done).
+// flatPlanV2: design tickets d-method and d-estimate (xp 20 each when done).
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const T = ist('2026-10-11T10:00:00')
 const MIN = 60_000
@@ -25,7 +26,7 @@ const scored = (rubric: number, answered: (0 | 1 | 2)[] = [2, 1, 2, 0]) => ({
   rubric,
 })
 
-async function toScore(d: Awaited<ReturnType<typeof seededDb>>, at = T, mode: 'solo' | 'interviewer' = 'solo') {
+async function toScore(d: Awaited<ReturnType<typeof seededDb>>, at = T, mode: 'solo' | 'ai-partner' = 'solo') {
   const s = await startDesignSession(d, { designId: 'd-method', mode, deepDives: DIVES, nowMs: at })
   await lockDesignSession(d, s.id, at + 12 * MIN)
   await enterScore(d, s.id, CLOSE)
@@ -35,9 +36,9 @@ async function toScore(d: Awaited<ReturnType<typeof seededDb>>, at = T, mode: 's
 describe('start, resume, discard (D-3, D-10, D-11)', () => {
   it('creates one open drawing session per design and resumes it', async () => {
     const d = await seededDb()
-    const a = await startDesignSession(d, { designId: 'd-method', mode: 'interviewer', deepDives: DIVES, nowMs: T })
+    const a = await startDesignSession(d, { designId: 'd-method', mode: 'ai-partner', deepDives: DIVES, nowMs: T })
     expect(a).toMatchObject({
-      designId: 'd-method', at: T, phase: 'drawing', minutes: 0, mode: 'interviewer', view: '2d', rubric: null,
+      designId: 'd-method', at: T, phase: 'drawing', minutes: 0, mode: 'ai-partner', view: '2d', rubric: null,
       tradeoffs: [], lenses: {}, interview: { messages: [] },
     })
     expect(a.canvas).toEqual(emptyCanvas())
@@ -95,7 +96,7 @@ describe('close, score, interview', () => {
 
   it('appends transcript messages and stores the final grade with a capped prefill (D-35, D-37)', async () => {
     const d = await seededDb()
-    const s = await startDesignSession(d, { designId: 'd-method', mode: 'interviewer', deepDives: DIVES, nowMs: T })
+    const s = await startDesignSession(d, { designId: 'd-method', mode: 'ai-partner', deepDives: DIVES, nowMs: T })
     await appendInterview(d, s.id, [{ from: 'interviewer', text: '[fake:interview] Turn 0 for d-method' }])
     await appendInterview(d, s.id, [{ from: 'you', text: 'QPS 10k' }])
     expect((await d.designSessions.get(s.id))?.interview?.messages.map(m => m.from)).toEqual(['interviewer', 'you'])
@@ -201,7 +202,7 @@ describe('completed session counts as focus minutes (cu-r3 A15 ruling)', () => {
   type Db = Awaited<ReturnType<typeof seededDb>>
   const focusOf = async (d: Db) => (await d.events.toArray()).filter((e): e is Extract<DojoEvent, { t: 'focus' }> => e.t === 'focus')
 
-  it.each(['solo', 'interviewer'] as const)('%s: one focus event of the timed minutes, shown by every focus reader', async mode => {
+  it.each(['solo', 'ai-partner'] as const)('%s: one focus event of the timed minutes, shown by every focus reader', async mode => {
     const d = await seededDb()
     const id = await toScore(d, T, mode)
     await saveScore(d, id, scored(16))
@@ -235,5 +236,44 @@ describe('completed session counts as focus minutes (cu-r3 A15 ruling)', () => {
     await saveScore(d, id, scored(16))
     await completeDesignSession(d, id, T + 50 * MIN)
     expect(await focusOf(d)).toHaveLength(1)
+  })
+})
+
+describe('v2 modes and notes', () => {
+  it('stores the new mode names, gives every new session empty notes, and a legacy input becomes ai-partner', async () => {
+    const d = await seededDb()
+    const a = await startDesignSession(d, { designId: 'd-method', mode: 'ai-partner', deepDives: DIVES, nowMs: T })
+    expect(a).toMatchObject({ mode: 'ai-partner', interview: { messages: [] }, notes: emptyNotes() })
+    await discardDesignSession(d, a.id)
+    const h = await startDesignSession(d, { designId: 'd-method', mode: 'human-partner', deepDives: DIVES, nowMs: T })
+    expect(h).toMatchObject({ mode: 'human-partner', partner: {} })
+    expect(h.interview).toBeUndefined()
+    await discardDesignSession(d, h.id)
+    const l = await startDesignSession(d, { designId: 'd-method', mode: 'interviewer', deepDives: DIVES, nowMs: T })
+    expect(l.mode).toBe('ai-partner')
+  })
+  it('saveNotes writes while drawing and is refused after the lock', async () => {
+    const d = await seededDb()
+    const s = await startDesignSession(d, { designId: 'd-method', mode: 'solo', deepDives: DIVES, nowMs: T })
+    expect(await saveNotes(d, s.id, { ...emptyNotes(), api: 'x' })).toBe(true)
+    expect((await d.designSessions.get(s.id))!.notes!.api).toBe('x')
+    await lockDesignSession(d, s.id, T + MIN)
+    expect(await saveNotes(d, s.id, { ...emptyNotes(), api: 'late' })).toBe(false)
+  })
+  it('savePartner stores name, at (once) and scores with nulls, only for human-partner, and keeps working after the lock', async () => {
+    const d = await seededDb()
+    const solo = await startDesignSession(d, { designId: 'd-estimate', mode: 'solo', deepDives: DIVES, nowMs: T })
+    expect(await savePartner(d, solo.id, { name: 'Sam' }, T)).toBe(false)
+    const h = await startDesignSession(d, { designId: 'd-method', mode: 'human-partner', deepDives: DIVES, nowMs: T })
+    expect(await savePartner(d, h.id, { name: 'Sam', scores: { perItem: [3, null, 4, null, 2], deepDives: [2, null, 1, null] } }, T + 5)).toBe(true)
+    await lockDesignSession(d, h.id, T + MIN)
+    await savePartner(d, h.id, { name: 'Sam' }, T + 99)
+    expect((await d.designSessions.get(h.id))!.partner).toEqual({ name: 'Sam', at: T + 5, scores: { perItem: [3, null, 4, null, 2], deepDives: [2, null, 1, null] } })
+  })
+  it('appendInterview keeps the hint flag on a reply', async () => {
+    const d = await seededDb()
+    const s = await startDesignSession(d, { designId: 'd-method', mode: 'ai-partner', deepDives: DIVES, nowMs: T })
+    await appendInterview(d, s.id, [{ from: 'interviewer', text: 'q?', hint: true }])
+    expect((await d.designSessions.get(s.id))!.interview!.messages[0]).toEqual({ from: 'interviewer', text: 'q?', hint: true })
   })
 })

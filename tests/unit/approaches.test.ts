@@ -6,9 +6,9 @@ import { realPlan } from '../helpers/plan'
 const pinned = (id: string) => approachesFor(id).map(a => [a.name, a.complexity, patternBySlug(a.pattern)!.label, a.libraryKey ?? null, a.best])
 
 describe('approaches (TRACKING §3; labs contract §2.4)', () => {
-  it('covers exactly the 169 plan problems', () => {
+  it('covers exactly the 170 plan problems', () => {
     const ids = realPlan().dsa_bank.flatMap(w => w.problems.map(p => `p${p.num}`))
-    expect(ids).toHaveLength(169)
+    expect(ids).toHaveLength(170)
     expect(Object.keys(APPROACHES).sort()).toEqual([...ids].sort())
   })
 

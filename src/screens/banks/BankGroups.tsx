@@ -12,7 +12,7 @@ export function BankGroups({ groups, onTick, renderActions }: {
       {groups.map(g => (
         <section key={g.slug} className="bank-group" data-testid={`banks-group-${g.slug}`} aria-labelledby={`bank-group-${g.slug}`}>
           <div className="bank-group-head">
-            <h3 id={`bank-group-${g.slug}`}>{g.title}</h3>
+            <h3 id={`bank-group-${g.slug}`} data-content="plan">{g.title}</h3>
             <span className="bank-group-count" data-testid={`banks-group-count-${g.slug}`}>{g.done}/{g.total}</span>
           </div>
           <div className="bank-heat" data-testid={`banks-heatmap-${g.slug}`}>
@@ -61,8 +61,8 @@ function BankRow({ item, onTick, actions }: { item: ItemView; onTick: (item: Ite
         />
       </label>
       {item.url
-        ? <a className="bank-name" data-testid="bank-item-link" href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a>
-        : <span className="bank-name">{item.name}</span>}
+        ? <a className="bank-name" data-content={item.rowId ? 'learner' : 'plan'} data-testid="bank-item-link" href={item.url} target="_blank" rel="noopener noreferrer">{item.name}</a>
+        : <span className="bank-name" data-content={item.rowId ? 'learner' : 'plan'}>{item.name}</span>}
       {/* UAT cu-6 P3-14: an empty value still reads `—` (S-12), but as plain muted text, not a bordered box */}
       <span className="chip bank-chip-diff" data-testid="bank-item-difficulty" data-empty={difficultyChip(item.difficulty) === NO_VALUE ? 'true' : undefined} {...(difficultyChip(item.difficulty) === NO_VALUE ? tipProps('No difficulty for this item') : {})}>{difficultyChip(item.difficulty)}</span>
       <span className="chip" data-testid="bank-item-pattern" data-empty={item.pattern ? undefined : 'true'} {...(item.pattern ? {} : tipProps('No pattern for this item'))}>{item.pattern ?? NO_VALUE}</span>

@@ -6,7 +6,7 @@ import { AppProviders } from '../../src/app/providers'
 import { ladderView, type RungName } from '../../src/rules/ladderView'
 import { Ladder, type LadderProps } from '../../src/screens/do/Ladder'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 
 vi.mock('../../src/ui/algo/AlgoPlayer', () => ({
   AlgoPlayer: ({ json, record }: { json: { title: string; steps: unknown[] }; record?: boolean }) => (
@@ -90,7 +90,7 @@ describe('Ladder', () => {
     expect(attemptOpen).toHaveFocus()
   })
 
-  it('H-06/H-07 opened hint: text, second-hint button, why-line with the honesty chart link', () => {
+  it('H-06/H-07 opened hint: text, second-hint button, why-line', () => {
     const rungs = ladderView({ kind: 'problem', uses: [{ rung: 2, cost: 2 }], elapsedSec: 600, gaveUp: false, redo: false })
     const p = props({ rungs, spent: 2, spentByRung: { ...zero, hint: 2 }, content: { hints: ['[fake:hint] one'], hintMoreCost: 2, picture: null, video: null, solution: null } })
     show(p)
@@ -98,8 +98,8 @@ describe('Ladder', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Second hint, costs 2 xp' }))
     expect(p.onMoreHint).toHaveBeenCalled()
     const why = screen.getByTestId('ladder-why-hint')
-    expect(why.textContent).toBe('Why did I pay for this? Hint cost 2 xp.')
-    expect(within(why).getByRole('link', { name: 'See the honesty chart' })).toHaveAttribute('href', '/progress#help-ladder')
+    expect(why.textContent).toBe('Hint cost 2 xp: help is paid for so a solve shows what you did alone.')
+    expect(within(why).queryByRole('link')).toBeNull() // the honesty chart went with Progress (R1 S7)
     // ui-do D4: rung 1's why line is its description, never a paid-for line
     expect(screen.getByTestId('ladder-why-attempt')).toHaveTextContent('The timer, the links and your log. Always open.')
   })
@@ -137,7 +137,7 @@ describe('Ladder', () => {
     const json = fakeOutput('picture', { ticket: { id: 'p200', title: 'Number of Islands', track: 'dsa' }, context: {} } as never)
     const rungs = ladderView({ kind: 'problem', uses: [{ rung: 2, cost: 2 }, { rung: 3, cost: 3 }, { rung: 4, cost: 3 }], elapsedSec: 600, gaveUp: false, redo: false })
     const d = await seededDb()
-    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AppProviders db={d} plan={smallPlan}><Ladder {...props({ rungs, content: { hints: ['h'], hintMoreCost: null, picture: { kind: 'dsa', steps: 15, caption: 'Generated picture · 15 steps', json } as never, video: null, solution: null } })} /></AppProviders></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AppProviders db={d} plan={flatPlanV2}><Ladder {...props({ rungs, content: { hints: ['h'], hintMoreCost: null, picture: { kind: 'dsa', steps: 15, caption: 'Generated picture · 15 steps', json } as never, video: null, solution: null } })} /></AppProviders></MemoryRouter>)
     const fig = screen.getByRole('figure', { name: 'Picture for Number of Islands' })
     expect(fig).toHaveAttribute('data-testid', 'ladder-picture-player')
     expect(fig).toHaveAttribute('data-steps', '15')
@@ -152,7 +152,7 @@ describe('Ladder', () => {
     const json = fakeOutput('diagram', { ticket: { id: 'd-method', title: 'The method', track: 'design' }, context: { deepDives: [] } } as never)
     const rungs = ladderView({ kind: 'design', uses: [{ rung: 2, cost: 3 }, { rung: 3, cost: 4 }, { rung: 4, cost: 3 }], elapsedSec: 600, gaveUp: false, redo: false })
     const d = await seededDb()
-    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AppProviders db={d} plan={smallPlan}><Ladder {...props({ title: 'The method', rungs, content: { hints: ['h'], hintMoreCost: null, picture: { kind: 'design', nodes: 4, links: 3, caption: 'Reference architecture · 4 nodes · 3 links', labels: ['Client', 'Gateway', 'Service', 'Counters'], json } as never, video: null, solution: null } })} /></AppProviders></MemoryRouter>)
+    render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AppProviders db={d} plan={flatPlanV2}><Ladder {...props({ title: 'The method', rungs, content: { hints: ['h'], hintMoreCost: null, picture: { kind: 'design', nodes: 4, links: 3, caption: 'Reference architecture · 4 nodes · 3 links', labels: ['Client', 'Gateway', 'Service', 'Counters'], json } as never, video: null, solution: null } })} /></AppProviders></MemoryRouter>)
     const fig = screen.getByTestId('ladder-picture-player')
     expect(fig).toHaveAttribute('data-nodes', '4')
     expect(within(fig).getByTestId('ladder-picture-diagram')).toHaveAccessibleName('Reference architecture for The method')

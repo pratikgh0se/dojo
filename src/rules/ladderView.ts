@@ -86,6 +86,6 @@ export function newlyUnlocked(prev: RungView[] | null, next: RungView[]): RungVi
 }
 
 export const announceText = (r: RungView): string => `${r.label} unlocked, costs ${r.cost} xp`
-export const whyText = (label: string, n: number): string => `Why did I pay for this? ${label} cost ${n} xp.`
+export const whyText = (label: string, n: number): string => `${label} cost ${n} xp: help is paid for so a solve shows what you did alone.`
 export const spentText = (n: number): string => `Help spent: ${n} xp`
 export const xpSavedText = (delta: number): string => `${delta < 0 ? MINUS : '+'}${Math.abs(delta)} xp · Saved`

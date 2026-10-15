@@ -1,5 +1,6 @@
 // Learning checks (briefs spec §2). Pure.
 import type { BriefQuestion, CheckQuestionInput, CheckResult } from '../ai/types'
+import type { Ticket } from '../data/types'
 import { addLocalDays, localDayKey } from '../lib/dates'
 
 export interface CheckAnswer { id: string; answer?: string; choice?: number }
@@ -68,4 +69,12 @@ export function checkRedoDue(nowMs: number): string {
 /** "1 of 2 right": how the card lists an attempt without repeating the dialog's verdict words. */
 export function attemptScore(results: readonly Pick<CheckResult, 'verdict'>[]): string {
   return `${results.filter(r => r.verdict === 'pass').length} of ${results.length} right`
+}
+
+/** A ticket's explain questions as open check questions; the reference answer is the key idea. Ignores any brief. */
+export function explainQuestions(t: Pick<Ticket, 'explain' | 'explainAnswers'>): BriefQuestion[] {
+  return (t.explain ?? []).map((q, i): BriefQuestion => {
+    const ref = t.explainAnswers?.[i]?.trim()
+    return { id: `explain-${i + 1}`, kind: 'open', q, ...(ref ? { keyIdeas: [ref] } : {}) }
+  })
 }

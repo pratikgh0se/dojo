@@ -1,17 +1,17 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { moveTicket } from '../../src/data/boardActions'
-import type { PlanJson } from '../../src/data/types'
+import type { PlanV2 } from '../../src/data/planV2'
 import { setNow } from '../../src/lib/clock'
 import { Dsa } from '../../src/screens/Dsa'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanProse } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const NOW = ist('2026-09-08T10:00:00')
 
-async function setup(route = '/dsa', plan: PlanJson = smallPlan) {
+async function setup(route = '/dsa', plan: PlanV2 = flatPlanProse) {
   setNow(() => NOW)
   const d = await seededDb(plan)
   renderWithApp(<Dsa />, { db: d, plan, route, path: '/dsa' })
@@ -40,12 +40,12 @@ describe('DSA screen', () => {
     expect(screen.getByTestId('location')).toHaveAttribute('data-search', '?topic=1')
     expect(detail).toHaveTextContent('Graphs; Island (Matrix Traversal)')
     expect(detail).toHaveTextContent('Templates first.')
-    expect(within(detail).getByRole('link', { name: 'William Fiset graph theory ↗' })).toHaveAttribute(
+    expect(within(detail).getByRole('link', { name: 'William Fiset graph theory' })).toHaveAttribute(
       'href', 'https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P',
     )
     const row = screen.getByTestId('row-p200')
-    expect(within(row).getByRole('link', { name: 'NeetCode ↗' })).toHaveAttribute('href', 'https://neetcode.io/solutions/number-of-islands')
-    expect(within(row).getByRole('link', { name: 'LeetCode ↗' })).toHaveAttribute('href', 'https://leetcode.com/problems/number-of-islands/')
+    expect(within(row).getByRole('link', { name: 'NeetCode' })).toHaveAttribute('href', 'https://neetcode.io/solutions/number-of-islands')
+    expect(within(row).getByRole('link', { name: 'LeetCode' })).toHaveAttribute('href', 'https://leetcode.com/problems/number-of-islands/')
     expect(screen.getByTestId('do-p200')).toHaveAttribute('href', '/do/p200')
   })
 
@@ -87,14 +87,14 @@ describe('DSA screen', () => {
   })
 
   it('hides the NeetCode link for an unparseable URL', async () => {
-    const plan = JSON.parse(JSON.stringify(smallPlan)) as PlanJson
+    const plan = JSON.parse(JSON.stringify(flatPlanProse)) as PlanV2
     plan.dsa_bank[0].problems[0].url = 'https://example.com/x'
     await setup('/dsa?topic=1', plan)
-    expect(within(screen.getByTestId('row-p200')).queryByRole('link', { name: 'NeetCode ↗' })).toBeNull()
+    expect(within(screen.getByTestId('row-p200')).queryByRole('link', { name: 'NeetCode' })).toBeNull()
   })
 
   it('shows an empty state when the plan has no DSA bank', async () => {
-    const plan = { ...smallPlan, dsa_bank: [] }
+    const plan = { ...flatPlanProse, dsa_bank: [] }
     setNow(() => NOW)
     const d = await seededDb(plan)
     renderWithApp(<Dsa />, { db: d, plan, route: '/dsa', path: '/dsa' })
@@ -102,7 +102,7 @@ describe('DSA screen', () => {
   })
 
   it('a premium cell carries no text glyph: a data-premium notch, and "premium" in its name (G4 review)', async () => {
-    const plan = structuredClone(smallPlan) as PlanJson
+    const plan = structuredClone(flatPlanProse) as PlanV2
     const bank = (plan as unknown as { dsa_bank: Array<{ problems: Array<{ num: number; premium: boolean }> }> }).dsa_bank
     bank.flatMap(t => t.problems).find(p => p.num === 127)!.premium = true
     await setup('/dsa', plan)

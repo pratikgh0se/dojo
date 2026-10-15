@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { dojoBaseUrl } from '../../dojoPort'
-import { IST, onboard } from './helpers'
+import { KIT_FAMILIES } from '../../src/content/diagramKit'
+import { appDbName, idbAll, IST, onboard } from './helpers'
 
 export const T0 = IST('2026-10-11T10:00:00')
 export const RL = 'd-ratelimit'
@@ -59,19 +60,66 @@ export async function resumeAndGo(page: Page, go: () => Promise<unknown>): Promi
   await go()
 }
 
-export async function startSession(page: Page, mode: 'Solo' | 'Interviewer' = 'Solo', id: string = RL): Promise<void> {
+/** Legacy names kept for the old specs: 'Solo' = plain solo (Skip the AI partner), 'Interviewer' = the AI partner, 'With someone' = the human partner. */
+export type Partner = 'Solo' | 'Interviewer' | 'With someone'
+
+/** The stored mode and the setup summary's partner line for each helper name. */
+const MODES: Record<Partner, { mode: string; summary: string }> = {
+  Solo: { mode: 'solo', summary: 'Solo' },
+  Interviewer: { mode: 'ai-partner', summary: 'Solo · AI partner' },
+  'With someone': { mode: 'human-partner', summary: 'With someone' },
+}
+
+/** Starts a session in the mode named, choosing it explicitly (never the default by accident), and asserts the stored mode is the one intended. */
+export async function startSession(page: Page, mode: Partner = 'Solo', id: string = RL): Promise<void> {
   await page.goto(`/designs/session/${id}`)
   // Freeze only once the setup page has actually mounted (see `freeze`'s note), and before the
   // session is created, so `session.at` itself lands on an already-frozen, exact instant.
-  await page.getByRole('button', { name: 'Start · 45 min' }).waitFor()
+  await page.getByTestId('session-start').waitFor()
   await freeze(page)
-  await page.getByRole('radio', { name: mode }).check()
-  await page.getByRole('button', { name: 'Start · 45 min' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('drawing')
+  if (mode === 'With someone') await page.getByTestId('design-mode-with-someone').click()
+  else {
+    await page.getByTestId('design-mode-ai-partner').click()
+    await page.getByTestId('design-mode-skip-ai').setChecked(mode === 'Solo')
+  }
+  await expect(page.getByTestId('session-setup-summary').locator('dd').first()).toHaveText(MODES[mode].summary)
+  await page.getByTestId('session-start').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Drawing')
+  const mine = (await idbAll<{ designId: string; mode: string; phase: string; at: number }>(page, 'designSessions'))
+    .filter(s => s.designId === id && s.phase !== 'done').sort((a, b) => b.at - a.at)
+  expect(mine[0]?.mode, `stored mode of the session just started (${mode})`).toBe(MODES[mode].mode)
+}
+
+/** Opens the notes sections named (all six when none is named) that are closed: a closed section's boxes are not visible, so a tester opens it before typing (DESIGN-86). */
+export async function openNotes(page: Page, ...ids: string[]): Promise<void> {
+  const all = ['requirements', 'assumptions', 'api', 'data-model', 'tradeoffs', 'open']
+  for (const id of ids.length > 0 ? ids : all) {
+    const toggle = page.getByTestId(`notes-section-${id}-toggle`)
+    if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
+  }
+}
+
+/** The AI chat lives in the Partner tab. */
+export async function openPartner(page: Page): Promise<void> {
+  await page.getByTestId('session-tab-partner').click()
+  await expect(page.getByTestId('session-interviewer')).toBeVisible()
+}
+
+/** Opens the family of `kind` (when it is not open) and returns the kind's tile: tiles are only on screen while their family's flyout is open (DESIGN-23a). */
+export async function openTile(page: Page, kind: string) {
+  const family = KIT_FAMILIES.find(f => f.kinds.includes(kind))!.family
+  const btn = page.getByTestId(`kit-family-${family}`)
+  if ((await btn.getAttribute('aria-expanded')) !== 'true') await btn.click()
+  return page.getByTestId(`kit-tile-${kind}`)
+}
+
+/** Adds a node of `kind` the way a user does: open its family, click its tile (which closes the flyout). */
+export async function addKind(page: Page, kind: string): Promise<void> {
+  await (await openTile(page, kind)).click()
 }
 
 export async function addKinds(page: Page, kinds: string[]): Promise<void> {
-  for (const k of kinds) await page.getByRole('button', { name: `Add ${k}`, exact: true }).click()
+  for (const k of kinds) await addKind(page, k)
 }
 
 /** Keyboard link (C-DESIGN D-18 step 4): focus source, `l`, focus target, Enter. */
@@ -101,9 +149,8 @@ export async function drawS1(page: Page): Promise<void> {
 }
 
 export async function endDrawing(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'End drawing' }).click()
-  await page.getByRole('dialog', { name: 'End drawing now?' }).getByRole('button', { name: 'End drawing' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('close')
+  await page.getByTestId('session-close-design').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Close')
 }
 
 export async function fillClose(page: Page, q4: string, readNext = 'Stripe rate limiter blog post'): Promise<void> {
@@ -115,8 +162,8 @@ export async function fillClose(page: Page, q4: string, readNext = 'Stripe rate 
   await f.getByRole('textbox', { name: 'Where is the data, who owns it, and what is eventually consistent?' }).fill('Redis owns counters; logs are eventual')
   await f.getByRole('radio', { name: q4, exact: true }).check()
   await f.getByRole('textbox', { name: 'One thing you would read next.' }).fill(readNext)
-  await page.getByRole('button', { name: 'Next: score' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('score')
+  await page.getByTestId('session-close-next').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Score')
 }
 
 export async function pick(page: Page, group: string, value: 0 | 1 | 2): Promise<void> {
@@ -145,6 +192,45 @@ export async function completeS1(page: Page): Promise<void> {
   await endDrawing(page)
   await fillClose(page, RL_DIVES[1])
   await scoreS1(page)
-  await page.getByRole('button', { name: 'Complete session' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('done')
+  await page.getByTestId('session-complete').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Done')
 }
+
+/** Puts a session document straight into the app's IndexedDB (the test's stand-in for a restored backup). */
+export async function putDesignSession(page: Page, doc: object): Promise<void> {
+  const name = await appDbName(page)
+  await page.evaluate(([dbName, d]) => new Promise<void>((resolve, reject) => {
+    const open = indexedDB.open(dbName as string)
+    open.onerror = () => reject(open.error)
+    open.onsuccess = () => {
+      const tx = open.result.transaction('designSessions', 'readwrite')
+      tx.objectStore('designSessions').put(d)
+      tx.oncomplete = () => { open.result.close(); resolve() }
+      tx.onerror = () => reject(tx.error)
+    }
+  }), [name, doc] as const)
+}
+
+export interface StoredDesign {
+  id: string; designId: string; at: number; phase: string; mode: string; rubric: number | null; rubricBy?: string
+  canvas: { nodes: { id: string; kind: string; label: string; sub?: string; glyph?: string; schemaId?: string; x: number; y: number }[]; links: { from: string; to: string; kind: string }[]; zones?: { id: string; label: string; kind: string; nodes: string[] }[]; notes?: { id: string; x: number; y: number; text: string }[] }
+  notes?: { reqFn: string; reqNfr: string; assumptions: string; api: string; dataModel: string; tradeoffs: string; open: string; schema: { id: string; name: string; cols: { name: string; type: string; key?: string; note?: string }[] }[] }
+  interview?: { messages: { from: string; text: string; hint?: boolean }[]; final?: unknown }
+  partner?: { name: string; at: number; scores?: { perItem: (number | null)[]; deepDives: (number | null)[] } }
+  redesignOf?: string; redesignDue?: number
+  [k: string]: unknown
+}
+
+/** Every stored design session, newest first. */
+export async function designRows(page: Page): Promise<StoredDesign[]> {
+  return (await idbAll<StoredDesign>(page, 'designSessions')).sort((a, b) => b.at - a.at)
+}
+
+/** The session being worked on (the newest not finished, else the newest). */
+export async function liveRow(page: Page): Promise<StoredDesign> {
+  const rows = await designRows(page)
+  return rows.find(r => r.phase !== 'done') ?? rows[0]
+}
+
+export interface AiLogRow { job: string; provider?: string; [k: string]: unknown }
+export const aiLogRows = (page: Page): Promise<AiLogRow[]> => idbAll<AiLogRow>(page, 'aiLog')

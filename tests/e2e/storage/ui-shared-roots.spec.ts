@@ -21,12 +21,11 @@ const PHONE = { width: 393, height: 852 }
 
 async function closeForm(page: Page) {
   await page.goto('/designs/session/d-ratelimit')
-  await page.getByRole('radio', { name: 'Solo' }).check()
-  await page.getByRole('button', { name: 'Start · 45 min' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('drawing')
-  await page.getByRole('button', { name: 'End drawing' }).click()
-  await page.getByRole('dialog', { name: 'End drawing now?' }).getByRole('button', { name: 'End drawing' }).click()
-  await expect(page.getByTestId('session-phase')).toHaveText('close')
+  await page.getByTestId('design-mode-skip-ai').check()
+  await page.getByTestId('session-start').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Drawing')
+  await page.getByTestId('session-close-design').click()
+  await expect(page.getByTestId('session-phase')).toHaveText('Close')
 }
 
 /** F6.10: a 20 x 20 accent control, its label on the right (gap 10), Chivo 17/400 sentence case. */
@@ -43,17 +42,6 @@ async function expectChoiceRow(label: Locator, control: Locator) {
   expect(rb.x - lb.x).toBeLessThanOrEqual(2)
 }
 
-test('M1 / SH3: role line-heights (Display M 24/1.2, Display S 16/1.25, Title 22/1.3, LV)', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await expect(page.getByTestId('level')).toBeVisible()
-  expect(await css(page.getByTestId('level'), 'line-height')).toBe('28.8px')
-  expect(await css(page.getByTestId('load-minutes'), 'line-height')).toBe('28.6px')
-  await page.goto('/progress')
-  expect(await css(page.locator('h1.screen-title'), 'line-height')).toBe('28.8px')
-  expect(await css(page.getByRole('heading', { name: 'Burn-up' }), 'line-height')).toBe('20px')
-  await ctx.close()
-})
-
 test('settings A4 / A6 / M9: design-session choice rows, Back and Add targets, square selects', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await closeForm(page)
@@ -66,7 +54,7 @@ test('settings A4 / A6 / M9: design-session choice rows, Back and Add targets, s
   await page.setViewportSize(PHONE)
   await expectHit(page.getByRole('link', { name: '‹ Back' }), '‹ Back')
   await expectHit(q4.locator('label').first(), 'q4 row', false)
-  await expectHit(page.getByTestId('kit-palette').getByRole('button').first(), 'Add <kind>', false)
+  await expectHit(page.getByTestId('kit-palette').getByRole('button').first(), 'family button', false)
   await ctx.close()
 })
 
@@ -82,19 +70,5 @@ test('settings A4 / A7: DSA warm-up player and study link targets; difficulty ch
   for (const name of ['First step', 'Step back', 'Step forward', 'Last step']) await expectHit(warm.getByRole('button', { name, exact: true }), name)
   for (const name of ['Predict', 'Own input', 'Snapshot']) await expectHit(warm.getByRole('button', { name, exact: true }), name, false)
   await expectHit(page.locator('.topic-links a').first(), 'study link', false)
-  await ctx.close()
-})
-
-test('settings A4: Progress evidence rows, AI shelf summary, Atlas problem links, Mentors room links', async ({ browser }) => {
-  const { ctx, page } = await openApp(browser, srv)
-  await page.setViewportSize(PHONE)
-  await page.goto('/progress')
-  await expectHit(page.getByTestId('ev-dsa-solved'), 'ev-dsa-solved', false)
-  await page.goto('/atlas?pattern=topo-sort')
-  await expectHit(page.getByRole('list', { name: 'Problems' }).getByRole('link').first(), 'atlas problem link', false)
-  await page.goto('/ai')
-  await expectHit(page.getByTestId('shelf').locator('summary'), 'Optional shelf', false)
-  await page.goto('/mentors')
-  await expectHit(page.locator('.room-name').first(), 'room link', false)
   await ctx.close()
 })

@@ -2,20 +2,27 @@
 // the sort, and the local search filter.
 import type { Approach } from '../content/approaches'
 import { PATTERNS, type Pattern } from '../content/atlas'
+import { ATLAS_LENS } from '../content/atlasTags'
 import type { PlanJson, Ticket } from '../data/types'
 import { liveTicketMap } from './board'
+import { patternSlugsOfProblem } from './atlasPattern'
 
 export interface TaggedProblem { id: string; num: number; name: string; sprint: number; solved: boolean }
 
-/** Plan-bank problems tagged with every row any of their approaches uses, in plan (sprint) order. */
-export function problemsByPattern(plan: PlanJson, tickets: readonly Ticket[], approaches: Readonly<Record<string, Approach[]>>): Record<string, TaggedProblem[]> {
+/** Plan-bank problems tagged with every row any of their approaches uses, plus their lens tags (ATLAS-06), in plan (sprint) order. */
+export function problemsByPattern(
+  plan: PlanJson,
+  tickets: readonly Ticket[],
+  approaches: Readonly<Record<string, Approach[]>>,
+  lens: Readonly<Record<string, readonly string[]>> = ATLAS_LENS,
+): Record<string, TaggedProblem[]> {
   const byId = liveTicketMap([...tickets])
   const out: Record<string, TaggedProblem[]> = Object.fromEntries(PATTERNS.map(p => [p.slug, [] as TaggedProblem[]]))
   for (const w of [...plan.dsa_bank].sort((a, b) => a.sprint - b.sprint)) {
     for (const p of w.problems) {
       const id = `p${p.num}`
       const solved = byId.get(id)?.status === 'done'
-      for (const slug of new Set((approaches[id] ?? []).map(a => a.pattern))) out[slug]?.push({ id, num: p.num, name: p.name, sprint: w.sprint, solved })
+      for (const slug of patternSlugsOfProblem(id, approaches, lens)) out[slug]?.push({ id, num: p.num, name: p.name, sprint: w.sprint, solved })
     }
   }
   return out

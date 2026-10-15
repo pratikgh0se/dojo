@@ -73,7 +73,7 @@ describe('bank filters', () => {
   it('ignores hand-edited values (Review Focus 3)', async () => {
     await setup('/banks?bank=zzz&diff=Z&pattern=NOPE&status=maybe')
     expect(screen.getByRole('heading', { level: 2, name: 'Plan bank' })).toBeInTheDocument()
-    expect(screen.getByTestId('banks-visible-count')).toHaveTextContent('Showing 169 of 169')
+    expect(screen.getByTestId('banks-visible-count')).toHaveTextContent('Showing 170 of 170')
   })
 
   it('hides Difficulty and Pattern on Hello Interview', async () => {

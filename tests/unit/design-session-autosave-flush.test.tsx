@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CLOSE_QUESTIONS } from '../../src/content/tracking'
 import { enterScore, lockDesignSession, startDesignSession } from '../../src/data/designSessionActions'
@@ -7,13 +7,17 @@ import { setNow } from '../../src/lib/clock'
 import { DesignSessionScreen } from '../../src/screens/designSession/DesignSessionScreen'
 import * as writeQueueModule from '../../src/screens/designSession/useWriteQueue'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 const T = ist('2026-10-11T10:00:00')
 const MIN = 60_000
 const DIVES = ['Requirements', 'API first', 'One deep dive', 'Failure modes']
+
+// waitFor/findBy resolve the moment the DOM matches, outside act, so the screen's passive effects (the pagehide and visibilitychange
+// listeners the tests then fire) may not have run yet. Flush them before the test acts on the screen.
+const settle = () => act(async () => {})
 
 function setVisibility(state: DocumentVisibilityState) {
   Object.defineProperty(document, 'visibilityState', { value: state, configurable: true })
@@ -23,8 +27,9 @@ async function openDrawing() {
   setNow(() => T)
   const d = await seededDb()
   await startDesignSession(d, { designId: 'd-method', mode: 'solo', deepDives: DIVES, nowMs: T - 10 * MIN })
-  const view = renderWithApp(<DesignSessionScreen />, { db: d, plan: smallPlan, route: '/designs/session/d-method', path: '/designs/session/:designId' })
-  await waitFor(() => expect(screen.getByTestId('session-phase')).toHaveTextContent('drawing'))
+  const view = renderWithApp(<DesignSessionScreen />, { db: d, plan: flatPlanV2, route: '/designs/session/d-method', path: '/designs/session/:designId' })
+  await waitFor(() => expect(screen.getByTestId('session-phase')).toHaveTextContent('Drawing'))
+  await settle()
   return { d, ...view }
 }
 
@@ -98,17 +103,16 @@ describe('D-23 addendum: flush runs before the lock (End-drawing confirm and 45:
     uwqSpy.mockImplementation(onError => {
       const real = REAL_USE_WRITE_QUEUE(onError)
       flush.mockImplementation(real.flush)
-      return { push: real.push, flush }
+      return { ...real, flush }
     })
     return flush
   }
 
-  it('flushes the write queue before locking on End drawing (D-8, D-23 addendum)', async () => {
+  it('flushes the write queue before locking on CLOSE · DESIGN (D-8, D-23 addendum)', async () => {
     const flush = spyFlush()
     await openDrawing()
-    fireEvent.click(screen.getByRole('button', { name: 'End drawing' }))
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'End drawing now?' })).getByRole('button', { name: 'End drawing' }))
-    await waitFor(() => expect(screen.getByTestId('session-phase')).toHaveTextContent('close'))
+    fireEvent.click(screen.getByTestId('session-close-design'))
+    await waitFor(() => expect(screen.getByTestId('session-phase')).toHaveTextContent('Close'))
     expect(flush).toHaveBeenCalled()
   })
 
@@ -117,8 +121,8 @@ describe('D-23 addendum: flush runs before the lock (End-drawing confirm and 45:
     setNow(() => T)
     const d = await seededDb()
     const s = await startDesignSession(d, { designId: 'd-method', mode: 'solo', deepDives: DIVES, nowMs: T - 5 * 60 * MIN })
-    renderWithApp(<DesignSessionScreen />, { db: d, plan: smallPlan, route: '/designs/session/d-method', path: '/designs/session/:designId' })
-    await waitFor(() => expect(screen.getByTestId('session-phase')).toHaveTextContent('close'))
+    renderWithApp(<DesignSessionScreen />, { db: d, plan: flatPlanV2, route: '/designs/session/d-method', path: '/designs/session/:designId' })
+    await waitFor(() => expect(screen.getByTestId('session-phase')).toHaveTextContent('Close'))
     expect(flush).toHaveBeenCalled()
     expect((await d.designSessions.get(s.id))?.phase).toBe('close')
   })
@@ -160,8 +164,9 @@ describe('Close and Score share the lifted write queue: flush covers them on pag
     const d = await seededDb()
     const s = await startDesignSession(d, { designId: 'd-method', mode: 'solo', deepDives: DIVES, nowMs: T - 12 * MIN })
     await lockDesignSession(d, s.id, T)
-    const view = renderWithApp(<DesignSessionScreen />, { db: d, plan: smallPlan, route: '/designs/session/d-method', path: '/designs/session/:designId' })
+    const view = renderWithApp(<DesignSessionScreen />, { db: d, plan: flatPlanV2, route: '/designs/session/d-method', path: '/designs/session/:designId' })
     await screen.findByTestId('session-close')
+    await settle()
     return { d, id: s.id, ...view }
   }
 
@@ -171,8 +176,9 @@ describe('Close and Score share the lifted write queue: flush covers them on pag
     const s = await startDesignSession(d, { designId: 'd-method', mode: 'solo', deepDives: DIVES, nowMs: T - 12 * MIN })
     await lockDesignSession(d, s.id, T)
     await enterScore(d, s.id, CLOSE)
-    const view = renderWithApp(<DesignSessionScreen />, { db: d, plan: smallPlan, route: '/designs/session/d-method', path: '/designs/session/:designId' })
+    const view = renderWithApp(<DesignSessionScreen />, { db: d, plan: flatPlanV2, route: '/designs/session/d-method', path: '/designs/session/:designId' })
     await screen.findByTestId('session-score')
+    await settle()
     return { d, id: s.id, ...view }
   }
 

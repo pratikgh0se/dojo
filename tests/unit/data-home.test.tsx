@@ -72,12 +72,12 @@ describe('home-relative paths', () => {
     const { vi } = await import('vitest')
     const { Settings } = await import('../../src/screens/Settings')
     const { seededDb } = await import('../helpers/db')
-    const { smallPlan } = await import('../helpers/plan')
+    const { flatPlanV2 } = await import('../helpers/plan')
     const { renderWithApp } = await import('../helpers/render')
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (u: RequestInfo | URL) =>
       String(u) === '/db/health' ? json({ ok: true, home: '/Users/p/Dojo', dbPath: '/Users/p/Dojo/dojo.db', userHome: '/Users/p' }) : json({ backups: [] })) as typeof fetch)
     try {
-      renderWithApp(<Settings />, { db: await seededDb(), plan: smallPlan, route: '/settings' })
+      renderWithApp(<Settings />, { db: await seededDb(), plan: flatPlanV2, route: '/settings' })
       await waitFor(() => expect(screen.getByTestId('data-home')).toHaveTextContent('~/Dojo/dojo.db'))
       expect(document.body.textContent).not.toMatch(/\/Users\/p\b/)
     } finally {
@@ -91,7 +91,7 @@ describe('Settings asks /db/health once (G4 review 7)', () => {
     const { vi } = await import('vitest')
     const { Settings } = await import('../../src/screens/Settings')
     const { seededDb } = await import('../helpers/db')
-    const { smallPlan } = await import('../helpers/plan')
+    const { flatPlanV2 } = await import('../helpers/plan')
     const { renderWithApp } = await import('../helpers/render')
     const calls: string[] = []
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((async (u: RequestInfo | URL) => {
@@ -99,7 +99,7 @@ describe('Settings asks /db/health once (G4 review 7)', () => {
       return String(u) === '/db/health' ? json({ ok: true, home: '/tmp/dh', dbPath: '/tmp/dh/dojo.db' }) : json({ backups: [] })
     }) as typeof fetch)
     try {
-      renderWithApp(<Settings />, { db: await seededDb(), plan: smallPlan, route: '/settings' })
+      renderWithApp(<Settings />, { db: await seededDb(), plan: flatPlanV2, route: '/settings' })
       await waitFor(() => expect(screen.getByTestId('data-home')).toHaveTextContent('/tmp/dh/dojo.db'))
       expect(calls.filter(c => c === '/db/health')).toHaveLength(1)
     } finally {

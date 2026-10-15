@@ -1,8 +1,7 @@
 import { render } from '@testing-library/react'
 import { createRef } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { loadEngine, resetEnginesForTest } from '../../src/lib/engines'
-import { PomStage } from '../../src/ui/engines/PomStage'
 import { SrAlgo, type AlgoElement } from '../../src/ui/engines/SrAlgo'
 import { SrChart } from '../../src/ui/engines/SrChart'
 import { SrDiagram } from '../../src/ui/engines/SrDiagram'
@@ -67,33 +66,6 @@ describe('SrChart', () => {
     expect(el.getAttribute('aria-hidden')).toBe('true')
     expect(el.hasAttribute('role')).toBe(false)
     expect(el.hasAttribute('aria-label')).toBe(false)
-  })
-})
-
-describe('PomStage', () => {
-  afterEach(() => {
-    delete (window as { matchMedia?: unknown }).matchMedia
-  })
-
-  it('maps form and pose to attributes, autorotates, and is transparent over its well', () => {
-    const { container } = render(<PomStage form={2} pose="training" label="Pom, form SURGE" />)
-    const el = container.querySelector('pom-stage')!
-    expect(el.getAttribute('who')).toBe('pom')
-    expect(el.getAttribute('form')).toBe('2')
-    expect(el.getAttribute('pose')).toBe('training')
-    expect(el.getAttribute('zoom')).toBe('1.05')
-    expect(el.getAttribute('background')).toBe('transparent')
-    expect(el.hasAttribute('autorotate')).toBe(true)
-    expect(el.getAttribute('role')).toBe('img')
-    expect(el.getAttribute('aria-label')).toBe('Pom, form SURGE')
-  })
-
-  it('drops autorotate under prefers-reduced-motion', () => {
-    window.matchMedia = ((q: string) => ({
-      matches: q.includes('reduce'), media: q, addEventListener() {}, removeEventListener() {},
-    })) as unknown as typeof window.matchMedia
-    const { container } = render(<PomStage form={0} pose="idle" label="Pom" />)
-    expect(container.querySelector('pom-stage')!.hasAttribute('autorotate')).toBe(false)
   })
 })
 

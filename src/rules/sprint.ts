@@ -1,5 +1,5 @@
 import type { Ticket } from '../data/types'
-import { addLocalDays, localDayKey, localDaysBetween, parseLocalDate, weekdayOf, type Weekday } from '../lib/dates'
+import { localDaysBetween, parseLocalDate, weekdayOf, type Weekday } from '../lib/dates'
 
 export const SPRINT_DAYS = 14
 export const TOTAL_SPRINTS = 72
@@ -42,46 +42,6 @@ export function currentSprint(nowMs: number, startDate: string, totalSprints: nu
 // the tickets in; rules never touch Dexie.
 export function effectiveLastSprint(tickets: Ticket[], base: number = TOTAL_SPRINTS): number {
   return tickets.reduce((m, t) => (!t.archived && t.status !== 'done' ? Math.max(m, t.sprint) : m), base)
-}
-
-// How many live tickets are still unfinished — used to flag the "after/finished" state
-// when the plan is nominally done but work remains.
-export function unfinishedCount(tickets: Ticket[]): number {
-  return tickets.filter(t => !t.archived && t.status !== 'done').length
-}
-
-/**
- * The sprint a card counts under in the Today, Load-check and health views. Roll-over moves a card to the
- * current sprint (`sprint`) but it stays a card left behind from where it started (`carry.home`) until it is
- * finished or moved on by hand, so those views read the same as before roll-over existed.
- */
-export function effSprint(t: Pick<Ticket, 'sprint' | 'carry'>): number {
-  return t.carry && t.sprint === t.carry.into ? t.carry.home : t.sprint
-}
-
-export function sprintStart(sprint: number, startDate: string): number {
-  return addLocalDays(parseLocalDate(startDate), (sprint - 1) * SPRINT_DAYS)
-}
-
-export function attributeSession(startMs: number, startDate: string): { dayKey: string; sprint: number } {
-  return { dayKey: localDayKey(startMs), sprint: sprintOf(startMs, startDate) }
-}
-
-export const SPRINTS_PER_BLOCK = 4
-export const TOTAL_BLOCKS = TOTAL_SPRINTS / SPRINTS_PER_BLOCK
-
-export function blockOf(sprint: number): number {
-  return Math.ceil(sprint / SPRINTS_PER_BLOCK)
-}
-
-export function blockSprints(block: number): [number, number] {
-  return [(block - 1) * SPRINTS_PER_BLOCK + 1, block * SPRINTS_PER_BLOCK]
-}
-
-/** "S{from}" when the range is a single sprint, else "S{from}–S{to}". Shared by every
- * screen that shows a sprint span (Map's sprint path, the AI stage ladder/detail). */
-export function sprintRangeLabel(from: number, to: number): string {
-  return from === to ? `S${from}` : `S${from}–S${to}`
 }
 
 /**

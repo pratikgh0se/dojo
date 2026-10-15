@@ -8,9 +8,10 @@ async function start(page: Page, time = T0) {
 }
 async function openHint(page: Page, id: string) {
   await page.goto(`/do/${id}`)
-  await page.getByTestId('do-timer-preset-25').click()
+  await page.getByTestId('ticket-start').click() // the one START (TICKET-03); the help rungs sit behind the ladder-toggle disclosure (TICKET-31)
   await page.getByRole('button', { name: 'Pause' }).waitFor()
   await page.clock.fastForward('10:00')
+  await page.getByTestId('ladder-toggle').click()
   await page.getByTestId('ladder-open-hint').click()
   await expect(page.getByTestId('ladder-hint-1')).toBeVisible()
 }
@@ -36,29 +37,6 @@ test('I-01/I-02/I-03 the Picture rung plays the fake picture in the labs player'
   await expect(page.getByTestId('ladder-spent')).toHaveAttribute('data-xp', '5')
 })
 
-test('I-06 the design Picture rung draws the reference diagram', async ({ page }) => {
-  await start(page)
-  await openHint(page, 'd-method')
-  await page.getByTestId('ladder-open-picture').click()
-  const fig = page.getByTestId('ladder-picture-player')
-  await expect(fig).toContainText('Reference architecture · 4 nodes · 3 links')
-  await expect(fig.getByTestId('ladder-picture-diagram')).toBeAttached()
-  await expect(fig.getByRole('list', { name: 'Nodes' }).getByRole('listitem')).toHaveText(['Client', 'Gateway', 'Service', 'Counters'])
-})
-
-test('I-21 the why-link lands on the honesty chart', async ({ page }) => {
-  await start(page)
-  await openHint(page, 'p200')
-  await page.getByTestId('ladder-why-hint').getByRole('link', { name: 'See the honesty chart' }).click()
-  await expect(page).toHaveURL(/\/progress#help-ladder$/)
-  const region = page.getByRole('region', { name: 'Help ladder usage' })
-  await expect(region).toBeVisible()
-  const top = await region.evaluate(el => el.getBoundingClientRect().top)
-  expect(top).toBeGreaterThanOrEqual(0)
-  expect(top).toBeLessThan(900)
-  await expect(page.getByRole('region', { name: 'Evidence' })).toBeAttached()
-})
-
 test('I-08/I-09 the paid picture replays before a redo timer, then hides', async ({ page }) => {
   await start(page)
   await openHint(page, 'p200')
@@ -67,13 +45,17 @@ test('I-08/I-09 the paid picture replays before a redo timer, then hides', async
   await page.getByTestId('do-outcome-giveup').click()
   await expect(page.getByTestId('do-given-up')).toBeVisible()
   await page.clock.setSystemTime(IST('2026-10-09T00:01:00'))
-  await page.goto('/')
-  await page.getByTestId('today-redo-toggle').click()
-  await page.getByTestId('today-redo-row-p200').click()
+  // the redo is one replay card in Review (REVIEW-14); REDO · PROBLEM opens the ticket with the redo banner (TICKET-30)
+  await page.goto('/review')
+  await expect(page.getByTestId('review-card')).toHaveAttribute('data-ticket-id', 'p200')
+  await page.getByTestId('review-redo').click()
+  await expect(page).toHaveURL(/\/do\/p200$/)
+  await expect(page.getByTestId('redo-banner')).toBeVisible()
   const replay = page.getByRole('region', { name: 'Replay before you start' })
   await expect(replay.getByTestId('lab-player')).toHaveAttribute('data-steps', '15')
   await expect(page.getByTestId('ladder-spent')).toHaveAttribute('data-xp', '0')
-  await page.getByTestId('do-timer-preset-25').click()
+  await page.getByTestId('ticket-start').click()
+  await expect(page.getByTestId('timer-state')).toHaveText('running')
   await expect(page.getByTestId('redo-replay')).toHaveCount(0)
   await page.reload()
   await expect(page.getByTestId('redo-replay')).toHaveCount(0)

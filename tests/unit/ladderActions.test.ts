@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { callJob } from '../../src/data/aiActions'
-import { slideTicketsTo } from '../../src/data/boardActions'
 import type { DojoDB } from '../../src/data/db'
 import { closeLadderSession, markUnderstood, recordRung } from '../../src/data/ladderActions'
 import type { HelpRung, Outcome } from '../../src/data/types'
@@ -160,18 +159,6 @@ describe('callJob', () => {
     const bad = await callJob(d, 'hint', req as never, T0)
     expect(bad).toMatchObject({ ok: false, code: 'busy' })
     expect(await d.aiLog.toArray()).toMatchObject([{ job: 'hint', ok: true, ticketId: 'p200' }, { job: 'hint', ok: false, code: 'busy' }])
-  })
-})
-
-describe('slideTicketsTo', () => {
-  it('slides each id with one slide event each, and skips done tickets', async () => {
-    const d = freshDb()
-    await d.tickets.bulkPut([mkTicket({ id: 'a', sprint: 1 }), mkTicket({ id: 'b', sprint: 2 }), mkTicket({ id: 'c', sprint: 2, status: 'done' })])
-    const r = await slideTicketsTo(d, ['a', 'b', 'c'], 3, T0, 2)
-    expect(r).toEqual({ ok: true, xpDelta: 0, count: 2 })
-    expect((await d.tickets.get('a'))!).toMatchObject({ sprint: 3, slidFrom: [1] })
-    expect((await d.tickets.get('c'))!.sprint).toBe(2)
-    expect((await d.events.toArray()).filter(e => e.t === 'slide')).toHaveLength(2)
   })
 })
 

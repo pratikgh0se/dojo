@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { CAPSTONE_STAGES } from '../../src/content/capstoneStages'
 import { parseLocalDate } from '../../src/lib/dates'
 import { fmtDayMonYear } from '../../src/lib/fmtDate'
-import { checkpointAfterStage } from '../../src/rules/capstone'
-import { CHECKPOINT_SPRINT } from '../../src/rules/overview'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
 
@@ -24,10 +22,6 @@ describe('CAPSTONE_STAGES (C-PROJECTS §0)', () => {
     for (let i = 1; i < CAPSTONE_STAGES.length; i++) expect(CAPSTONE_STAGES[i].from).toBe(CAPSTONE_STAGES[i - 1].to + 1)
     expect(CAPSTONE_STAGES[1]).toMatchObject({ from: 2, to: 4 })
     expect(CAPSTONE_STAGES[7]).toMatchObject({ from: 31, to: 38 })
-  })
-
-  it('puts the S38 checkpoint after Stage 07', () => {
-    expect(checkpointAfterStage([...CAPSTONE_STAGES], CHECKPOINT_SPRINT)).toBe(7)
   })
 })
 

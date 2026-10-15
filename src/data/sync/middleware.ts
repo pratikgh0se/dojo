@@ -12,6 +12,14 @@ export interface SyncGate {
   bypass: boolean
   /** Addendum 3: a browser without the writer token; every app-table write is refused. */
   readOnly?: boolean
+  /**
+   * The data on disk comes from a newer model than this build knows (see modelGate.ts): every app-table write is
+   * refused and the outbox is not posted. Kept apart from `readOnly` on purpose: the restore machinery sets and
+   * clears `readOnly`, and must never lift this lock. Nothing clears it but a reload into a build that knows the model.
+   */
+  modelLocked?: boolean
+  /** While set, queued rows carry it (see OutboxRow.grp). */
+  group?: string
   /** This browser's id (from _meta). Resolved inside the write transaction when not yet known. */
   clientId?: string
   /** Called with the queued rows once their transaction COMMITS (never for an aborted one). */
@@ -45,7 +53,8 @@ export function outboxMiddleware(gate: SyncGate): Middleware<DBCore> {
       const outbox = (): DBCoreTable => down.table('_outbox')
       const at = () => new Date().toISOString()
       const row = (tbl: string, op: OutboxRow['op'], id?: string, doc?: unknown, flags: Pick<OutboxRow, 'create' | 'known'> = {}): OutboxRow => ({
-        opId: newOpId(), tbl, op, ...(id === undefined ? {} : { id }), ...(doc === undefined ? {} : { doc }), ...flags, at: at(),
+        opId: newOpId(), tbl, op, ...(id === undefined ? {} : { id }), ...(doc === undefined ? {} : { doc }), ...flags,
+        ...(gate.group ? { grp: gate.group } : {}), at: at(),
       })
       const afterCommit = (req: DBCoreMutateRequest, fn: () => void) => {
         const tx = req.trans as unknown as Partial<EventTarget>
@@ -83,7 +92,7 @@ export function outboxMiddleware(gate: SyncGate): Middleware<DBCore> {
             ...t,
             async mutate(req) {
               if (gate.bypass) return t.mutate(req)
-              if (gate.readOnly) throw new ReadOnlyError()
+              if (gate.readOnly || gate.modelLocked) throw new ReadOnlyError()
               if (appendOnly && req.type === 'add' && req.values.some(v => v && typeof v === 'object' && '_diskId' in v)) {
                 // An added row is a NEW row: a copied _diskId would make it overwrite the original on disk.
                 req = { ...req, values: req.values.map(v => {

@@ -1,11 +1,9 @@
 // The ux (Part 2) x briefs (Part 3) integration points.
 import { render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import type { Brief, DojoEvent, Ticket } from '../../src/data/types'
+import type { Brief } from '../../src/data/types'
 import { startStudy } from '../../src/rules/studySession'
 import { Brief as SessionBrief } from '../../src/screens/do/study/SessionPanel'
-import { WorkloadPanel } from '../../src/screens/today/WorkloadPanel'
 import { mkTicket } from '../helpers/tickets'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -44,58 +42,5 @@ describe('session-brief carries the card brief goal (ux Addendum 1 Q5, UX-06b)',
     render(<SessionBrief study={study} cards={[mkTicket({ id: 't1', title: 'Plain card', text: 'Old text' })]} />)
     expect(screen.queryByTestId('session-brief-goal')).toBeNull()
     expect(screen.getByTestId('session-brief').textContent).toContain('Old text')
-  })
-})
-
-describe("Today's suggestions use real focus minutes for the time left (briefs spec §3 with Part 2)", () => {
-  const cards: Ticket[] = [1, 2, 3].map(i => mkTicket({ id: `c${i}`, title: `Card ${i}`, order: i, estMin: 50 }))
-  const focus = (minutes: number): DojoEvent => ({ t: 'focus', id: 'c1', at: NOW - 60_000, minutes })
-  const shown = (events: DojoEvent[]) => {
-    const r = render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <WorkloadPanel tickets={cards} sprint={1} budget={1440} planned={150} nowMs={NOW} events={events} />
-      </MemoryRouter>,
-    )
-    const ids = within(screen.getByTestId('suggested')).queryAllByRole('link').map(a => a.getAttribute('data-testid'))
-    r.unmount()
-    return ids
-  }
-  it('no focus yet: 120 minutes left fits two 50-minute cards', () => {
-    expect(shown([])).toEqual(['do-c1', 'do-c2'])
-  })
-  it('60 minutes of focus today leaves room for one card', () => {
-    expect(shown([focus(60)])).toEqual(['do-c1'])
-  })
-  it("a full day's focus leaves nothing to suggest", () => {
-    expect(shown([focus(120)])).toEqual([])
-  })
-  it('yesterday\'s focus does not count', () => {
-    expect(shown([{ t: 'focus', id: 'c1', at: NOW - 86_400_000, minutes: 120 }])).toEqual(['do-c1', 'do-c2'])
-  })
-})
-
-describe('Workload "time used today": finished cards without focus today, plus focus minutes (G4 M2/M3)', () => {
-  // cards of 30 minutes on a 120-minute focus day: the number suggested shows the time left
-  const open = [1, 2, 3, 4].map(i => mkTicket({ id: `o${i}`, title: `Open ${i}`, order: i, estMin: 30 }))
-  const done = (id: string, estMin: number) => mkTicket({ id, title: id, order: 0, estMin, status: 'done', doneAt: NOW - 3_600_000 })
-  const focus = (id: string, minutes: number): DojoEvent => ({ t: 'focus', id, at: NOW - 60_000, minutes })
-  const shown = (tickets: Ticket[], events: DojoEvent[]) => {
-    const r = render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <WorkloadPanel tickets={tickets} sprint={1} budget={1440} planned={120} nowMs={NOW} events={events} />
-      </MemoryRouter>,
-    )
-    const n = within(screen.getByTestId('suggested')).queryAllByRole('link').length
-    r.unmount()
-    return n
-  }
-  it('a 60-minute card done without a session plus 25 focus minutes on another card: 85 used, one card fits', () => {
-    expect(shown([done('d1', 60), ...open], [focus('o1', 25)])).toBe(1)
-  })
-  it('a 60-minute card done with 25 focus minutes on it counts once (25 used): three cards fit', () => {
-    expect(shown([done('d1', 60), ...open], [focus('d1', 25)])).toBe(3)
-  })
-  it('mixed: a focused done card counts its focus, an unfocused one its minutes (25 + 30 = 55 used): two cards fit', () => {
-    expect(shown([done('d1', 60), done('d2', 30), ...open], [focus('d1', 25)])).toBe(2)
   })
 })

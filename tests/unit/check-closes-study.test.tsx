@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { draftBrief } from '../../src/data/briefActions'
+import { seedBrief } from '../helpers/briefs'
 import { submitCheck } from '../../src/data/checkActions'
 import { closeLadderSession, recordRung } from '../../src/data/ladderActions'
 import { setNow } from '../../src/lib/clock'
@@ -8,17 +8,15 @@ import { openCheck } from '../../src/lib/checkGate'
 import { clearCycle, loadCycle, newCycle, saveCycle } from '../../src/lib/cycle'
 import { clearDraft, loadDraft, saveDraft } from '../../src/lib/drafts'
 import { loadStudy, saveStudy } from '../../src/lib/studyStore'
-import { blockTimer } from '../../src/lib/studyTimer'
-import { clearTimer, loadTimer, saveTimer } from '../../src/lib/timer'
+import { blockTimer, clearTimer, loadTimer, saveTimer } from '../../src/lib/timer'
 import { startStudy } from '../../src/rules/studySession'
 import { CheckGate } from '../../src/screens/brief/CheckGate'
-import { Board } from '../../src/screens/Board'
+import { OPEN_CHECK_EVENT } from '../../src/lib/checkGate'
 import { Do } from '../../src/screens/Do'
-import { Today } from '../../src/screens/Today'
 import StudyRunner from '../../src/study/StudyRunner'
 import { closeStudyOnCheckPass, finishStudy, runTick } from '../../src/study/runner'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 import { mkTicket } from '../helpers/tickets'
 
@@ -38,7 +36,7 @@ async function studying(ticketId = 'w1') {
   setNow(() => clock)
   const d = await seededDb()
   await d.tickets.put(mkTicket({ id: 'w1', kind: 'watch', track: 'interview', title: 'Hash maps', sprint: 1, order: -1, status: 'doing' }))
-  await draftBrief(d, 'w1', T)
+  await seedBrief(d, 'w1')
   const s = { ...startStudy({ id: 'st1', ticketId, goal: 'learn hashing', cardIds: [ticketId], focusMin: 25, breakMin: 5, chime: false, now: T - 60 * MIN }), phaseStart: T - 5 * MIN, blocks: 2 }
   saveStudy(s)
   saveCycle(newCycle({ ticketId, now: T - 60 * MIN, redo: null, netAtStart: 0, timer: null }))
@@ -86,7 +84,7 @@ describe('closeStudyOnCheckPass (the shared pass path)', () => {
     const g = fx()
     const e = await seededDb()
     await e.tickets.put(mkTicket({ id: 'w1', kind: 'watch', track: 'interview', title: 'Hash maps', sprint: 1, order: -1, status: 'doing' }))
-    await draftBrief(e, 'w1', T)
+    await seedBrief(e, 'w1')
     saveCycle(newCycle({ ticketId: 'w1', now: T - 60 * MIN, redo: null, netAtStart: 0, timer: null }))
     await submitCheck(e, 'w1', good, T)
     expect(await closeStudyOnCheckPass({ d: e, ticketId: 'w1', nowMs: T, ...g })).toBe(true)
@@ -163,20 +161,9 @@ function noAttempt() {
     expect(await d.sessions.count()).toBe(0)
   })
 
-  it('Today: a pass from the checkbox with Do never opened writes no session row', async () => {
-    const d = await studying()
-    noAttempt()
-    renderWithApp(<><Today /><CheckGate /></>, { db: d, plan: smallPlan })
-    fireEvent.click(await screen.findByRole('button', { name: /This sprint · \d+ tasks/ }))
-    fireEvent.click(await screen.findByTestId('dig-tick-w1'))
-    await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
-    await waitFor(async () => expect((await d.tickets.get('w1'))!.status).toBe('done'))
-    expect(await d.sessions.count()).toBe(0)
-  })
-
   it('Do open with the attempt: a pass closes it in Do (cycle state, no session bar)', async () => {
     const d = await attempt()
-    renderWithApp(<><Do /><CheckGate /></>, { db: d, plan: smallPlan, route: '/do/w1', path: '/do/:ticketId' })
+    renderWithApp(<><Do /><CheckGate /></>, { db: d, plan: flatPlanV2, route: '/do/w1', path: '/do/:ticketId' })
     await screen.findByTestId('do-back')
     openCheck('w1')
     await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
@@ -407,11 +394,11 @@ describe('failure and xp of the close (M4, M5)', () => {
   })
 })
 
-describe('the check dialog closes the session on a pass, on every screen (BR-21/BR-22)', () => {
-  it('Board: a pass closes it and no further focus minutes are credited', async () => {
+describe('the check dialog closes the session on a pass (BR-21/BR-22)', () => {
+  it('a pass closes it and no further focus minutes are credited', async () => {
     const d = await studying()
-    renderWithApp(<><Board /><CheckGate /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/board', path: '/board' })
-    fireEvent.click(within(await screen.findByTestId('card-w1')).getByRole('button', { name: 'Done ✓' }))
+    renderWithApp(<><CheckGate /><StudyRunner /></>, { db: d, plan: flatPlanV2 })
+    window.dispatchEvent(new CustomEvent(OPEN_CHECK_EVENT, { detail: 'w1' }))
     await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
     await waitFor(async () => expect((await d.sessions.toArray()).map(s => s.outcome)).toEqual(['solved']))
     expectClosed()
@@ -421,10 +408,10 @@ describe('the check dialog closes the session on a pass, on every screen (BR-21/
     expect(await d.sessions.count()).toBe(1)
   })
 
-  it('Board: a fail or a cancel leaves the session running and the card open', async () => {
+  it('a fail or a cancel leaves the session running and the card open', async () => {
     const d = await studying()
-    renderWithApp(<><Board /><CheckGate /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/board', path: '/board' })
-    fireEvent.click(within(await screen.findByTestId('card-w1')).getByRole('button', { name: 'Done ✓' }))
+    renderWithApp(<><CheckGate /><StudyRunner /></>, { db: d, plan: flatPlanV2 })
+    window.dispatchEvent(new CustomEvent(OPEN_CHECK_EVENT, { detail: 'w1' }))
     const dialog = await screen.findByRole('dialog', { name: 'Check your understanding' })
     await answer(dialog, false)
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
@@ -436,33 +423,23 @@ describe('the check dialog closes the session on a pass, on every screen (BR-21/
     expect(await d.sessions.count()).toBe(0)
   })
 
-  it('Today: a pass from the Today checkbox (useTick) closes it too', async () => {
-    const d = await studying()
-    renderWithApp(<><Today /><CheckGate /></>, { db: d, plan: smallPlan })
-    fireEvent.click(await screen.findByRole('button', { name: /This sprint · \d+ tasks/ }))
-    fireEvent.click(await screen.findByTestId('dig-tick-w1'))
-    await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
-    await waitFor(async () => expect((await d.sessions.toArray()).map(s => s.outcome)).toEqual(['solved']))
-    expectClosed()
-  })
-
   it('Do: a pass while in focus mode ends the session view and focus mode', async () => {
     const d = await studying()
-    renderWithApp(<><Do /><CheckGate /><StudyRunner /></>, { db: d, plan: smallPlan, route: '/do/w1', path: '/do/:ticketId' })
-    await screen.findByTestId('session-timer')
+    renderWithApp(<><Do /><CheckGate /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: '/do/w1', path: '/do/:ticketId' })
+    await waitFor(() => expect(screen.getByTestId('timer-state')).toHaveTextContent('running'))
     fireEvent.keyDown(window, { key: 'f' })
     await screen.findByRole('button', { name: 'Exit focus mode' })
     openCheck('w1')
     await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
     await waitFor(async () => expect((await d.sessions.toArray()).map(s => s.outcome)).toEqual(['solved']))
-    await waitFor(() => expect(screen.queryByTestId('session-timer')).toBeNull())
+    await waitFor(() => expect(screen.queryByTestId('focus-timer')).toBeNull())
     expect(screen.queryByTestId('session-phase')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Exit focus mode' })).toBeNull()
     expectClosed()
     // focus mode really exited: a new session does not open straight into the overlay
     saveStudy(startStudy({ id: 'st2', ticketId: 'w1', goal: '', cardIds: ['w1'], focusMin: 25, breakMin: 5, chime: false, now: clock }))
     window.dispatchEvent(new Event('dojo-study-changed'))
-    await screen.findByTestId('session-timer')
+    await waitFor(() => expect(screen.getByTestId('timer-state')).toHaveTextContent('running'))
     expect(screen.queryByRole('button', { name: 'Exit focus mode' })).toBeNull()
   })
 })

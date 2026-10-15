@@ -6,7 +6,7 @@ import { startDoing } from '../../src/data/sessionActions'
 import { setNow } from '../../src/lib/clock'
 import { TicketRow } from '../../src/ui/TicketRow'
 import { seededDb } from '../helpers/db'
-import { smallPlan } from '../helpers/plan'
+import { flatPlanV2 } from '../helpers/plan'
 import { renderWithApp } from '../helpers/render'
 
 const ist = (s: string) => new Date(`${s}+05:30`).getTime()
@@ -21,7 +21,7 @@ function LiveRow({ id }: { id: string }) {
 async function setup(id: string) {
   setNow(() => NOW)
   const d = await seededDb()
-  renderWithApp(<LiveRow id={id} />, { db: d, plan: smallPlan })
+  renderWithApp(<LiveRow id={id} />, { db: d, plan: flatPlanV2 })
   await screen.findByTestId(`row-${id}`)
   return d
 }
@@ -55,7 +55,7 @@ describe('TicketRow tick (Review Focus #2)', () => {
     expect((await d.events.toArray()).map(e => e.t)).toEqual(['tick', 'untick'])
   })
 
-  it('ticks while Doing is full and never adds to Doing', async () => {
+  it('ticks with three cards already Doing and never adds to Doing', async () => {
     const d = await setup('p127')
     for (const id of ['m1w1t1', 'm1w2t1', 'm1w3t1']) await startDoing(d, id, NOW)
     fireEvent.click(screen.getByTestId('tick-p127'))
@@ -87,7 +87,7 @@ describe('TicketRow tick (Review Focus #2)', () => {
 
   it('renders a plan item without a ticket read-only', async () => {
     const d = await seededDb()
-    renderWithApp(<TicketRow ticket={null} title="Ghost" />, { db: d, plan: smallPlan })
+    renderWithApp(<TicketRow ticket={null} title="Ghost" />, { db: d, plan: flatPlanV2 })
     expect(screen.getByTestId('row-readonly')).toHaveTextContent('Ghost')
     expect(screen.queryByRole('checkbox')).toBeNull()
     expect(screen.queryByRole('link')).toBeNull()

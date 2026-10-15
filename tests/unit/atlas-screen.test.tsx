@@ -48,7 +48,7 @@ describe('Atlas screen (labs contract §5)', () => {
     expect(within(table).getAllByRole('columnheader').map(c => c.textContent)).toEqual([
       'Pattern', 'ARRAY', 'GRID', 'GRAPH', 'TREE', 'LIST', 'STACK', 'QUEUE', 'HASH', 'FRAME', 'INTVL', 'BITS', 'FOREST', 'PLANE', 'NUMLN', 'TAPE', 'SETS', 'Left', 'Use',
     ])
-    const rows = document.querySelectorAll('[data-testid^="atlas-row-"]')
+    const rows = document.querySelectorAll('tr[data-testid^="atlas-row-"]')
     expect(rows).toHaveLength(36)
     expect([...rows].every(r => r.getAttribute('data-state') === 'none' && r.getAttribute('data-coverage') === 'none')).toBe(true)
     const kinds = [...screen.getByTestId('atlas-row-binary-search').querySelectorAll('[data-kind="main"]')].map(c => c.getAttribute('data-testid'))
@@ -82,11 +82,13 @@ describe('Atlas screen (labs contract §5)', () => {
     expect(screen.queryByTestId('atlas-detail')).toBeNull()
   })
 
-  it('shows rows without a walkthrough honestly (S6)', async () => {
+  it('shows a fixed-example row honestly: no own input, and the gap stays named (S6, ATLAS-05)', async () => {
     await setup()
     fireEvent.click(screen.getByRole('button', { name: 'Flow · matching' }))
     expect(search()).toBe('?pattern=flow-matching')
-    expect(detail().getByText('No walkthrough yet')).toBeInTheDocument()
+    expect(detail().queryByText('No walkthrough yet')).toBeNull()
+    expect(detail().getByTestId('atlas-walk-1')).toHaveTextContent('Bipartite matching · augmenting paths')
+    expect(within(detail().getByTestId('atlas-walk-1')).getByRole('button', { name: 'Own input' })).toBeDisabled()
     expect(screen.getByTestId('atlas-coverage')).toHaveTextContent('Coverage: gap · edge labels show one number; needs cap/flow pairs')
     expect(detail().getByRole('button', { name: 'Trace my own input' })).toBeDisabled()
     expect(detail().getByRole('button', { name: 'Trace my own input' })).toHaveAccessibleDescription('No runnable walkthrough for this pattern.')

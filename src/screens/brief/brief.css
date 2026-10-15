@@ -29,7 +29,6 @@
 .brief-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .brief-note { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
 /* ruling 20 S3: a part's place in its parent's brief */
-.brief-part { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-text-secondary); }
 .brief-err { margin: 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); color: var(--sr-label-danger); }
 
 /* dialogs */

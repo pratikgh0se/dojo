@@ -113,29 +113,39 @@ async function setCode(page: Page, code: string) {
 }
 const status = (page: Page) => page.getByTestId('run-status')
 
-test('RN-01/RN-13: a correct Submit passes 5/5 and opens the Solved gate, which closes again in the next attempt', async ({ browser }) => {
+test('RN-01/RN-13: a correct Submit passes 5/5 and records the pass for the attempt; Solved is never gated (TICKET-26), and the next attempt starts with no pass', async ({ browser }) => {
   const { ctx, page } = await openApp(browser, srv)
   await openDo(page, 'p91')
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled()
-  await expect(page.getByTestId('do-outcome-help')).toBeDisabled()
+  const passKey = () => page.evaluate(() => localStorage.getItem('dojo:run-pass:p91'))
+  await expect(page.getByTestId('do-outcome-solved')).toBeEnabled() // TICKET-26: enabled before any Submit
+  await expect(page.getByTestId('do-outcome-help')).toBeEnabled()
   await expect(page.getByTestId('do-outcome-giveup')).toBeEnabled()
+  await expect(page.getByTestId('do-run-gate-hint')).toHaveCount(0)
+  expect(await passKey()).toBeNull()
   await setCode(page, P91_OK)
   await page.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(status(page)).toHaveText('Passed 2/2', { timeout: 60_000 })
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled() // Run never opens the gate
+  expect(await passKey()).toBeNull() // Run never records a pass
   await page.getByRole('button', { name: 'Submit', exact: true }).click()
   await expect(status(page)).toHaveText('Passed 5/5', { timeout: 60_000 })
   for (let k = 1; k <= 5; k++) await expect(page.getByTestId(`run-case-${k}`)).toHaveAttribute('data-pass', 'true')
+  const recorded = await passKey()
+  expect(recorded).not.toBeNull() // only a passing Submit records the attempt's pass
   await expect(page.getByTestId('do-outcome-solved')).toBeEnabled()
   await expect(page.getByTestId('do-outcome-help')).toBeEnabled()
   await page.reload()
-  await expect(page.getByTestId('do-outcome-solved')).toBeEnabled() // same attempt after a reload
+  await expect(page.getByTestId('do-outcome-solved')).toBeEnabled()
+  expect(await passKey()).toBe(recorded) // the pass of this attempt survives a reload
   await page.getByTestId('do-outcome-solved').click()
-  // p91 has approaches, so Do asks which one was used (labs §7.3) before going back to the Board
-  await page.getByRole('group', { name: 'Which approach did you use?' }).getByRole('button', { name: 'Back to Board' }).click()
-  await expect(page).toHaveURL(/\/board$/)
+  // p91 has approaches, so Do asks which one was used (labs §7.3) before going back to Today (R1: the way out is 'Back to Today', I4)
+  await page.getByRole('group', { name: 'Which approach did you use?' }).getByRole('button', { name: 'Back to Today' }).click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByTestId('screen-today')).toBeVisible()
   await openDo(page, 'p91')
-  await expect(page.getByTestId('do-outcome-solved')).toBeDisabled() // the next attempt is gated again
+  // the next attempt starts with no pass shown: no status, no passing case
+  await expect(status(page)).toHaveText('')
+  await expect(page.locator('[data-testid^="run-case-"][data-pass="true"]')).toHaveCount(0)
+  await expect(page.getByTestId('do-run-gate-hint')).toHaveCount(0)
   // a ticket without a pack: no panel, no gate
   await page.goto('/do/p200')
   await expect(page.getByTestId('do-title')).toBeVisible()

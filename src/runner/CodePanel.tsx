@@ -9,6 +9,7 @@ import { chooseLang, codeRows, lastLang, saveCode, type Lang } from '../data/cod
 import { safeWrite } from '../data/safeWrite'
 import { isReadOnly, READ_ONLY_MESSAGE } from '../data/writer'
 import { now } from '../lib/clock'
+import { Glyph } from '../ui/Glyph'
 import { Button, Panel, useToast } from '../ui/primitives'
 import { fetchPack, NO_SERVER_MESSAGE, runCode } from './client'
 import { hasSteps } from './dpModel'
@@ -185,7 +186,8 @@ function CodePanelFor({ ticketId, onSubmitPassed }: { ticketId: string; onSubmit
       )}
       <div className="run-bar">
         <Button onClick={() => void go('run')} disabled={running}>Run</Button>
-        <Button variant="accent" onClick={() => void go('submit')} disabled={running}>Submit</Button>
+        {/* never an accent: a problem carries at most one orange button (TICKET-32) and it is Start or Solved */}
+        <Button onClick={() => void go('submit')} disabled={running}>Submit</Button>
         <span className="run-status" data-testid="run-status" role="status" data-status={running ? 'running' : r?.status ?? ''} data-tone={statusTone(running, r, message)} data-stale={stale ? 'true' : undefined}>{status}</span>
       </div>
       </div>
@@ -202,7 +204,7 @@ function CodePanelFor({ ticketId, onSubmitPassed }: { ticketId: string; onSubmit
           {r.cases.map((c, i) => (
             <li key={c.id} className="run-case" data-testid={`run-case-${i + 1}`} data-pass={c.pass ? 'true' : 'false'}>
               {/* cu-4 P3-19: the mark and the text are two flex items, so a long call wraps beside its mark, never leaving it alone above */}
-              <span className="run-case-mark" aria-hidden="true">{c.pass ? '✓' : ran(c) ? '✗' : '·'}</span>{' '}
+              <span className="run-case-mark">{c.pass ? <Glyph name="check" label="passed" /> : ran(c) ? <Glyph name="error" label="failed" /> : '·'}</span>{' '}
               <span className="run-case-body">
                 <code>{c.call}</code>
                 {c.pass
