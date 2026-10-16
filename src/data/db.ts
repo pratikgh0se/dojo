@@ -1,7 +1,8 @@
 import Dexie, { type Table } from 'dexie'
 import type {
-  AiLogRow, Artifact, AtlasRun, BankItem, BlankTest, DesignSession, GradeRow, PictureRow,
-  BankExtraRow, BankGradeRow, JournalRow, Pulse, Redo, RungUse, Session, Settings, StageCell, StoredEvent, Ticket, CheckAttemptRow, ReviewRow, CodeRow,
+  AiLogRow, AtlasRun, BankItem, DesignSession, GradeRow, PictureRow,
+  BankExtraRow, BankGradeRow, JournalRow, Pulse, Redo, RungUse, Session, Settings, StoredEvent, Ticket, CheckAttemptRow, ReviewRow, CodeRow,
+  LabReviewRow, LabRow, LabRunRow, PortfolioItem, WeeklyReviewRow,
 } from './types'
 import { isReadOnly } from './writer' // first: takes the writer token out of the URL before anything else runs
 import { newOpId } from './sync/keys'
@@ -38,9 +39,6 @@ export type DojoDB = Dexie & {
   pictures: Table<PictureRow, string>
   atlasRuns: Table<AtlasRun, number>
   designSessions: Table<DesignSession, string>
-  artifacts: Table<Artifact, string>
-  stageCells: Table<StageCell, string>
-  blankTests: Table<BlankTest, string>
   grades: Table<GradeRow, string>
   bankItems: Table<BankItem, string>
   checkAttempts: Table<CheckAttemptRow, string>
@@ -50,12 +48,17 @@ export type DojoDB = Dexie & {
   journal: Table<JournalRow, string>
   bankGrades: Table<BankGradeRow, string>
   bankExtra: Table<BankExtraRow, string>
+  labs: Table<LabRow, string>
+  labRuns: Table<LabRunRow, string>
+  labReviews: Table<LabReviewRow, string>
+  weeklyReviews: Table<WeeklyReviewRow, string>
+  portfolioItems: Table<PortfolioItem, string>
   _outbox: Table<OutboxRow, number>
   _meta: Table<MetaRow, string>
 }
 
 export const DB_NAME = 'dojo'
-export const DB_VERSION = 10
+export const DB_VERSION = 12
 
 /** Milestone-1 schema. Never edit: existing browsers hold data at this version. */
 export const SCHEMA_V1 = {
@@ -159,6 +162,31 @@ export const SCHEMA_V10 = {
   bankExtra: 'id, area, node',
 } as const
 
+/**
+ * v11 (R2): ADDS every new table of the release at once, so the early lab drop installs the final schema for new data and v12
+ * (W7) only removes old tables. `labs` (a set-up lab, keyed by labId), `labRuns` and `labReviews` (W1/W2), `weeklyReviews` (W5)
+ * and `portfolioItems` (W6). No existing table changes and the upgrade writes nothing, so a v10 browser opens with all five empty.
+ */
+export const SCHEMA_V11 = {
+  ...SCHEMA_V10,
+  labs: 'labId',
+  labRuns: 'id, labId, at',
+  labReviews: 'id, labId, at',
+  weeklyReviews: 'id',
+  portfolioItems: 'id, labId',
+} as const
+
+/**
+ * v12 (R2 W7): drops `artifacts`, `stageCells` and `blankTests`, the tables of the retired capstone track. Their rows are history, so
+ * a backup comes first (data/legacyDrop.ts): the app database is created holding this version back and declares it only after the
+ * backup succeeded. A table set to null is deleted when the database upgrades; nothing else changes.
+ */
+export const SCHEMA_V12 = { artifacts: null, stageCells: null, blankTests: null } as const
+/** Adds v12 to a database that has not been opened yet (Dexie refuses a new version once it is open). */
+export function declareV12(d: DojoDB): void {
+  d.version(12).stores(SCHEMA_V12)
+}
+
 export const DEFAULT_SETTINGS: SettingsRow = {
   id: 'main',
   startDate: '',
@@ -167,8 +195,11 @@ export const DEFAULT_SETTINGS: SettingsRow = {
   possibleXp: 0,
 }
 
-/** With a gate, the disk-sync outbox middleware is installed before the database can be opened. */
-export function createDb(name: string = DB_NAME, gate?: SyncGate): DojoDB {
+/**
+ * With a gate, the disk-sync outbox middleware is installed before the database can be opened. `holdV12` stops at v11: the app
+ * database is created that way and declares v12 only after its backup (data/legacyDrop.ts); every other caller gets v12 at once.
+ */
+export function createDb(name: string = DB_NAME, gate?: SyncGate, opts: { holdV12?: boolean } = {}): DojoDB {
   const d = new Dexie(name) as DojoDB
   d.version(1).stores(SCHEMA_V1)
   d.version(2).stores(SCHEMA_V2)
@@ -203,7 +234,12 @@ export function createDb(name: string = DB_NAME, gate?: SyncGate): DojoDB {
   })
   d.version(8).stores({ pulses: SCHEMA_V8.pulses })
   d.version(9).stores({ journal: SCHEMA_V9.journal })
-  d.version(DB_VERSION).stores({ bankGrades: SCHEMA_V10.bankGrades, bankExtra: SCHEMA_V10.bankExtra })
+  d.version(10).stores({ bankGrades: SCHEMA_V10.bankGrades, bankExtra: SCHEMA_V10.bankExtra })
+  d.version(11).stores({
+    labs: SCHEMA_V11.labs, labRuns: SCHEMA_V11.labRuns, labReviews: SCHEMA_V11.labReviews,
+    weeklyReviews: SCHEMA_V11.weeklyReviews, portfolioItems: SCHEMA_V11.portfolioItems,
+  })
+  if (!opts.holdV12) declareV12(d)
   if (gate) d.use(outboxMiddleware(gate))
   return d
 }
@@ -222,7 +258,8 @@ export const syncGate: SyncGate = { bypass: false, readOnly: isReadOnly() }
 export const WRITER_DB_NAME = 'dojo-disk'
 export const READ_ONLY_DB_NAME = 'dojo-view'
 const diskOn = import.meta.env.VITE_DOJO_DISK !== 'off'
-export const db: DojoDB = createDb(!diskOn ? DB_NAME : syncGate.readOnly ? READ_ONLY_DB_NAME : WRITER_DB_NAME, diskOn ? syncGate : undefined)
+// held at v11 until `prepareLegacyDrop` (the first thing `main.tsx` boots) has taken the backup and declared v12
+export const db: DojoDB = createDb(!diskOn ? DB_NAME : syncGate.readOnly ? READ_ONLY_DB_NAME : WRITER_DB_NAME, diskOn ? syncGate : undefined, { holdV12: true })
 
 export async function getSettings(d: DojoDB): Promise<SettingsRow> {
   const row = await d.settings.get('main')

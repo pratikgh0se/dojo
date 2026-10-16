@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { APP_ID, desktopConfig, ensureElectronDist, FULL_SCREEN_DEFAULT_ARGS, iconPng, parseArgs, setFullScreenDefault, stageApp, swapApp } from '../../scripts/install-app.mjs'
+import { APP_ID, DEFAULT_DEST, desktopConfig, ensureElectronDist, FULL_SCREEN_DEFAULT_ARGS, iconPng, parseArgs, setFullScreenDefault, stageApp, swapApp } from '../../scripts/install-app.mjs'
 import { uninstall } from '../../scripts/uninstall-app.mjs'
 // @ts-expect-error plain .mjs without types
 import { resolveHome, toolPath } from '../../electron/env.mjs'
@@ -32,7 +32,7 @@ describe('the app bundle', () => {
     stageApp(stage, { build: true, builder: (out: string) => { mkdirSync(out, { recursive: true }); writeFileSync(join(out, 'index.html'), 'x') } })
     const pkg = JSON.parse(readFileSync(join(stage, 'package.json'), 'utf8'))
     expect(pkg).toMatchObject({ name: 'dojo', productName: 'Dojo', main: 'electron/main.mjs', type: 'module' })
-    for (const p of ['electron/main.mjs', 'electron/env.mjs', 'server/dojo-server.mjs', 'server/runner/runner.mjs', 'shared', 'dist/index.html']) expect(existsSync(join(stage, p)), p).toBe(true)
+    for (const p of ['electron/main.mjs', 'electron/env.mjs', 'server/dojo-server.mjs', 'server/runner/runner.mjs', 'shared', 'dist/index.html', 'scripts/leak-scan.mjs', ...(existsSync(join(process.cwd(), 'scripts/plan/terms.mjs')) ? ['scripts/plan/terms.mjs'] : [])]) expect(existsSync(join(stage, p)), p).toBe(true)
     expect(existsSync(join(stage, 'node_modules'))).toBe(false)
   })
   it('the builder config: an unpacked Dojo.app (no asar: the server reads dist/ and opens node:sqlite), no signing identity', () => {
@@ -75,8 +75,9 @@ describe('the app bundle', () => {
     expect(readFileSync(join(home, 'dojo.db'), 'utf8')).toBe('precious')
     expect(statSync(join(home, 'dojo.db')).mtimeMs).toBe(before)
   })
-  it('parseArgs defaults to ~/Applications and ~/Dojo (or DOJO_HOME), with overrides', () => {
-    expect(parseArgs([], {})).toEqual({ dest: join(homedir(), 'Applications'), home: join(homedir(), 'Dojo'), build: true, dist: null, icon: true })
+  it('parseArgs defaults to /Applications and ~/Dojo (or DOJO_HOME), with overrides', () => {
+    expect(DEFAULT_DEST).toBe('/Applications')
+    expect(parseArgs([], {})).toEqual({ dest: '/Applications', home: join(homedir(), 'Dojo'), build: true, dist: null, icon: true })
     expect(parseArgs(['--dest', '/d', '--home', '/h', '--no-build', '--dist', '/x', '--no-icon'], {})).toEqual({ dest: '/d', home: '/h', build: false, dist: '/x', icon: false })
     expect(parseArgs([], { DOJO_HOME: '/e' }).home).toBe('/e')
   })

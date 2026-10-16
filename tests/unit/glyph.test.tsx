@@ -4,7 +4,6 @@ import { buildGlyphData } from '../../scripts/sync-glyphs.mjs'
 import { GLYPHS } from '../../src/ui/glyphData'
 import { MemoryRouter } from 'react-router-dom'
 import { Glyph, glyphPath } from '../../src/ui/Glyph'
-import { PlanAnchor } from '../../src/ui/PlanAnchor'
 import { ExtLink } from '../../src/ui/Prose'
 
 describe('glyphPath', () => {
@@ -44,16 +43,15 @@ describe('Glyph', () => {
 })
 
 describe('plan link anchors are plan text (README Hook rules, GLOBAL-01/02)', () => {
-  it('ExtLink and PlanAnchor mark the external anchor and the in-app link data-content="plan"', () => {
+  it('ExtLink marks the external anchor and the in-app link data-content="plan"', () => {
     const { container } = render(
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ExtLink link={{ label: 'Transformers, the tech behind LLMs', url: 'https://example.com/t' }} />
-        <PlanAnchor href="https://example.com/p">Interview guide</PlanAnchor>
-        <PlanAnchor href="#bank">Bank</PlanAnchor>
+        <ExtLink link={{ label: 'Bank', url: '#bank' }} />
       </MemoryRouter>,
     )
     const anchors = [...container.querySelectorAll('a')]
-    expect(anchors).toHaveLength(3)
+    expect(anchors).toHaveLength(2)
     for (const a of anchors) expect(a).toHaveAttribute('data-content', 'plan')
     expect(anchors[0].querySelector('svg.glyph')).toHaveAttribute('data-glyph', 'external')
   })

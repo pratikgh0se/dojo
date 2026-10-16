@@ -5,7 +5,6 @@ import { redoOutcome, type RedoEffect } from '../rules/redoQueue'
 import { closeSessionResult } from '../rules/session'
 import { ticketBaseXp } from '../rules/xp'
 import type { DojoDB } from './db'
-import { needsCheck } from '../rules/brief'
 import type { HelpRung, Outcome, Rung, RungUse, Session, Ticket, TicketAi } from './types'
 
 /** C-LADDER §2.3: max(0, base once solved − Σ applied help + Σ refunds), floored once.
@@ -126,7 +125,6 @@ export async function closeLadderSession(d: DojoDB, i: LadderCloseInput): Promis
     const t = await d.tickets.get(i.ticketId)
     if (!t) return { ok: false, reason: 'missing', message: 'Ticket not found' }
     if (t.archived) return { ok: false, reason: 'archived', message: 'Ticket is archived' }
-    if (i.outcome !== 'gave_up' && needsCheck(t)) return { ok: false, reason: 'check_required', message: 'Check your understanding first' }
     if (i.sessionId && (await d.sessions.get(i.sessionId))) return { ok: false, reason: 'duplicate', message: 'Session already saved' }
     const uses = (await d.rungUses.where('ticketId').equals(t.id).toArray()).filter(u => u.cycleId === i.cycleId)
     const live = (await d.redos.where('ticketId').equals(t.id).toArray()).find(r => r.closedAt === undefined) ?? null

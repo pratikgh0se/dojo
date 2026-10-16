@@ -32,7 +32,12 @@ async function startAndFinishQuest(page: Page): Promise<{ id: string; explained:
     await page.getByTestId('ticket-reveal').click()
     await expect(page.getByTestId('ticket-reference-1')).toBeVisible()
   }
-  await page.getByTestId('ticket-done').click()
+  // R2: a build ticket of a lab the server knows gates Done on its checks; "Mark done without checks" finishes it without them (LAB-23)
+  const done = page.getByTestId('ticket-done')
+  const skip = page.getByTestId('ticket-lab-skip-checks')
+  await expect(async () => { expect((await done.isEnabled()) || (await skip.isVisible())).toBe(true) }).toPass()
+  if (await done.isEnabled()) await done.click()
+  else await skip.click()
   // the state flips with the click, not a live query later (the original bug this test guards)
   await expect(page.getByTestId('ticket-done-state')).toBeVisible({ timeout: 2000 })
   await expect(page.getByTestId('ticket-done')).toHaveCount(0)

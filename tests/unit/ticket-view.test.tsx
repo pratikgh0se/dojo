@@ -15,6 +15,7 @@ import { renderWithApp } from '../helpers/render'
 
 const ro = vi.hoisted(() => ({ on: false }))
 vi.mock('../../src/data/writer', async importOriginal => ({ ...(await importOriginal<typeof import('../../src/data/writer')>()), isReadOnly: () => ro.on }))
+vi.mock('../../src/data/labActions', () => ({ fetchLabInfo: vi.fn(async () => null), setupLab: vi.fn(), runChecks: vi.fn(), getHint: vi.fn(), requestReview: vi.fn() }))
 afterEach(() => { cleanup(); clearStudy(); ro.on = false; resetNow() })
 
 vi.mock('../../src/runner/CodeEditor', () => ({
@@ -26,6 +27,7 @@ const watch = mkTicket({
   id: 'w1', kind: 'watch', lane: 'path', node: 'L3', title: 'Watch: Karpathy deep dive', estMin: 62, links: [{ label: 'Video', url: 'https://youtu.be/abc' }],
   explain: ['What is a weight?', 'What does training change?'], explainAnswers: ['One adjustable number.', 'The weights.'],
 })
+const buildPlain = mkTicket({ id: 'bp', kind: 'build', lane: 'path', title: 'Build: plain', estMin: 30, text: 'No lab here.' })
 const build = mkTicket({ id: 'b1', kind: 'build', lane: 'path', title: 'Build: tokensim step 2', estMin: 90, lab: { id: 'tokensim', gpu: 'none' }, text: 'Replace the fixed batch.' })
 
 async function open(t: Ticket, extra: Ticket[] = []) {
@@ -268,29 +270,25 @@ describe('ticket view: saving never fails silently', () => {
 })
 
 describe('ticket view: build, ritual, task, design', () => {
-  it('shows the lab marker, four steps with commands and copy buttons, and an honest self-mark that never blocks Done', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    const d = await open(build)
+  it('shows the lab marker; a lab ticket has no old lab steps and no self-mark, and Done is not blocked when the server has no such lab', async () => {
+    await open(build)
     expect(await screen.findByTestId('ticket-lab')).toHaveTextContent('No GPU')
-    for (const s of ['up', 'run', 'check', 'down']) {
-      const row = screen.getByTestId(`ticket-lab-step-${s}`)
-      expect(within(row).getByTestId(`ticket-lab-command-${s}`).textContent!.length).toBeGreaterThan(5)
-      expect(row).toHaveTextContent(s[0].toUpperCase() + s.slice(1))
-      expect(screen.getByTestId(`ticket-lab-copy-${s}`)).toBeInTheDocument()
-    }
-    fireEvent.click(screen.getByTestId('ticket-lab-copy-run'))
-    expect(writeText).toHaveBeenCalledWith(screen.getByTestId('ticket-lab-command-run').textContent)
-    expect(await screen.findByTestId('toast')).toHaveTextContent('Copied')
-    const mark = screen.getByTestId('ticket-selfmark')
+    expect(await screen.findByTestId('ticket-lab-missing')).toBeInTheDocument()
+    for (const gone of ['ticket-lab-steps', 'ticket-lab-step-up', 'ticket-lab-command-run', 'ticket-lab-copy-run', 'ticket-selfmark']) expect(screen.queryByTestId(gone)).toBeNull()
+    fireEvent.click(screen.getByTestId('ticket-start'))
+    expect(await screen.findByTestId('ticket-done')).toBeEnabled()
+    expect(screen.queryByTestId('ticket-lab-skip-checks')).toBeNull()
+  })
+  it('keeps the honest self-mark on a build ticket with no lab, and it never blocks Done', async () => {
+    const d = await open(buildPlain)
+    const mark = await screen.findByTestId('ticket-selfmark')
     expect(mark).not.toBeChecked()
-    expect(document.querySelector('label')!.textContent).toBeTruthy()
     fireEvent.click(screen.getByTestId('ticket-start'))
     expect(await screen.findByTestId('ticket-done')).toBeEnabled()
     fireEvent.click(screen.getByTestId('ticket-selfmark'))
     expect(screen.getByTestId('ticket-selfmark')).toBeChecked()
-    await waitFor(async () => expect((await d.tickets.get('b1'))!.selfMark).toBe('done'), { timeout: 3000 })
-    expect(screen.queryByText(/pass|fail|reviewer/i)).toBeNull()
+    await waitFor(async () => expect((await d.tickets.get('bp'))!.selfMark).toBe('done'), { timeout: 3000 })
+    for (const hook of ['ticket-lab-block', 'ticket-lab', 'ticket-reviewer', 'ticket-check-results']) expect(screen.queryByTestId(hook)).toBeNull()
   })
 
   it('shows the cost of a rented GPU', async () => {
@@ -387,18 +385,17 @@ describe('ticket view: every non-problem kind', () => {
       fireEvent.click(await screen.findByTestId('ticket-start'))
       await waitFor(() => expect(screen.queryByTestId('ticket-start')).toBeNull())
       expect(screen.getByTestId('ticket-done')).toHaveAttribute('data-accent', 'primary')
-      expect(screen.getByTestId('do-screen').querySelectorAll(CONTROLS).length).toBeLessThanOrEqual(15)
+      expect(screen.getByTestId('do-screen').querySelectorAll(CONTROLS).length).toBeLessThanOrEqual(t.kind === 'build' ? 22 : 15)
       expect(accents()).toHaveLength(1)
-      for (const hook of ['ticket-check-results', 'ticket-reviewer']) expect(screen.queryByTestId(hook)).toBeNull()
     })
   }
 
   it('keeps the self-mark and clears it again (null in the data)', async () => {
-    const d = await open(build)
+    const d = await open(buildPlain)
     fireEvent.click(await screen.findByTestId('ticket-selfmark'))
-    await waitFor(async () => expect((await d.tickets.get('b1'))!.selfMark).toBe('done'))
+    await waitFor(async () => expect((await d.tickets.get('bp'))!.selfMark).toBe('done'))
     fireEvent.click(screen.getByTestId('ticket-selfmark'))
-    await waitFor(async () => expect((await d.tickets.get('b1'))!.selfMark).toBeUndefined())
+    await waitFor(async () => expect((await d.tickets.get('bp'))!.selfMark).toBeUndefined())
   })
 
   it('marks plan text and links so the shipped plan words do not trip the vocabulary rule', async () => {

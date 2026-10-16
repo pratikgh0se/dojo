@@ -7,13 +7,18 @@ import { projectedEnd, paceLine, type Projection } from '../rules/pace'
 import { budgetsOf, careerLaneOf } from '../rules/prefs'
 import { laneChips, queueView, todayPickList, type LaneChip, type LaneFilter, type LaneQueue, type QueueView } from '../rules/queue'
 import { redoRows } from '../rules/redoQueue'
+import { isWindowedRitualTicket } from '../rules/ritualPeriod'
+import { activeDaysOf, dayBudgets, leadOf, restartState, type Lead } from '../rules/restart'
+import { localDayKey } from '../lib/dates'
 import { useDb } from './dbContext'
-import { useRedos, useSessions, useSettings, useTickets } from './hooks'
+import { useJournalRows, useRedos, useSessions, useSettings, useTickets } from './hooks'
 import type { StoredEvent, Ticket } from './types'
 
 export interface TodayModel {
   mix: DayMix; next: NextAction; pathNote: string | null; budgets: number[]; careerLane: boolean; dueReviews: number
   pick: { doing: Ticket[]; lanes: LaneQueue[] }
+  /** W5: which lead the Floor card takes (restart day, short day, or none); `budgets` are the half-load budgets while that window is on */
+  lead: Lead
 }
 
 /** Everything the Today screen renders: the day's mix, the one quest action, the phase note and the pick list. */
@@ -22,21 +27,27 @@ export function useTodayModel(): TodayModel | undefined {
   const settings = useSettings()
   const redos = useRedos()
   const sessions = useSessions()
+  const journal = useJournalRows()
   const plan = usePlanV2()
   const t = useNow(60_000)
   return useMemo(() => {
-    if (!tickets || !settings || !redos || !sessions) return undefined
-    const budgets = budgetsOf(settings, plan?.mix)
+    if (!tickets || !settings || !redos || !sessions || !journal) return undefined
+    // W5: the half-load window is recomputed from active days every time; nothing is stored and `settings.laneBudgets` is never touched
+    const restart = restartState(activeDaysOf({ tickets, sessions, journal }), localDayKey(t))
+    const budgets = dayBudgets(budgetsOf(settings, plan?.mix), restart)
     const careerLane = careerLaneOf(settings)
     const phases = plan?.phases ?? []
     const date = new Date(t)
     const dueReviews = redoRows(redos, tickets, sessions, t).length
-    const mix = dailyMix({ tickets, date, budgets, careerLane })
-    const next = nextAction({ tickets, date, budgets, careerLane, dueReviews, phases })
+    // RIT-18: the weekly review and swap drill tickets have their own cards; a started one is never the quest or in the pick list
+    const shown = tickets.filter(x => !isWindowedRitualTicket(x))
+    const mix = dailyMix({ tickets: shown, date, budgets, careerLane })
+    const next = nextAction({ tickets: shown, date, budgets, careerLane, dueReviews, phases })
     // The quest ticket appears nowhere in the pick list (TODAY-16).
     const quest = next.kind === 'resume' || next.kind === 'start' ? next.ticket.id : undefined
-    return { mix, next, pathNote: pathWaitNote(tickets, phases), budgets, careerLane, dueReviews, pick: todayPickList({ tickets, careerLane, excludeId: quest }) }
-  }, [tickets, settings, redos, sessions, plan, t])
+    const lead = leadOf(restart, mix.floor, next.kind === 'resume')
+    return { mix, next, pathNote: pathWaitNote(tickets, phases), budgets, careerLane, dueReviews, lead, pick: todayPickList({ tickets: shown, careerLane, excludeId: quest }) }
+  }, [tickets, settings, redos, sessions, journal, plan, t])
 }
 
 export function useQueue(o: { lane?: LaneFilter; search?: string; perLane?: number }): { view: QueueView; chips: LaneChip[]; careerLane: boolean } | undefined {

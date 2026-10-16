@@ -2,7 +2,7 @@ import type { Kind, Redo, RedoStage, Ticket } from '../data/types'
 import { addLocalDays } from '../lib/dates'
 import { REDO_DAYS, redoDue } from './ladder'
 import { bankPieceOf, type BankAreaOf } from './bankQuestions'
-import { missedPieceOf } from './keepMissed'
+import { isPieceSource, missedPieceOf } from './keepMissed'
 import { dueRedos, redoAgeDays } from './redoQueue'
 import { KIND_LABEL, LANE_LABEL, tagLane } from './ticketMeta'
 
@@ -76,11 +76,12 @@ export function reviewCards(a: { redos: readonly Redo[]; tickets: readonly Ticke
     }
     // F3: a weak spot kept from a design grade is a check card on its design ticket: the question, then the stored answer.
     // W2 (JOURNAL-23): a `journal_hard` redo with a piece is the same card on its own ticket, whatever the ticket's kind.
-    const piece = r.source === 'design_missed' || r.source === 'journal_hard' ? missedPieceOf(r) : null
+    const piece = isPieceSource(r.source) ? missedPieceOf(r) : null
     if (piece) {
       return {
         id: `redo:${r.id}`, redoId: r.id, stage: r.stage, ticketId: t.id, kind: 'check', ticketKind: t.kind,
-        title: t.title, lane: reviewLane(t), dueDay, ageDays: redoAgeDays(r, a.nowMs),
+        // R2: a lab review card is titled by the lab (piece.topic), not by its closing ticket
+        title: r.source === 'lab_review' ? piece.topic : t.title, lane: reviewLane(t), dueDay, ageDays: redoAgeDays(r, a.nowMs),
         prompt: piece.question, stored: piece.answer, to: r.source === 'design_missed' ? `/designs/session/${t.id}` : `/do/${t.id}`,
         redoLabel: `REDO · ${KIND_LABEL[t.kind].toUpperCase()}`,
       }

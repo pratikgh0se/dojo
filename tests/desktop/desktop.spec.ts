@@ -32,12 +32,12 @@ async function launch(home: string, executablePath = exe, { cspReport = true } =
 /** First launch on a fresh home: onboarding (start date), then Today. */
 async function onboard(page: Page) {
   const date = page.getByRole('textbox', { name: 'Start date' })
-  await date.or(page.getByTestId('now-headline')).first().waitFor({ timeout: 20_000 })
+  await date.or(page.getByTestId('screen-today')).first().waitFor({ timeout: 20_000 })
   if (await date.isVisible()) {
     await date.fill('2026-10-05')
     await page.getByRole('button', { name: 'START · PLAN' }).click()
   }
-  await expect(page.getByTestId('now-headline')).toBeVisible()
+  await expect(page.getByTestId('screen-today')).toBeVisible()
 }
 const helpers = (home: string) => execFileSync('ps', ['-axo', 'pid=,command=']).toString().split('\n').filter(l => l.includes(`--user-data-dir=${join(home, 'electron')}`))
 const runnerProcs = () => execFileSync('ps', ['-axo', 'pid=,command=']).toString().split('\n').filter(l => /dojo-run-[A-Za-z0-9]/.test(l) && !l.includes(' ps '))
@@ -49,7 +49,7 @@ test('DK-01 launch: one window within 3 s at 1280 x 860 (minimum 375 x 600), no 
   const { app, info } = await launch(home)
   try {
     const page = await app.firstWindow()
-    await page.getByTestId('screen-onboarding').or(page.getByTestId('now-headline')).first().waitFor()
+    await page.getByTestId('screen-onboarding').or(page.getByTestId('screen-today')).first().waitFor()
     expect(Date.now() - t0).toBeLessThan(3000 + 3000) // 3 s for the window; the margin covers Playwright's attach and a cold build cache
     const w = await app.evaluate(({ BrowserWindow }) => {
       const all = BrowserWindow.getAllWindows(), win = all[0]
@@ -128,7 +128,7 @@ test('DK-04 data written by the old launcher build (the web server on the same h
   const { app } = await launch(home)
   try {
     const page = await app.firstWindow()
-    await expect(page.getByTestId('now-headline')).toBeVisible() // onboarded already: no first-launch screen
+    await expect(page.getByTestId('screen-today')).toBeVisible() // onboarded already: no first-launch screen
     await expect(page.getByTestId('screen-onboarding')).toHaveCount(0)
   } finally { await app.close() }
 })
@@ -144,6 +144,30 @@ test('DK-05 external links open in the default browser; the window never navigat
     await expect.poll(() => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened)).toEqual(['https://example.com/x'])
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
     expect(page.url().startsWith(info().url)).toBe(true)
+  } finally { await app.close() }
+})
+
+test('DK-05b a real Banks link opens in the default browser and the window never navigates away (leftover 3, TICKET-39)', async () => {
+  const home = tmp('dojo-desk-home-')
+  const { app, info } = await launch(home)
+  try {
+    const page = await app.firstWindow()
+    await onboard(page)
+    await app.evaluate(({ shell }) => { const g = globalThis as unknown as { opened: string[] }; g.opened = []; shell.openExternal = async (u: string) => { g.opened.push(u) } })
+    await page.goto(`${info().url}/banks`)
+    // a real anchor of the Banks screen (target=_blank): the tab's Source link, else a question title's link
+    const link = page.getByTestId('banks-source-link').or(page.getByTestId('bank-item-link')).first()
+    await expect(link).toBeVisible()
+    const href = (await link.getAttribute('href'))!
+    expect(href).toMatch(/^https?:\/\//)
+    await link.click()
+    await expect.poll(() => app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened)).toEqual([href])
+    expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
+    expect(page.url().startsWith(info().url)).toBe(true)
+    // a non-http scheme in an anchor never opens
+    await page.evaluate(() => { const a = document.createElement('a'); a.href = 'mailto:x@example.com'; a.target = '_blank'; document.body.appendChild(a); a.click(); a.remove() })
+    await page.waitForTimeout(500)
+    expect(await app.evaluate(() => (globalThis as unknown as { opened: string[] }).opened)).toEqual([href])
   } finally { await app.close() }
 })
 
@@ -208,7 +232,7 @@ test('DK-06 install, then reinstall: the data is kept and the app opens it', asy
   const second = await launch(home, join(app2, 'Contents', 'MacOS', 'Dojo'))
   try {
     const p2 = await second.app.firstWindow()
-    await expect(p2.getByTestId('now-headline')).toBeVisible()
+    await expect(p2.getByTestId('screen-today')).toBeVisible()
   } finally { await second.app.close() }
 })
 

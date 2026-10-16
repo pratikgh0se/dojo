@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { planFileSetting, readPlanFile } from '../server/plan-file.mjs'
 
@@ -24,7 +24,14 @@ if (vitePort === REAL_APP_PORT || serverPort === REAL_APP_PORT) {
   process.exit(1)
 }
 // Compare real paths, so a symlink, "..", or a trailing slash cannot smuggle ~/Dojo in.
-const realOr = p => { try { return realpathSync(p) } catch { return resolve(p) } }
+// A path that does not exist yet resolves through its deepest existing ancestor (os.tmpdir() on macOS sits behind the /var symlink),
+// the same rule as server/dojo-server.mjs realOr. Without it ~/Dojo/new passed this guard and mkdirSync below created it (LAUNCH-05).
+const realOr = p => {
+  const abs = resolve(p)
+  try { return realpathSync(abs) } catch { /* not there yet */ }
+  const parent = dirname(abs)
+  return parent === abs ? abs : join(realOr(parent), basename(abs))
+}
 const realDojo = realOr(resolve(process.env.HOME || homedir(), 'Dojo'))
 const realHome = realOr(home)
 // macOS volumes (APFS) are case-insensitive by default: ~/DOJO is ~/Dojo.

@@ -3,7 +3,7 @@ import type { NavLabels } from './prefs'
 
 export type { NavLabels }
 export type DestinationId =
-  | 'today' | 'path' | 'board' | 'journal' | 'skills' | 'review' | 'ai' | 'dsa' | 'designs' | 'banks' | 'atlas' | 'guide'
+  | 'today' | 'path' | 'board' | 'journal' | 'skills' | 'review' | 'ai' | 'dsa' | 'designs' | 'banks' | 'atlas' | 'portfolio' | 'guide'
 /** The rail's groups (NAV-01): the six main destinations, Topics, Practice, and the foot (Guide, then the toggle). */
 export type NavGroup = 'main' | 'topics' | 'practice' | 'foot'
 export interface Destination { id: DestinationId; to: string; label: string; key?: '1' | '2' | '3' | '4' | '5' | '6'; glyph: GlyphName; group: NavGroup }
@@ -20,10 +20,11 @@ export const DESTINATIONS: readonly Destination[] = [
   { id: 'designs', to: '/designs', label: 'Designs', glyph: 'container', group: 'topics' },
   { id: 'banks', to: '/banks', label: 'Banks', glyph: 'doc', group: 'practice' },
   { id: 'atlas', to: '/atlas', label: 'Atlas', glyph: 'globe', group: 'practice' },
+  { id: 'portfolio', to: '/portfolio', label: 'Portfolio', glyph: 'share', group: 'practice' },
   { id: 'guide', to: '/guide', label: 'Guide', glyph: 'info', group: 'foot' },
 ]
 
-/** The phone's tab bar (NAV-09); the other eight sit in the More sheet (NAV-10). */
+/** The phone's tab bar (NAV-09); the other nine sit in the More sheet (NAV-10). */
 export const TAB_IDS: readonly DestinationId[] = ['today', 'path', 'board', 'review']
 export const MORE_IDS: readonly DestinationId[] = DESTINATIONS.map(d => d.id).filter(id => !TAB_IDS.includes(id))
 

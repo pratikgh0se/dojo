@@ -294,3 +294,16 @@ describe('grading twice in a row', () => {
     expect((await d.redos.get('r1'))!.stage).toBe(1)
   })
 })
+
+describe('review-card-due (RIT-04)', () => {
+  it('reads "due today", "due 1 day ago" and "due <n> days ago", never overdue', async () => {
+    await setup([redo('r1', 'w1', 0), redo('r2', 'w2', 1), redo('r3', 'p1', 3)], [watch(1), watch(2), problem])
+    // oldest first: the 3-day card, then 1 day, then today
+    expect(await screen.findByTestId('review-card-due')).toHaveTextContent(/^due 3 days ago$/)
+    fireEvent.click(screen.getByTestId('review-skip'))
+    await waitFor(() => expect(screen.getByTestId('review-card-due')).toHaveTextContent(/^due 1 day ago$/))
+    fireEvent.click(screen.getByTestId('review-skip'))
+    await waitFor(() => expect(screen.getByTestId('review-card-due')).toHaveTextContent(/^due today$/))
+    expect(document.body.textContent).not.toMatch(/overdue/i)
+  })
+})

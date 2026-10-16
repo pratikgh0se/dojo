@@ -408,9 +408,10 @@ async function shellFresh() {
     await S.page.waitForSelector('[data-testid="screen-today"]', { timeout: 20_000 })
     await S.page.waitForTimeout(900)
     const w1 = (await m(S, 'shell')).rail
-    verdict(!!w1 && Math.abs(w1.w - 148) <= 2, 'SHELL-08', ctx, `rail ${w1 ? w1.w.toFixed(1) : 'absent'} px vs 148 +/- 2 on the first load`)
+    verdict(!!w1 && Math.abs(w1.w - 200) <= 2, 'SHELL-08', ctx, `rail ${w1 ? w1.w.toFixed(1) : 'absent'} px vs 200 +/- 2 on the first load`)
     const lab = await ev(S, () => [...document.querySelectorAll('[data-testid^="shell-nav-"]')].filter(e => window.__m.visible(e)).map(e => (e.innerText || '').trim()))
-    verdict(lab.length === 4 && lab.every(Boolean), 'SHELL-08', ctx, `rail labels visible: ${JSON.stringify(lab)}`)
+    const railItems = 12 + Number(lab.some(l => /portfolio/i.test(l))) // NAV-01: twelve destinations, thirteen once Portfolio is in the rail
+    verdict(lab.length === railItems && lab.every(Boolean), 'SHELL-08', ctx, `rail labels visible: ${JSON.stringify(lab)}`)
     await visit(S, '/', 'screen-today', { settle: 1200 }) // reload
     const w2 = (await m(S, 'shell')).rail
     verdict(!!w2 && Math.abs(w2.w - 56) <= 2, 'SHELL-09', ctx, `rail ${w2 ? w2.w.toFixed(1) : 'absent'} px vs 56 +/- 2 after a reload`)
@@ -418,7 +419,7 @@ async function shellFresh() {
     verdict(navLabels === 'hover', 'SHELL-09', ctx, `settings.navLabels = ${JSON.stringify(navLabels)} vs "hover"`)
     // SHELL-10: hover and focus labels, accessible names
     const names = await ev(S, () => [...document.querySelectorAll('[data-testid^="shell-nav-"]')].map(e => e.getAttribute('aria-label') || (e.innerText || '').trim() || e.getAttribute('title') || ''))
-    verdict(names.length === 4 && names.every(Boolean), 'SHELL-10', ctx, `accessible names with the 56 px rail: ${JSON.stringify(names)}`)
+    verdict(names.length === railItems && names.every(Boolean), 'SHELL-10', ctx, `accessible names with the 56 px rail: ${JSON.stringify(names)}`)
     const labelSize = async () => ev(S, () => {
       const out = []
       for (const e of document.querySelectorAll('body *')) {
@@ -449,7 +450,7 @@ async function shellFresh() {
       await S.page.waitForTimeout(700)
       const on = (await m(S, 'shell')).rail
       const st = await settingNow(S, 'navLabels', 'always')
-      verdict(!!on && Math.abs(on.w - 148) <= 2 && st === 'always', 'SHELL-11', ctx, `switch on: rail ${on ? on.w.toFixed(1) : 'absent'} px vs 148, navLabels ${JSON.stringify(st)} vs "always"`)
+      verdict(!!on && Math.abs(on.w - 200) <= 2 && st === 'always', 'SHELL-11', ctx, `switch on: rail ${on ? on.w.toFixed(1) : 'absent'} px vs 200, navLabels ${JSON.stringify(st)} vs "always"`)
       await sw.click()
       await S.page.waitForTimeout(700)
       const off = (await m(S, 'shell')).rail

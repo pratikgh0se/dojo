@@ -1,20 +1,10 @@
-import { useRef, useState } from 'react'
-import { useDb } from '../../app/providers'
 import { useCheckAttempts } from '../../data/hooks'
-import { approveBrief, saveLinkCheck } from '../../data/briefActions'
-import { safeWrite } from '../../data/safeWrite'
 import type { Brief, Ticket } from '../../data/types'
-import { checkLinks } from '../../lib/linkcheck'
-import { deliverableOf, LINK_UNVERIFIED_HINT, linkVerdict, minutesLabel, needsCheck, stepUrls } from '../../rules/brief'
 import { attemptScore } from '../../rules/check'
-import { Button, Panel, useFlash, usePowerUp, useToast } from '../../ui/primitives'
-import { BriefEditor } from './BriefEditor'
-import { CheckDialog } from './CheckDialog'
-import { DeliverableDialog } from './DeliverableDialog'
 import { WithFileRefs } from '../../ui/FileRefs'
+import { Panel } from '../../ui/primitives'
+import { LINK_UNVERIFIED_HINT, linkVerdict } from './linkVerdict'
 import './brief.css'
-
-type Open = null | 'edit' | 'check' | 'deliver'
 
 const DAY_LABEL = { focus: 'Focus day', light: 'Light day', long: 'Long day' } as const
 
@@ -47,51 +37,14 @@ function Steps({ brief }: { brief: Brief }) {
 }
 
 /**
- * The card's brief, in full and readable (spec §1): goal, numbered steps with their links, minutes,
- * what you'll learn, the outcome and the deliverable, with Edit / Approve / Check links / Split /
- * Mark done. Renders nothing until a brief exists, so the old statement stays the only text.
+ * A stored card brief, read-only (TICKET-25): goal, steps with their link results, minutes, what you'll learn, the outcome, the
+ * deliverable, what was handed in and the check attempts. R2 W7: the brief editor, the check and deliverable dialogs and the link checker
+ * are gone, so there is no control to edit, approve or finish a card from here. Renders nothing until a brief exists.
  */
-export function CardBrief({ ticket, actions = true }: { ticket: Ticket; actions?: boolean }) {
-  const d = useDb()
-  const toast = useToast()
-  const flash = useFlash()
-  const { fire: powerUp } = usePowerUp()
+export function CardBrief({ ticket }: { ticket: Ticket }) {
   const attempts = useCheckAttempts(ticket.id)
-  const [open, setOpen] = useState<Open>(null)
-  const [checking, setChecking] = useState(false)
-  const doneRef = useRef<HTMLButtonElement>(null)
   const b = ticket.brief
   if (!b) return null
-  const urls = stepUrls(b)
-  const isDone = ticket.status === 'done'
-  const learning = needsCheck(ticket)
-  const onError = (m: string) => toast(m, 'danger')
-  const close = () => setOpen(null)
-  const done = (xp: number) => {
-    if (xp > 0) {
-      flash()
-      powerUp()
-      toast(`+${xp} xp · Saved`)
-    }
-  }
-
-  async function approve() {
-    const r = await safeWrite(() => approveBrief(d, ticket.id), onError)
-    if (r && !r.ok) toast(r.message, 'danger')
-  }
-
-  async function linkCheck() {
-    setChecking(true)
-    try {
-      const r = await checkLinks(urls)
-      if (!r.ok) return toast(r.message, 'danger')
-      const w = await safeWrite(() => saveLinkCheck(d, ticket.id, r.results), onError)
-      if (w && !w.ok) toast(w.message, 'danger')
-    } finally {
-      setChecking(false)
-    }
-  }
-
   return (
     <Panel className="brief" data-testid="card-brief" aria-label="Card brief">
       {/* D3.2 / M8: the status and source chips sit in the h2 row's right slot */}
@@ -105,7 +58,7 @@ export function CardBrief({ ticket, actions = true }: { ticket: Ticket; actions?
       <p className="brief-goal" data-testid="brief-goal"><WithFileRefs text={b.goal} /></p>
       <h3 className="brief-sub">Steps</h3>
       <Steps brief={b} />
-      <p className="brief-meta">{minutesLabel(b.minutes)} · {DAY_LABEL[b.dayType]}</p>
+      <p className="brief-meta">{b.minutes} min · {DAY_LABEL[b.dayType]}</p>
       {b.learn.length > 0 && (
         <>
           <h3 className="brief-sub">What you&apos;ll learn</h3>
@@ -115,7 +68,7 @@ export function CardBrief({ ticket, actions = true }: { ticket: Ticket; actions?
       <h3 className="brief-sub">Outcome</h3>
       <p className="brief-text"><WithFileRefs text={b.outcome} /></p>
       <h3 className="brief-sub">Deliverable</h3>
-      <p className="brief-text" data-testid="brief-deliverable"><WithFileRefs text={(deliverableOf(ticket, b) ?? b.deliverable).prompt} /></p>
+      <p className="brief-text" data-testid="brief-deliverable"><WithFileRefs text={b.deliverable.prompt} /></p>
       {ticket.deliverable && (
         <>
           <h3 className="brief-sub">Handed in</h3>
@@ -150,17 +103,6 @@ export function CardBrief({ ticket, actions = true }: { ticket: Ticket; actions?
           </ul>
         </>
       )}
-      {/* `actions={false}` on Do: the ticket has one completion path there, not a second "Mark done" (TICKET-12) */}
-      {actions && <div className="brief-actions">
-        <Button onClick={() => setOpen('edit')}>Edit brief</Button>
-        {b.status === 'draft' && <Button variant="accent" onClick={() => void approve()}>Approve</Button>}
-        {urls.length > 0 && <Button disabled={checking} onClick={() => void linkCheck()}>Check links</Button>}
-        {/* D3.2: one accent: Approve while Draft, Mark done once Approved */}
-        {!isDone && <Button ref={doneRef} variant={b.status === 'draft' ? 'control' : 'accent'} onClick={() => setOpen(learning ? 'check' : 'deliver')}>Mark done</Button>}
-      </div>}
-      {open === 'edit' && <BriefEditor ticket={ticket} brief={b} onClose={close} returnFocus={() => null} />}
-      {open === 'check' && <CheckDialog ticket={ticket} brief={b} onClose={close} onDone={done} returnFocus={() => doneRef.current} />}
-      {open === 'deliver' && <DeliverableDialog ticket={ticket} brief={b} onClose={close} onDone={done} returnFocus={() => doneRef.current} />}
     </Panel>
   )
 }

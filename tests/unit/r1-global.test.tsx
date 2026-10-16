@@ -69,6 +69,8 @@ async function boot(o: Boot = {}) {
   await d.settings.put({ id: 'main', startDate: START, planVersion: 't', aiProviders: {}, possibleXp: 0, navLabels: 'always', ...o.settings })
   await runReconcile(d, v2)
   await d.tickets.bulkPut([keepRitual])
+  // W5: four inactive days make a restart day (the Floor leads and the quest is collapsed); these scans are about the usual Today, so the learner studied yesterday
+  await d.sessions.put({ id: 's-w5-yesterday', ticketId: keepRitual.id, start: NOW - 24 * 3_600_000, end: NOW - 23 * 3_600_000, minutes: 60, outcome: 'solved', xpDelta: 0 })
   const all = await d.tickets.toArray()
   await o.prep?.(d, all)
   if (o.phone) vi.stubGlobal('matchMedia', (q: string) => ({ matches: q === NARROW_QUERY, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false }))
@@ -132,7 +134,7 @@ const SCREENS: State[] = [
   { name: 'Today: empty (no tickets at all)', ready: 'today-quest', prep: async d => { await d.tickets.clear() }, opt: { accent: 0 } },
   { name: 'Today: pick list open', prep: sixDone, ready: 'today-quest', act: () => { fireEvent.click(screen.getByTestId('today-pick-else')) } },
   { name: 'Today: stats drawer open', prep: sixDone, ready: 'today-quest', act: () => { fireEvent.click(screen.getByTestId('today-stats-toggle')) } },
-  { name: 'Today: a long ticket waits for a longer day', prep: sixDone, settings: { laneBudgets: [20, 20, 20, 20, 20, 20, 20] }, ready: 'today-quest' },
+  { name: 'Today: a long ticket waits for a longer day', prep: sixDone, settings: { laneBudgets: [20, 20, 20, 20, 20, 20, 20] }, ready: 'today-floor', act: () => { fireEvent.click(screen.getByTestId('today-mix-toggle')) } },
   { name: 'Today: read-only', prep: sixDone, ready: 'today-quest', readOnly: true },
   // Path
   { name: 'Path', route: '/path', ready: 'path-upnext', opt: { accent: 0 } },

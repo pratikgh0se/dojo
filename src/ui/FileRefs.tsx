@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 
 /**
- * UAT r3 J3: the stage statements name real files in the learner's own capstone repo ("grade it against
+ * UAT r3 J3: the stage statements name real files in the learner's own repo ("grade it against
  * forge/stages/00-setup/rubric.md", "log questions in QUESTIONS.md"). They stay, shown as file references
  * (a monospace chip), not loose prose. Trailing punctuation stays outside the chip. UAT r4: the same chips in
  * AI-drafted brief text, and any bare `*.md` name (rubric.md, NOTES.md), never a piece of a URL or a longer path.
@@ -19,8 +19,8 @@ function FileRef({ path }: { path: string }) {
   return (
     <code
       className="file-ref" role="button" tabIndex={0} data-copied={copied ? 'true' : undefined}
-      title={copied ? 'Copied' : 'A file in your own capstone repo. Click to copy its path.'}
-      aria-label={`File in your capstone repo: ${path}. Press to copy the path.`}
+      title={copied ? 'Copied' : 'A file in your own repo. Click to copy its path.'}
+      aria-label={`File in your repo: ${path}. Press to copy the path.`}
       onClick={copy}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); copy() } }}
     >{path}</code>

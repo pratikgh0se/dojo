@@ -1,4 +1,4 @@
-import { INTERVIEW_RUBRIC } from '../ai/prompts'
+import { INTERVIEW_RUBRIC } from '../ai/rubric'
 import type { Score012 } from '../ai/types'
 import type { DeepDive, PartnerScores } from '../data/types'
 import { capScore } from './designSession'

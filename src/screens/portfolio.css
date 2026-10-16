@@ -1,0 +1,33 @@
+/* Portfolio (PORT-*): square corners, text 14 px or more, one accent only (the confirm dialog's submit). */
+.pf { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.pf-empty { display: grid; gap: 12px; justify-items: start; }
+.pf-empty p { margin: 0; }
+.pf-card { display: grid; gap: 16px; min-width: 0; }
+.pf-card-title { margin: 0; font-family: var(--sr-font-body); font-size: var(--type-title); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.pf-outs { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pf-out { display: grid; gap: 8px; align-content: start; padding: 12px; min-width: 0; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); border-radius:0; }
+.pf-out-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; }
+.pf-out-title { margin: 0; font-size: var(--type-small); font-weight: 700; }
+.pf-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); border-radius:0; font-size: var(--type-meta); font-weight: 700; white-space: nowrap; }
+.pf-link { font-size: var(--type-small); overflow-wrap: anywhere; color: var(--sr-link); }
+.pf-text { width: 100%; min-height: 160px; box-sizing: border-box; padding: 8px; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); border-radius:0; color: var(--sr-text-primary); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.5; resize: vertical; }
+.pf-text[readonly] { color: var(--sr-text-secondary); }
+.pf-warn { margin: 0; padding: 8px; border: 2px solid var(--sr-label-warn); border-radius:0; font-size: var(--type-small); overflow-wrap: anywhere; }
+.pf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pf-actions .sr-btn { min-height: var(--sr-size-hit-touch); }
+
+/* the confirm dialog */
+.pf-back { position: fixed; inset: 0; z-index: var(--sr-z-commandpalette); display: flex; justify-content: center; align-items: flex-start; padding: 8vh 16px 16px; background: var(--sr-scrim); box-sizing: border-box; overflow-y: auto; }
+.pf-dialog { display: grid; gap: 8px; width: min(720px, 100%); box-sizing: border-box; max-height: calc(100dvh - 8vh - 32px); overflow-y: auto; }
+.pf-dialog-title { margin: 0; font-size: var(--type-title); font-weight: 700; }
+.pf-line, .pf-note, .pf-error-text { margin: 0; font-size: var(--type-small); overflow-wrap: anywhere; }
+.pf-mono { font-family: var(--sr-font-mono); font-size: var(--type-meta); overflow-wrap: anywhere; }
+.pf-cap { margin: 8px 0 0; font-family: var(--sr-font-mono); font-size: var(--type-meta); letter-spacing: 1px; font-weight: 400; color: var(--sr-text-secondary); }
+.pf-files, .pf-hits { display: grid; gap: 4px; margin: 0; padding: 8px; list-style: none; max-height: 240px; overflow: auto; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); border-radius:0; font-family: var(--sr-font-mono); font-size: var(--type-meta); }
+.pf-files li { overflow-wrap: anywhere; }
+.pf-hits li { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+@media (max-width: 767px) {
+  .pf-outs { grid-template-columns: minmax(0, 1fr); }
+  .pf-back { padding: 16px 16px 84px; }
+  .pf-dialog { max-height: calc(100dvh - 100px); }
+}

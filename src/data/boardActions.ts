@@ -1,6 +1,5 @@
 import type { DojoDB } from './db'
 import type { Ticket } from './types'
-import { needsCheck } from '../rules/brief'
 import { canMove, MOVE_MESSAGES, type Column } from '../rules/board'
 import { isBankOrigin } from '../rules/bankTickets'
 import { netOf } from './ladderActions'
@@ -9,7 +8,7 @@ export type ActionResult = { ok: true; xpDelta: number; count?: number } | { ok:
 
 const fail = (reason: string, message: string): ActionResult => ({ ok: false, reason, message })
 
-async function moveTicketInner(d: DojoDB, id: string, to: Column, now: number, skipCheck = false): Promise<ActionResult> {
+async function moveTicketInner(d: DojoDB, id: string, to: Column, now: number): Promise<ActionResult> {
   // rungUses is needed by netOf (I2: Board's Done move uses the same one XP function as the
   // ladder, so give-up → Solution → Board-done charges the net, not the ticket's full base).
   return d.transaction('rw', d.tickets, d.events, d.rungUses, async (): Promise<ActionResult> => {
@@ -25,7 +24,6 @@ async function moveTicketInner(d: DojoDB, id: string, to: Column, now: number, s
     const check = canMove(all, id, to)
     if (!check.ok) return fail(check.reason, MOVE_MESSAGES[check.reason])
     const t = all.find(x => x.id === id)!
-    if (to === 'done' && !skipCheck && needsCheck(t)) return fail('check_required', MOVE_MESSAGES.check_required)
 
     // A Done ticket moving to any non-Done status (Doing or Todo) must first pay back
     // its XP: zero it, drop doneAt/doneAtApprox, and record one untick event — before
@@ -64,7 +62,6 @@ async function moveTicketInner(d: DojoDB, id: string, to: Column, now: number, s
   })
 }
 
-/** `skipCheck` is only for submitCheck: a passed check is the one way to finish a learning card. */
-export async function moveTicket(d: DojoDB, id: string, to: Column, now: number, skipCheck = false): Promise<ActionResult> {
-  return d.transaction('rw', d.tickets, d.events, d.rungUses, () => moveTicketInner(d, id, to, now, skipCheck))
+export async function moveTicket(d: DojoDB, id: string, to: Column, now: number): Promise<ActionResult> {
+  return d.transaction('rw', d.tickets, d.events, d.rungUses, () => moveTicketInner(d, id, to, now))
 }

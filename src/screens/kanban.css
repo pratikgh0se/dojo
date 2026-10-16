@@ -43,9 +43,12 @@
 .kb-card[data-dragging='true'] { opacity: .45; }
 .kb-card:focus-visible { outline: 3px solid var(--sr-energy-accent); outline-offset: 2px; }
 .kb-card > * { min-width: 0; }
-.kb-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: start; }
+.kb-top { display: block; overflow-x: clip; overflow-clip-margin: 3px; }
+/* The menu button sits in the card's top-right corner. A float of its size (on .kb-top, not on the link) narrows only the first lines, so a long word drops below it instead of breaking mid-word (UAT A J11.7). */
+.kb-top::before { content: ''; float: right; width: 36px; height: 30px; }
+.kb-top .kb-menu-btn { position: absolute; top: 6px; right: 6px; }
 .kb-kind { display: inline-flex; color: var(--sr-text-secondary-ontile); }
-.kb-title { color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 600; line-height: 1.35; text-decoration: none; overflow-wrap: break-word; }
+.kb-title { color: var(--sr-text-primary); font-family: var(--sr-font-body); font-size: var(--type-small); font-weight: 600; line-height: 1.35; text-decoration: none; overflow-wrap: normal; }
 .kb-title:hover { text-decoration: underline; }
 .kb-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .kb-lane { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border: 2px solid var(--sr-edge-mid); background: var(--sr-surface-well); font-family: var(--sr-font-body); font-size: var(--type-meta); font-weight: 700; line-height: 1; letter-spacing: .06em; }
@@ -69,4 +72,5 @@ body.kb-dragging .kb-card { cursor: grabbing; }
   .kb-chips { padding: 8px 12px 12px; }
   .kb-cols, .kb-cols[data-backlog='open'] { grid-template-columns: none; grid-auto-columns: minmax(240px, 240px); padding: 12px; }
   .kb-menu-btn { width: var(--sr-size-hit-touch); height: var(--sr-size-hit-touch); }
+  .kb-top::before { width: calc(var(--sr-size-hit-touch) + 6px); height: var(--sr-size-hit-touch); }
 }

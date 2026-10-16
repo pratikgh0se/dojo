@@ -28,7 +28,7 @@ a { color: var(--sr-link); }
 code { font-family: var(--sr-font-mono); }
 /* GLOBAL-04: the browser's default sup/sub size (smaller, 11.67 px at 14) is under the 14 px floor; raise by position alone */
 sup, sub { font-size: var(--type-meta); line-height: 0; }
-/* UAT r3 J3: a file in the learner's capstone repo, named inside a statement */
+/* UAT r3 J3: a file in the learner's own repo, named inside a statement */
 code.file-ref { cursor: copy; font-size: inherit; padding: 0 4px; border: 2px solid var(--sr-edge-mid); background: var(--sr-chart-well); overflow-wrap: anywhere; white-space: normal; }
 
 .page { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; gap: 16px; }

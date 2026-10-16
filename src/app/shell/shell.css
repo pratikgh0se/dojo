@@ -1,6 +1,8 @@
 /* The shell: a rail (or a bottom tab bar on a phone), a 48 px header, and the screen. Classes are prefixed sh- (shell) and pal- (palette). */
 .sh-app { --sh-chrome: 48px; display: grid; grid-template-columns: auto minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; }
 .sh-app[data-phone='true'] { --sh-chrome: 120px; grid-template-columns: minmax(0, 1fr); padding-bottom: 68px; }
+/* RIT-50: scrolling a control into view on a phone stops above the 68 px tab bar, not under it (the page scrolls as a document) */
+html:has(.sh-app[data-phone='true']):not(:has(.do-focus)) { scroll-padding-bottom: 72px; }
 .sh-col { display: flex; flex-direction: column; min-width: 0; }
 /* TICKET-29 / UX-08: focus mode shows only the brief, the timer and Notes, so the rail and the phone tab bar go while it is mounted
  * (Esc and focus-exit unmount it and they return). The grid column the rail held, and the room the tab bar held, go with them. */

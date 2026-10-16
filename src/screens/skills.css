@@ -216,3 +216,10 @@
 .sk-builds-link:hover { color: var(--sr-label-accent); }
 .sk-builds-link:focus-visible { outline: 3px solid var(--sr-text-primary); outline-offset: 2px; }
 .sk-split-solo { grid-template-columns: minmax(0, 1fr); }
+
+/* R2 W3: the computed topic state (Learning, Learned, Built, Proven) beside the node's own state, and the next-step line */
+.sk-topic { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 2px solid currentColor; font-size: var(--type-meta); font-weight: 700; line-height: 1; white-space: nowrap; }
+.sk-topic[data-topic-state='proven'] { color: var(--sr-label-ok); }
+.sk-line .sk-topic { grid-column: 2; justify-self: start; }
+.sk-nb .sk-topic { height: 16px; padding: 0 4px; border-width: 1px; }
+.sk-nextline { overflow-wrap: anywhere; }

@@ -24,10 +24,10 @@ async function seedV7(name: string) {
 
 describe('v7 to v8 pulses table', () => {
   it('is database version 10 (v8 added pulses, v9 the journal, v10 the bank tables) and the pulses table is keyed by id with a day index', async () => {
-    expect(DB_VERSION).toBe(10)
+    expect(DB_VERSION).toBe(12)
     const d = createDb(dbName())
     await d.open()
-    expect(d.verno).toBe(10)
+    expect(d.verno).toBe(12)
     expect(d.pulses.schema.primKey.keyPath).toBe('id')
     expect(d.pulses.schema.idxByName.day).toBeDefined()
     d.close()

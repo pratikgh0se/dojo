@@ -25,7 +25,7 @@ async function seedV8(name: string) {
 
 describe('v8 to v10 question-bank tables', () => {
   it('declares bankGrades and bankExtra keyed by id with area and node indexes', async () => {
-    expect(DB_VERSION).toBe(10)
+    expect(DB_VERSION).toBe(12)
     const d = createDb(dbName())
     await d.open()
     for (const t of [d.bankGrades, d.bankExtra]) {

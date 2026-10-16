@@ -22,7 +22,7 @@ with backups in `~/Dojo/backups/`. Nothing below deletes data unless it says so.
 notarized. A copy you built yourself normally opens directly. If macOS blocks it (for example a copy moved from
 another Mac, or after a macOS update):
 
-1. In Finder, open `~/Applications`, **right-click (or Control-click) Dojo › Open**, then **Open** in the dialog.
+1. In Finder, open `/Applications`, **right-click (or Control-click) Dojo › Open**, then **Open** in the dialog.
    You only need to do this the first time.
 2. If there is no Open button (recent macOS versions), open **System Settings › Privacy & Security**, scroll to the
    message about Dojo, and click **Open Anyway**.

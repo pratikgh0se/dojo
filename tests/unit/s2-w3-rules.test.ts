@@ -11,18 +11,18 @@ import type { PlanJson } from '../../src/data/types'
 import { flatPlanV2 } from '../helpers/plan'
 import { mkPlanV2, mkTicket } from '../helpers/planV2'
 
-describe('NAV-01/02: the twelve destinations', () => {
+describe('NAV-01/02: the thirteen destinations', () => {
   it('lists them in rail order with routes, groups and keys 1 to 6 on the first six only', () => {
     expect(DESTINATIONS.map(d => [d.id, d.to, d.label, d.group, d.key ?? null])).toEqual([
       ['today', '/', 'Today', 'main', '1'], ['path', '/path', 'Path', 'main', '2'], ['board', '/board', 'Board', 'main', '3'],
       ['journal', '/journal', 'Journal', 'main', '4'], ['skills', '/skills', 'Skills', 'main', '5'], ['review', '/review', 'Review', 'main', '6'],
       ['ai', '/ai-topics', 'AI', 'topics', null], ['dsa', '/dsa', 'DSA', 'topics', null], ['designs', '/designs', 'Designs', 'topics', null],
-      ['banks', '/banks', 'Banks', 'practice', null], ['atlas', '/atlas', 'Atlas', 'practice', null], ['guide', '/guide', 'Guide', 'foot', null],
+      ['banks', '/banks', 'Banks', 'practice', null], ['atlas', '/atlas', 'Atlas', 'practice', null], ['portfolio', '/portfolio', 'Portfolio', 'practice', null], ['guide', '/guide', 'Guide', 'foot', null],
     ])
   })
-  it('splits the phone: four tabs and the eight others in the More sheet (NAV-09, NAV-10)', () => {
+  it('splits the phone: four tabs and the nine others in the More sheet (NAV-09, NAV-10)', () => {
     expect(TAB_IDS).toEqual(['today', 'path', 'board', 'review'])
-    expect(MORE_IDS).toEqual(['journal', 'skills', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'guide'])
+    expect(MORE_IDS).toEqual(['journal', 'skills', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'portfolio', 'guide'])
   })
 })
 
@@ -31,13 +31,13 @@ describe('NAV-03: the current item follows the route', () => {
     const cases: [string, string | null][] = [
       ['/', 'today'], ['/path', 'path'], ['/board', 'board'], ['/journal', 'journal'], ['/skills', 'skills'], ['/skills/area/llm', 'skills'],
       ['/skills/stats', 'skills'], ['/review', 'review'], ['/ai-topics', 'ai'], ['/dsa', 'dsa'], ['/designs', 'designs'], ['/banks', 'banks'],
-      ['/atlas', 'atlas'], ['/guide', 'guide'], ['/do/t1', null], ['/designs/session/d1', null], ['/settings', null],
+      ['/atlas', 'atlas'], ['/portfolio', 'portfolio'], ['/guide', 'guide'], ['/do/t1', null], ['/designs/session/d1', null], ['/settings', null],
     ]
     for (const [p, id] of cases) expect(currentDestination(p), p).toBe(id)
   })
   it('gives the header title only where the screen draws no h1 of its own', () => {
     expect(titleFor('/journal')).toBe('Journal')
-    for (const p of ['/board', '/ai-topics', '/guide', '/dsa', '/designs', '/atlas', '/banks']) expect(titleFor(p), p).toBe('')
+    for (const p of ['/board', '/ai-topics', '/guide', '/dsa', '/designs', '/atlas', '/banks', '/portfolio']) expect(titleFor(p), p).toBe('')
     expect(titleFor('/settings')).toBe('Settings')
   })
 })
@@ -70,7 +70,7 @@ describe('NAV-37/38/39: the palette', () => {
     ])
   })
   it('finds the other destinations by name', () => {
-    for (const [q, to] of [['board', '/board'], ['journal', '/journal'], ['ai topics', '/ai-topics'], ['guide', '/guide'], ['dsa', '/dsa'], ['designs', '/designs'], ['banks', '/banks'], ['atlas', '/atlas']] as const) {
+    for (const [q, to] of [['board', '/board'], ['journal', '/journal'], ['ai topics', '/ai-topics'], ['guide', '/guide'], ['dsa', '/dsa'], ['designs', '/designs'], ['banks', '/banks'], ['atlas', '/atlas'], ['portfolio', '/portfolio']] as const) {
       expect(targetOf(q), q).toContain(to)
     }
     expect(rank(all, 'board')[0].target).toBe('/board')

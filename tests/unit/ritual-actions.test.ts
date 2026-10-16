@@ -67,3 +67,35 @@ describe('openWeekTicket', () => {
     expect((await d.tickets.get(a))?.status).toBe('todo')
   })
 })
+
+import { openRitualTicket } from '../../src/data/ritualActions'
+import type { RitualEntry } from '../../src/rules/ritualPeriod'
+
+describe('openRitualTicket', () => {
+  const WR: RitualEntry = { id: 'weekly-review', title: 'Weekly review', cadence: 'weekly', minutes: 60, dueWeekday: 0, dueHour: 12 }
+  const SWAP: RitualEntry = { id: 'model-swap-drill', title: 'Model swap drill', cadence: 'monthly', minutes: 180, dueWeekday: 6, body: 'Swap a model.' }
+  it('creates the period ticket when the window is open, returns its id, and writes nothing else', async () => {
+    const d = freshDb()
+    const id = await openRitualTicket(d, WR, at(2026, 11, 8, 14))
+    expect(id).toBe('ritual-weekly-review-2026-W45')
+    expect(await d.tickets.get(id!)).toMatchObject({
+      kind: 'ritual', lane: 'ritual', origin: 'ritual:weekly-review:2026-W45', title: 'Weekly review', estMin: 60, status: 'todo', xp: 0,
+      text: 'Look back at your week, then write three short lines: what worked, what to change, and a focus for next week.',
+    })
+    expect((await d.sessions.count()) + (await d.events.count()) + (await d.redos.count())).toBe(0)
+  })
+  it('is idempotent: an existing ticket (started, done or archived) is returned untouched', async () => {
+    const d = freshDb()
+    const id = (await openRitualTicket(d, SWAP, at(2026, 11, 7, 9)))!
+    expect(id).toBe('ritual-model-swap-drill-2026-11')
+    await d.tickets.update(id, { status: 'doing', xp: 3 })
+    expect(await openRitualTicket(d, SWAP, at(2026, 11, 20, 9))).toBe(id)
+    expect(await d.tickets.count()).toBe(1)
+    expect(await d.tickets.get(id)).toMatchObject({ status: 'doing', xp: 3 })
+  })
+  it('returns null and creates nothing outside the window', async () => {
+    const d = freshDb()
+    expect(await openRitualTicket(d, WR, at(2026, 11, 8, 11, 59))).toBeNull()
+    expect(await d.tickets.count()).toBe(0)
+  })
+})

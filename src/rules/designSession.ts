@@ -1,4 +1,4 @@
-import { INTERVIEW_RUBRIC } from '../ai/prompts'
+import { INTERVIEW_RUBRIC } from '../ai/rubric'
 import { coachTurn, COACH_TURNS, PHASE_LABEL, turnTopic, type CoachPhase, type CoachTopic } from '../ai/coachPlan'
 import { LENSES, type InterviewFinal, type Lens, type Score012 } from '../ai/types'
 import type { CloseAnswers, DeepDive, DesignSession, Tradeoff } from '../data/types'

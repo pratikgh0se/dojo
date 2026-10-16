@@ -5,7 +5,7 @@
 // Uint8Array identity mismatch, unrelated to this project's code), so this file runs in the
 // plain Node environment instead of the suite's default jsdom.
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -115,6 +115,22 @@ describe('C3: dev and tests never use the real app port', () => {
         const r = dev({ HOME: fakeHome, DOJO_HOME: home, DOJO_SERVER_PORT: '8899', DOJO_PORT: '8898' })
         expect(r.status, home).toBe(1)
         expect(r.stderr).toMatch(/~\/Dojo/)
+      }
+    } finally {
+      rmSync(fakeHome, { recursive: true, force: true })
+    }
+  })
+
+  it('LAUNCH-05: a refused start leaves ~/Dojo untouched, also for a DOJO_HOME that does not exist yet below it (fake HOME behind a symlinked tmpdir)', () => {
+    const fakeHome = mkdtempSync(join(tmpdir(), 'dojo-devguard-'))
+    try {
+      mkdirSync(join(fakeHome, 'Dojo'))
+      const cased = process.platform === 'darwin' ? [join(fakeHome, 'DOJO', 'new')] : []
+      for (const home of [join(fakeHome, 'Dojo', 'new'), join(fakeHome, 'Dojo', 'a', 'b'), ...cased]) {
+        const r = dev({ HOME: fakeHome, DOJO_HOME: home, DOJO_SERVER_PORT: '8899', DOJO_PORT: '8898' })
+        expect(r.status, home).toBe(1)
+        expect(r.stderr, home).toMatch(/dev: refusing to use ~\/Dojo/)
+        expect(readdirSync(join(fakeHome, 'Dojo')), home).toEqual([])
       }
     } finally {
       rmSync(fakeHome, { recursive: true, force: true })

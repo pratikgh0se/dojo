@@ -6,6 +6,7 @@ import { shownDataFile, useDataHome } from '../data/dataHome'
 import { useSettings, useTickets } from '../data/hooks'
 import { STORAGE_STATUS_LABEL, useStorageStatus } from '../data/persist'
 import { safeWrite } from '../data/safeWrite'
+import { saveLabsRoot } from '../data/labActions'
 import { saveCareerLane, saveLaneBudgets, saveNavLabels, saveSessionMinutes, saveStartDate } from '../data/settingsActions'
 import { useSaveState } from '../data/sync/status'
 import type { Ticket } from '../data/types'
@@ -197,6 +198,7 @@ function PreferencesSection({ settings, readOnly }: { settings: SettingsRow; rea
   const rail = useRailState() // the switch shows what the rail shows, also on a first launch (labels up, `hover` stored) and after the rail's own toggle
   const [mins, setMins] = useState(String(sessionMinutesOf(settings)))
   const [minsError, setMinsError] = useState<string | null>(null)
+  const [labsRoot, setLabsRoot] = useState(settings.labsRoot ?? '')
   // never rejects: safeWrite rethrows what it does not absorb, and every caller here is a fire-and-forget handler
   const run = async (f: () => Promise<{ ok: true } | { ok: false; message: string }>) => {
     if (readOnly) return undefined
@@ -238,6 +240,16 @@ function PreferencesSection({ settings, readOnly }: { settings: SettingsRow; rea
         {minsError && <span role="alert" className="form-error">{minsError}</span>}
       </label>
       <p className="settings-note">Start on a ticket runs one timer of this length. It stops at zero and waits for you.</p>
+      {/* R2: where Set up lab creates lab folders. Stored as typed; the server judges it when a lab is set up (bad_root). */}
+      <label className="ps-day">
+        Labs folder
+        <input
+          type="text" autoComplete="off" spellCheck={false} data-testid="settings-labs-root" placeholder="~/labs"
+          value={labsRoot} disabled={readOnly} onChange={e => setLabsRoot(e.target.value)}
+          onBlur={() => { if (!readOnly && labsRoot.trim() !== (settings.labsRoot ?? '')) void run(async () => { await saveLabsRoot(d, labsRoot); return { ok: true } }) }}
+        />
+      </label>
+      <p className="settings-note" data-testid="settings-labs-root-help">Set up lab creates each lab's folder inside this folder in your home folder, or in ~/labs when this is empty.</p>
     </Panel>
   )
 }

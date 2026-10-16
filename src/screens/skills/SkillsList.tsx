@@ -11,12 +11,16 @@ import { Glyph } from '../../ui/Glyph'
 import { Button } from '../../ui/primitives'
 import { SkMeter, StateGlyph } from './Meter'
 import { NodeItems, NodeStart } from './NodeItems'
+import { TopicBadge } from './TopicBadge'
+import { withTopicWord, type TopicView } from './useTopicViews'
 
 /** The phone view of one area: an indented tree. Arrows move, right opens a row, left closes it. */
-export function SkillsList({ plan, tickets, states, nodes, initialOpen = null }: {
+export function SkillsList({ plan, tickets, states, nodes, initialOpen = null, topics }: {
   plan: PlanV2; tickets: readonly Ticket[]; states: ReadonlyMap<string, NodeState>; nodes: PlanNode[]
   /** SKILLS-16: the node named by `?node=` starts expanded and is scrolled into view (NAV-24) */
   initialOpen?: string | null
+  /** R2: the topic state and next-step line of the AI nodes (not the trees) */
+  topics?: ReadonlyMap<string, TopicView>
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>(initialOpen ? { [initialOpen]: true } : {})
   const [focus, setFocus] = useState(0)
@@ -29,9 +33,26 @@ export function SkillsList({ plan, tickets, states, nodes, initialOpen = null }:
     if (!initialOpen) return
     const i = nodes.findIndex(n => n.id === initialOpen)
     if (i >= 0) { setFocus(i); refs.current[i]?.scrollIntoView?.({ block: 'center' }) }
-    // on arrival only: selecting rows by hand never moves the page
+    // on arrival only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  // the row just opened (by hand or on arrival) is brought up until its end clears the fixed next-ticket panel (SKILLS-20), never past its own top
+  const justOpened = useRef<string | null>(initialOpen)
+  useEffect(() => {
+    const id = justOpened.current
+    justOpened.current = null
+    const li = id ? refs.current[nodes.findIndex(n => n.id === id)] : null
+    const panel = document.querySelector('[data-testid="skills-next-panel"]')
+    if (!li || !panel) return
+    const r = li.getBoundingClientRect()
+    const over = r.bottom - (panel.getBoundingClientRect().top - 8)
+    if (over > 0) window.scrollBy(0, Math.min(over, Math.max(0, r.top - 8)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+  function setRow(id: string, v: boolean) {
+    if (v) justOpened.current = id
+    setOpen(o => ({ ...o, [id]: v }))
+  }
 
   function key(e: React.KeyboardEvent, i: number, n: PlanNode) {
     if (e.target !== e.currentTarget) return // keys inside an open row (its Start button) are the button's own
@@ -40,9 +61,9 @@ export function SkillsList({ plan, tickets, states, nodes, initialOpen = null }:
       const j = Math.min(nodes.length - 1, Math.max(0, i + (e.key === 'ArrowDown' ? 1 : -1)))
       setFocus(j)
       refs.current[j]?.focus()
-    } else if (e.key === 'ArrowRight') { e.preventDefault(); setOpen(o => ({ ...o, [n.id]: true })) }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); setOpen(o => ({ ...o, [n.id]: false })) }
-    else if (e.key === 'Enter') { e.preventDefault(); setOpen(o => ({ ...o, [n.id]: !o[n.id] })) }
+    } else if (e.key === 'ArrowRight') { e.preventDefault(); setRow(n.id, true) }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); setRow(n.id, false) }
+    else if (e.key === 'Enter') { e.preventDefault(); setRow(n.id, !open[n.id]) }
   }
 
   return (
@@ -52,18 +73,20 @@ export function SkillsList({ plan, tickets, states, nodes, initialOpen = null }:
           const mine = nodeTickets(n.id, tickets)
           const next = tree ? nextItemOf(n.id, tickets) : nextTicketOf(n.id, tickets)
           const isOpen = !!open[n.id]
+          const topic = topics?.get(n.id)
           const layer = layers.get(n.id) ?? 0
           const reason = st === 'locked' ? lockedReason(n, plan, states) : ''
           return (
             <li
               key={n.id} ref={el => { refs.current[i] = el }} role="treeitem" aria-level={layer + 1} aria-expanded={isOpen}
               tabIndex={focus === i ? 0 : -1} className="sk-trow-li" data-state={st} data-layer={layer} data-testid={`skills-row-${n.id}`}
-              aria-label={`${n.title}, ${STATE_WORD[st]}`} aria-describedby={reason ? `sk-why-${n.id}` : undefined} style={{ paddingLeft: rowPadding(layer) }}
+              aria-label={withTopicWord(`${n.title}, ${STATE_WORD[st]}`, topic?.state)} aria-describedby={reason ? `sk-why-${n.id}` : undefined} style={{ paddingLeft: rowPadding(layer) }}
               onFocus={e => { if (e.target === e.currentTarget) setFocus(i) }} onKeyDown={e => key(e, i, n)}
             >
-              <span className="sk-line" onClick={() => setOpen(o => ({ ...o, [n.id]: !o[n.id] }))}>
+              <span className="sk-line" onClick={() => setRow(n.id, !open[n.id])}>
                 <StateGlyph id={n.id} attr={STATE_ATTR[st]}><Glyph name={STATE_GLYPH[st]} size={2} /></StateGlyph>
                 <span className="sk-rt" data-content="plan">{n.title}</span>
+                <TopicBadge id={n.id} topic={topic?.state} />
                 <SkMeter done={mine.filter(t => t.status === 'done').length} total={mine.length} label="Tickets done" testId={`skills-node-meter-${n.id}`} segments={Math.min(8, Math.max(1, mine.length))} tone={st === 'done' ? 'ok' : 'accent'} />
               </span>
               {/* D5: the reason is said once, on the row that is open; every other locked row keeps it for assistive tech (aria-describedby) */}
@@ -71,6 +94,7 @@ export function SkillsList({ plan, tickets, states, nodes, initialOpen = null }:
               {isOpen && (
                 <span className="sk-more">
                   <span className="sk-meta" data-content="plan">{n.oneLiner}</span>
+                  {topic?.line && <span className="sk-meta sk-nextline" data-testid="skills-node-nextline" data-topic-state={topic.state ?? 'none'} data-content="plan">{topic.line}</span>}
                   {tree && <NodeItems items={mine} />}
                   {next && <NodeStart next={next} tree={tree} accent={tree && !treeHasNext} />}
                 </span>

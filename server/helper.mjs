@@ -15,7 +15,7 @@ export const HOST = '127.0.0.1'
 export const MODEL = 'sonnet'
 export const JOBS = ['hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'classify']
 // v2 part 3: served at /ai/:job like the rest, but NOT listed in GET /health.jobs, which ladder H-50 pins to the 7 above.
-export const EXTRA_JOBS = ['brief', 'check', 'bank_more']
+export const EXTRA_JOBS = ['brief', 'check', 'bank_more', 'lab_review', 'portfolio_draft']
 const ALL_JOBS = [...JOBS, ...EXTRA_JOBS]
 export const STATUS = {
   bad_request: 400, path_not_allowed: 400, forbidden_host: 403, forbidden_origin: 403, guardrail: 403,
@@ -133,6 +133,15 @@ export function validateRequest(job, body, cfg) {
     case 'check':
       if (!Array.isArray(context.questions) || context.questions.length === 0) throw bad('context.questions is required')
       break
+    case 'lab_review':
+      // R2 W2: the bundle (rubric, WRITEUP.md, diffs) is all the job sees; tools stay off like every job
+      if (!context.bundle || typeof context.bundle !== 'object' || !Array.isArray(context.bundle.rubric) || context.bundle.rubric.length === 0) throw bad('context.bundle with a rubric is required')
+      break
+    case 'portfolio_draft':
+      // R2 W6: an article or a LinkedIn post from the write-up; tools stay off like every job
+      if (context.kind !== 'article' && context.kind !== 'linkedin') throw bad('context.kind must be article or linkedin')
+      if (typeof context.writeup !== 'string') throw bad('context.writeup is required')
+      break
     case 'grade':
       if (context.repoPath !== undefined) {
         if (!cfg.projectRoot) throw new JobError('path_not_allowed', 'no project repo is set (DOJO_PROJECT_REPO, or projectRepo in DOJO_HOME/profile.json)')
@@ -197,7 +206,7 @@ export function createHelperHandler(cfg) {
 
   async function runFake(job, request, headers) {
     // README "Fake AI provider": the bank_more job takes at least 300 ms
-    const delay = Math.max(Number(headers['x-dojo-fake-delay-ms']) || 0, job === 'bank_more' ? 300 : 0)
+    const delay = Math.max(Number(headers['x-dojo-fake-delay-ms']) || 0, job === 'bank_more' || job === 'portfolio_draft' ? 300 : 0)
     if (Number.isFinite(delay) && delay > 0) await new Promise(r => setTimeout(r, Math.min(delay, MAX_FAKE_DELAY_MS)))
     const failCode = String(headers['x-dojo-fake-fail'] ?? '').trim()
     if (failCode) throw new JobError(FAKE_FAIL_CODES.includes(failCode) ? failCode : 'claude_failed', `fake ${job} unavailable`)

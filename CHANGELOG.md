@@ -3,6 +3,53 @@
 All notable changes to Dojo. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 2.1.0 - 2026-10-16
+
+Release 2: labs you can run, check and have reviewed, the Proven state, rituals, and the Portfolio. A minor version: Dexie moves
+to v12 on first launch (after a server backup) and drops tables for the retired brief, check and deliverable features.
+
+### Added
+
+- **Labs:** the lab engine (`/labs/*` routes, Set up lab, Run checks, hints, the review bundle), the `lab_review` AI job,
+  Dexie v11 and `npm run lab:verify`. The design session's rubric constants moved to `src/ai/rubric.ts` (smaller entry chunk).
+- **Lab loop on a build ticket:** Set up lab, Run checks with per-check results, a Done gate that opens when the ticket's
+  checks pass ("Mark done without checks" stays available), the three-rung hint ladder, and the AI review in the lab block
+  of every ticket of the lab. Build tickets also show their links and Explain-it-simply questions.
+- **Topic states on AI nodes:** Learning, Learned, Built and Proven badges on the skill map and a next-step line in the node panel.
+- **L1 lab pack and rituals data:** six Phase-1 labs (b1-tokensim, u1, l5-memsum, g1-log, r1-local, r1-vllm) with templates, references and checks, ticket-level explain content on the watch/read tickets, and ritual `dueHour`, `body` and monthly `dueWeekday` fields in the plan.
+- **Lab drop checks:** an unknown lab answers `GET /labs/info` with HTTP 200 and `ok: false` (the ticket shows the missing state with no console error), a lab run is stamped with the app clock of the click, and `plan:check` now fails when a build ticket's lab has no folder.
+- **Rituals:** the Floor (a 15-minute session of up to five cards and one line, a quiet welcome back after four or more days
+  away, and half-size budgets for the next four days), the Journal Week view with the weekly review, the monthly model swap
+  drill card, and passed explain checks that schedule review cards (at most ten shown per day). No streaks, no overdue counts.
+- **Portfolio:** a new destination (13th, no number key) that turns a Proven lab into a public repo folder, a portfolio site page, an
+  article draft and a LinkedIn draft. Each output is a draft first; a confirm screen lists every file and the exact URL, the leak scan
+  (home paths, emails, tokens, personal terms) blocks the publish with no override, and nothing is pushed (never forced) without your click.
+  New `/portfolio/export` and `/portfolio/publish` routes, the `portfolio_draft` AI job and the `portfolioItems` table.
+
+### Changed
+
+- Cleanup: the brief editor, check dialog and gate, deliverables and capstone stages are removed; Dexie v12 drops the `artifacts`, `stageCells` and `blankTests` tables after a backup; the installer now defaults to `/Applications`.
+
+### Fixed
+
+Found in the R2 acceptance runs (UAT A and UAT B) and the blind contract walk:
+
+- **Labs:** a lab review with more than three evidence entries on one item is no longer refused, and a malformed evidence entry
+  is dropped instead of refusing the whole review; a check row's status word is a word of its own; an unknown lab answers
+  `GET /labs/info` with HTTP 200 and `ok: false`; the `b1-tokensim` time-to-first-token window is 105 to 135 ms.
+- **Lab references:** the `b1-tokensim` reference sweep now has a warm-up, seeded repeats and error bars; the `u1` reference tests cover the full retry rules; the `r1-vllm` reference is pinned to vLLM 0.31.0.
+- **Today and rituals:** a started ticket on a restart day keeps the Floor lead; a started weekly review or model swap drill
+  ticket is never the quest or in the pick list; on a phone the Floor card's START sits above the fold with a focus line, and
+  the scroll padding clears the tab bar.
+- **Portfolio:** repo drafts make no `gh` call, the empty and not-set-up states are one sentence each, and the leak scan has a
+  rule for private host names and IP addresses.
+- **Layout:** a board card title breaks between words (inside a word only when wider than the card); the Journal week heading
+  keeps each date on one line on a phone; on a Floor day "No study today" sits below the fields; an opened phone Skills row is
+  brought up clear of the next-ticket panel; a stored lab review wraps inside the ticket column; topic badges on map nodes no
+  longer clip titles; the rail toggle survives a quick reload; `/` focuses an already drawn search box on Path.
+- **Server and install:** an unreadable backups folder lists as empty, so `/db/health` still answers and the page starts; a
+  refused start with a not-yet-existing `DOJO_HOME` never creates a directory.
+
 ## 2.0.0 - 2026-10-14
 
 Release 1 of the replan: Dojo is rebuilt around one flat queue of single-sitting tickets. This is a major version because

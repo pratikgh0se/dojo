@@ -1,23 +1,16 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { seedBrief } from '../helpers/briefs'
 import { submitCheck } from '../../src/data/checkActions'
 import { closeLadderSession, recordRung } from '../../src/data/ladderActions'
 import { setNow } from '../../src/lib/clock'
-import { openCheck } from '../../src/lib/checkGate'
 import { clearCycle, loadCycle, newCycle, saveCycle } from '../../src/lib/cycle'
 import { clearDraft, loadDraft, saveDraft } from '../../src/lib/drafts'
 import { loadStudy, saveStudy } from '../../src/lib/studyStore'
 import { blockTimer, clearTimer, loadTimer, saveTimer } from '../../src/lib/timer'
 import { startStudy } from '../../src/rules/studySession'
-import { CheckGate } from '../../src/screens/brief/CheckGate'
-import { OPEN_CHECK_EVENT } from '../../src/lib/checkGate'
-import { Do } from '../../src/screens/Do'
-import StudyRunner from '../../src/study/StudyRunner'
 import { closeStudyOnCheckPass, finishStudy, runTick } from '../../src/study/runner'
 import { seededDb } from '../helpers/db'
 import { flatPlanV2 } from '../helpers/plan'
-import { renderWithApp } from '../helpers/render'
 import { mkTicket } from '../helpers/tickets'
 
 // briefs Addendum 6: a passed learning check closes a study session running on that card as Solved does.
@@ -25,7 +18,6 @@ const MIN = 60_000
 const T = new Date(2026, 8, 8, 12).getTime() // sprint 1 of a plan starting 2026-09-07
 let clock = T
 const good = [{ id: 'q1', answer: 'I can explain hash maps now' }, { id: 'q2', choice: 0 }]
-const bad = [{ id: 'q1', answer: 'no idea' }, { id: 'q2', choice: 0 }]
 const fx = () => ({ chime: vi.fn(), toast: vi.fn(), onError: vi.fn(), readOnly: false })
 
 afterEach(() => localStorage.clear())
@@ -50,13 +42,6 @@ function expectClosed() {
   expect(loadTimer()).toBeNull()
   expect(loadCycle('w1')).toBeNull()
   expect(loadDraft('w1')).toEqual({ notes: '', repo: '', note: '', sessionNotes: '' })
-}
-
-async function answer(dialog: HTMLElement, pass: boolean) {
-  fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: pass ? 'about hash maps' : 'no idea' } })
-  fireEvent.click(within(dialog).getByRole('radio', { name: 'Hash maps' }))
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Check answers' }))
-  expect(await within(dialog).findByText(pass ? 'Passed' : 'Not yet', {}, { timeout: 5000 })).toBeInTheDocument()
 }
 
 describe('closeStudyOnCheckPass (the shared pass path)', () => {
@@ -159,16 +144,6 @@ function noAttempt() {
     await submitCheck(d, 'w1', good, T)
     expect(await closeStudyOnCheckPass({ d, ticketId: 'w1', nowMs: T, ...fx() })).toBe(false)
     expect(await d.sessions.count()).toBe(0)
-  })
-
-  it('Do open with the attempt: a pass closes it in Do (cycle state, no session bar)', async () => {
-    const d = await attempt()
-    renderWithApp(<><Do /><CheckGate /></>, { db: d, plan: flatPlanV2, route: '/do/w1', path: '/do/:ticketId' })
-    await screen.findByTestId('do-back')
-    openCheck('w1')
-    await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
-    await waitFor(async () => expect((await d.sessions.toArray()).map(s => s.outcome)).toEqual(['solved']))
-    expectClosed()
   })
 })
 
@@ -391,55 +366,5 @@ describe('failure and xp of the close (M4, M5)', () => {
     expect(earned).toBeGreaterThan(0)
     expect(await closeStudyOnCheckPass({ d, ticketId: 'w1', nowMs: T, ...fx(), xpDelta: earned })).toBe(true)
     expect((await d.sessions.toArray())[0].xpDelta).toBe(earned)
-  })
-})
-
-describe('the check dialog closes the session on a pass (BR-21/BR-22)', () => {
-  it('a pass closes it and no further focus minutes are credited', async () => {
-    const d = await studying()
-    renderWithApp(<><CheckGate /><StudyRunner /></>, { db: d, plan: flatPlanV2 })
-    window.dispatchEvent(new CustomEvent(OPEN_CHECK_EVENT, { detail: 'w1' }))
-    await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
-    await waitFor(async () => expect((await d.sessions.toArray()).map(s => s.outcome)).toEqual(['solved']))
-    expectClosed()
-    clock += 25 * MIN
-    await new Promise(r => setTimeout(r, 1200))
-    expect((await d.events.toArray()).filter(e => e.t === 'focus')).toHaveLength(0)
-    expect(await d.sessions.count()).toBe(1)
-  })
-
-  it('a fail or a cancel leaves the session running and the card open', async () => {
-    const d = await studying()
-    renderWithApp(<><CheckGate /><StudyRunner /></>, { db: d, plan: flatPlanV2 })
-    window.dispatchEvent(new CustomEvent(OPEN_CHECK_EVENT, { detail: 'w1' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Check your understanding' })
-    await answer(dialog, false)
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(loadStudy()).toMatchObject({ id: 'st1', blocks: 2 })
-    expect(loadTimer()).toMatchObject({ ticketId: 'w1', running: true })
-    expect(loadCycle('w1')).not.toBeNull()
-    expect((await d.tickets.get('w1'))!.status).toBe('doing')
-    expect(await d.sessions.count()).toBe(0)
-  })
-
-  it('Do: a pass while in focus mode ends the session view and focus mode', async () => {
-    const d = await studying()
-    renderWithApp(<><Do /><CheckGate /><StudyRunner /></>, { db: d, plan: flatPlanV2, route: '/do/w1', path: '/do/:ticketId' })
-    await waitFor(() => expect(screen.getByTestId('timer-state')).toHaveTextContent('running'))
-    fireEvent.keyDown(window, { key: 'f' })
-    await screen.findByRole('button', { name: 'Exit focus mode' })
-    openCheck('w1')
-    await answer(await screen.findByRole('dialog', { name: 'Check your understanding' }), true)
-    await waitFor(async () => expect((await d.sessions.toArray()).map(s => s.outcome)).toEqual(['solved']))
-    await waitFor(() => expect(screen.queryByTestId('focus-timer')).toBeNull())
-    expect(screen.queryByTestId('session-phase')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Exit focus mode' })).toBeNull()
-    expectClosed()
-    // focus mode really exited: a new session does not open straight into the overlay
-    saveStudy(startStudy({ id: 'st2', ticketId: 'w1', goal: '', cardIds: ['w1'], focusMin: 25, breakMin: 5, chime: false, now: clock }))
-    window.dispatchEvent(new Event('dojo-study-changed'))
-    await waitFor(() => expect(screen.getByTestId('timer-state')).toHaveTextContent('running'))
-    expect(screen.queryByRole('button', { name: 'Exit focus mode' })).toBeNull()
   })
 })

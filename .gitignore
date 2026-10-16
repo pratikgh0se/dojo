@@ -8,3 +8,4 @@ scripts/banks-private/.cache/
 .dojo-dev/
 .e2e-*/
 /out/
+.fixtures-out/

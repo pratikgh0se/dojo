@@ -5,7 +5,7 @@
 import { coachTurn, turnTopic, type CoachTopic } from './coachPlan'
 import {
   AiJobError, isAiErrorCode,
-  type AiErrorCode, type BankMoreContext, type BankMoreOutput, type BriefContext, type BriefOutput, type CheckContext, type CheckOutput, type ClassifyContext, type ClassifyOutput, type DiagramJson, type GradeContext, type GradeOutput, type HintContext,
+  type AiErrorCode, type BankMoreContext, type BankMoreOutput, type BriefContext, type LabReviewContext, type LabReviewOutput, type PortfolioDraftContext, type PortfolioDraftOutput, type BriefOutput, type CheckContext, type CheckOutput, type ClassifyContext, type ClassifyOutput, type DiagramJson, type GradeContext, type GradeOutput, type HintContext,
   type InterviewContext, type InterviewFinal, type InterviewItem, type InterviewOutput, type JobName, type JobOutput, type JobRequest,
   type SolutionOutput, type SrAlgoJson, type SrAlgoStep,
 } from './types'
@@ -190,13 +190,6 @@ function sessionFinal(id: string, variant: string, design?: string): InterviewFi
 }
 
 function grade(id: string, variant: string, ctx: GradeContext = {}): GradeOutput {
-  // UAT cu-5 P2-2: a written teach-back is judged as prose; the fake never mentions a commit, a diff or a measurement for it
-  if (ctx.deliverableKind === 'explanation') {
-    if (variant === 'low') {
-      return { score: 2, max: 5, passed: false, feedback: [`[fake:grade] ${id}: the explanation names the parts but not what each is for.`], missing: ['[fake:grade] a worked example'] }
-    }
-    return { score: 4, max: 5, passed: true, feedback: [`[fake:grade] ${id}: the explanation names the mechanism in the learner's own words.`], missing: [] }
-  }
   if (variant === 'low') {
     return {
       score: 2, max: 5, passed: false,
@@ -299,6 +292,60 @@ function bankMore(ctx: BankMoreContext): BankMoreOutput {
   return { questions: [mk('concept', 2, 1), mk('estimate', 3, 2), mk('tradeoff', 3, 3), mk('design', 4, 4), mk('concept', 1, 5)] }
 }
 
+/**
+ * The `lab_review` job (contracts README, "Fake AI provider"). Variant (localStorage `dojo:fake-ai-lab_review`): `pass` (default, an
+ * unknown name too), `pass-weak`, `borderline`, `not-yet`, `fabricated`, `malformed`, `invalid`. Scores repeat by item index over the four listed.
+ * A real quote is the first line of the bundle's WRITEUP.md that is not empty and does not start with #; a made-up quote is not in
+ * the work. Every reply also claims `percent: 100, passed: true`, which the app must ignore.
+ */
+const MADE_UP_QUOTE = 'This sentence is not in the work.'
+const LAB_SCORES: Record<string, readonly number[]> = {
+  pass: [3, 2, 3, 2], 'pass-weak': [3, 3, 3, 1], borderline: [3, 2, 2, 1], 'not-yet': [1, 0, 1, 1], fabricated: [3, 2, 3, 0], malformed: [3, 2, 3, 0], invalid: [3, 2, 3, 2],
+}
+function realQuote(writeup: string): { quote: string; file: string; line: number } | null {
+  const lines = writeup.split('\n')
+  const i = lines.findIndex(l => l.trim() !== '' && !l.trimStart().startsWith('#'))
+  return i < 0 ? null : { quote: lines[i].replace(/\r$/, ''), file: 'WRITEUP.md', line: i + 1 }
+}
+function labReview(ctx: LabReviewContext, variant = 'default'): LabReviewOutput {
+  const v = variant in LAB_SCORES ? variant : 'pass'
+  const rubric = ctx?.bundle?.rubric ?? []
+  const real = realQuote(ctx?.bundle?.writeup ?? '')
+  const madeUp = { quote: MADE_UP_QUOTE, file: 'WRITEUP.md', line: 1 }
+  const items = rubric.map((r, i) => {
+    const score = LAB_SCORES[v][i % 4]
+    let evidence = score >= 2 && real ? [real] : []
+    if (v === 'fabricated') evidence = [[real], [real, madeUp], [madeUp], []][i % 4].filter((e): e is NonNullable<typeof e> => e !== null)
+    if (v === 'malformed') {
+      // r2 adds a 401-character quote, r3 has a real quote with no line (LAB-71)
+      const noLine = real ? { quote: real.quote, file: real.file } : null
+      evidence = [[real], [real, { quote: 'x'.repeat(401), file: 'WRITEUP.md', line: 1 }], [noLine], []][i % 4].filter((e): e is NonNullable<typeof e> => e !== null) as typeof evidence
+    }
+    return { id: r.id, score, evidence, stronger: `[fake:review] A stronger answer for ${r.id} adds one concrete detail.` }
+  })
+  // invalid: the first item twice, and a score of 7 on the copy
+  const listed = v === 'invalid' && items.length > 0 ? [items[0], { ...items[0], score: 7 }, ...items.slice(1)] : items
+  return { items: listed, summary: `[fake:review] Reviewed ${rubric.length} items.`, percent: 100, passed: true } as LabReviewOutput
+}
+
+/**
+ * The `portfolio_draft` job (portfolio.md, "Fake AI for portfolio_draft"): a fixed template over the lab title (the ticket title), the
+ * number of journal rows `n` and the number of stronger texts `m`. A write-up LINE `FAKE-LONG` makes the LinkedIn reply 40 numbered
+ * sentences (1,759 characters); a line `FAKE-INVALID` makes both kinds return nothing usable (the invalid-reply failure).
+ */
+const hasLine = (text: unknown, marker: string): boolean => typeof text === 'string' && text.split(/\r?\n/).some(l => l.trim() === marker)
+function portfolioDraft(title: string, ctx: PortfolioDraftContext): PortfolioDraftOutput {
+  const writeup = ctx?.writeup
+  if (hasLine(writeup, 'FAKE-INVALID')) return { text: '' }
+  const n = Array.isArray(ctx?.journal) ? ctx.journal.length : 0
+  const m = Array.isArray(ctx?.stronger) ? ctx.stronger.length : 0
+  if (ctx?.kind === 'linkedin') {
+    if (hasLine(writeup, 'FAKE-LONG')) return { text: Array.from({ length: 40 }, (_, i) => `Sentence ${String(i + 1).padStart(2, '0')} of the fake long LinkedIn post.`).join(' ') }
+    return { text: `Fake LinkedIn draft for ${title}. Built from the write-up and ${m} stronger versions.` }
+  }
+  return { text: `# ${title}\n\nFake article draft built from the write-up, ${n} journal entries and ${m} stronger versions.` }
+}
+
 /** Pure: the fake output for one job and variant. Throws AiJobError for 'error' and input triggers. */
 export function fakeOutput<J extends JobName>(job: J, req: JobRequest<J>, variant = 'default'): JobOutput<J> {
   if (job === 'classify' && (req.context as ClassifyContext).input.includes(FAIL_CLASSIFY_TRIGGER)) {
@@ -320,6 +367,8 @@ export function fakeOutput<J extends JobName>(job: J, req: JobRequest<J>, varian
     case 'brief': out = brief(req.ticket?.title ?? id, req.context as BriefContext, variant); break
     case 'check': out = check(req.ticket?.title ?? id, req.context as CheckContext); break
     case 'bank_more': out = bankMore(req.context as BankMoreContext); break
+    case 'lab_review': out = labReview(req.context as LabReviewContext, variant); break
+    case 'portfolio_draft': out = portfolioDraft(req.ticket?.title ?? id, req.context as PortfolioDraftContext); break
     default: throw new AiJobError('unknown_job', `fake ${String(job)} unavailable`)
   }
   return out as JobOutput<J>

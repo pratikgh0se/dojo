@@ -54,7 +54,7 @@ The *data home* is the folder that holds `dojo.db`. Resolution order used by the
 1. Environment variable `DOJO_HOME`, if the app process was started with it (a terminal launch; a Dock launch has none).
 2. `Resources/dojo.json` inside the installed app bundle, `{"home": "<absolute path>"}`. The installer writes it only when
    `--home` (or `DOJO_HOME` at install time) names a folder other than `~/Dojo`; otherwise the file does not exist.
-   Default bundle: `~/Applications/Dojo.app/Contents/Resources/dojo.json` (the installer's `--dest` can move the app).
+   Default bundle: `/Applications/Dojo.app/Contents/Resources/dojo.json` (the installer's `--dest` can move the app).
 3. `~/Dojo`.
 
 Confirm a candidate before trusting it:
@@ -111,7 +111,7 @@ new file. Use the file's mtime (or `GET /db/backups` `at`) to decide whether a s
 ### 2.4 The plan (`plan.json`) and how it joins to the database
 
 - **Where.** Source: `public/data/plan.json` in the repo. Installed: `<Dojo.app>/Contents/Resources/app/dist/data/plan.json`
-  (default app location `~/Applications/Dojo.app`). It is **not** in the data home. The running app serves it at
+  (default app location `/Applications/Dojo.app`). It is **not** in the data home. The running app serves it at
   `http://127.0.0.1:<port>/data/plan.json`, with the `plan.schedule` and `plan.learner` keys of `<home>/profile.json` laid over
   it (top-level keys only; `PLAN_OVERLAY_KEYS`). Fetching that URL gives you the effective plan; reading the file gives the shipped one.
 - **Top-level keys (plan v2, `planFormat: 2`):** `planVersion` (`ai-infra-v1-<date>`), `areas[]` (12: the 10 AI areas, then the tree areas `dsa` and `design`, each with `pre: []`; `id`, `name`, two-letter `tag`, `why`,
@@ -119,7 +119,7 @@ new file. Use the file's mtime (or `GET /db/backups` `at`) to decide whether a s
   `topic|real|lit|build|band`, `title`, `short`, `oneLiner`, `why`, `pre[]`, `explain[]`, optional `demandPct` and `hours`), `builds[]` (B1 to B7:
   `id`, `name`, `lang`, `repo`, `lab`, `gpu`), `tickets[]` (the AI-infra lane, flat), `dsa_bank[]` and `design_bank[]` (unchanged except that every
   problem and design item carries an `order`), `tasks[]` (the kept tasks: `lane` `dsa|design|career`, `skill`), `mix` (`shares` path 58, dsa 25,
-  design 17; `budgets` weekday minutes, Sunday first), `rituals[]` (`id`, `title`, `cadence`, `minutes`), `idMap`, and an optional `learner`. `sprints`,
+  design 17; `budgets` weekday minutes, Sunday first), `rituals[]` (`id`, `title`, `cadence`, `minutes`, optional `dueWeekday`, `dueHour`, `body`), `idMap`, and an optional `learner`. `sprints`,
   `rotation`, `schedule`, `skills`, `ai_shelf`, `communities` and `proof` no longer exist (a v1 plan is no longer read: `loadPlan` refuses it; only the frozen legacy-forge fixtures in `tests/fixtures/` keep that shape). A profile may still lay `schedule` and `learner` over the
   served plan. `phases[].authored` is false for a phase whose tickets are not written yet; its nodes exist and have no tickets.
 - **Band nodes are not emitted.** The plan's source has 77 nodes; three of them (kind `band`, phase 0: the weekly and daily ritual bands and the DSA
@@ -343,7 +343,7 @@ That is the only key the code writes (`ensureDbId` in `server/db/adapter.mjs`).
 ### 4.4 Schema versions and how a reader should gate on them
 
 The only schema version in the file is the set of rows in `dojo_schema_migrations`. There is no per-document version and no
-`PRAGMA user_version`. (The browser-side Dexie schema number, currently 9, is **not** stored in `dojo.db`.)
+`PRAGMA user_version`. (The browser-side Dexie schema number, currently 12, is **not** stored in `dojo.db`.)
 
 Gate like this: keep the set of migration versions you were written for; if the database has any version you do not know,
 stop and re-read this document. A database with only a subset of yours is older: its tables still match what you know.
@@ -392,21 +392,26 @@ actions that write them). Optional fields are absent when unset.
 | [`rungUses`](#runguses) | one help rung opened | `ru-...` | no | yes |
 | [`redos`](#redos) | a spaced-redo queue entry | `r-...` | no | yes |
 | [`designSessions`](#designsessions) | one system-design session | `ds-...` | yes (discarding an unfinished one) | yes |
-| [`artifacts`](#artifacts) | a project artifact / capstone piece | `art-...`, or `art-stage-<n>` for seeded capstone pieces | no | yes |
-| [`blankTests`](#blanktests) | a blank-editor rebuild test | `blank-...` | no | yes |
+| [`artifacts`](#artifacts) | RETIRED (R2, Dexie v12): a project artifact | `art-...`, or `art-stage-<n>` for seeded capstone pieces | no | yes |
+| [`blankTests`](#blanktests) | RETIRED (R2, Dexie v12): a blank-editor rebuild test | `blank-...` | no | yes |
 | [`grades`](#grades) | an AI grade result | `grade-...` | no | yes |
 | [`checkAttempts`](#checkattempts) | one try at a card's learning check | `ca-...` | no | yes |
 | [`pulses`](#pulses) | the daily AI pulse: one line per local day | `pulse-YYYY-MM-DD` | no | yes |
 | [`journal`](#journal) | the daily journal: one entry per local day | `journal-YYYY-MM-DD` | no | yes |
 | [`bankGrades`](#bankgrades) | the last self-grade of one Design or AI bank question | the question's id | no | yes |
 | [`bankExtra`](#bankextra) | an AI-made bank question ("More questions") | `x-<node>-<time>-<n>` | no (Delete removes the doc) | yes |
+| [`labs`](#labs) | a set-up lab: where its folder is, its baseline, the hints shown | the lab id | no | yes |
+| [`labRuns`](#labruns) | one Run checks that ran | `run-<labId>-<ms>` | no | yes |
+| [`labReviews`](#labreviews) | one AI review of a lab | `rev-<labId>-<ms>` | no | yes |
+| [`weeklyReviews`](#weeklyreviews) | one weekly review: three short lines for an ISO week | `wr-<YYYY>-W<ww>` | no | yes |
+| [`portfolioItems`](#portfolioitems) | one Portfolio output of a Proven lab (repo, site page, article or LinkedIn post) | `<labId>:<kind>` | no | yes |
 | [`reviews`](#reviews) | a sprint review | `rv-...` | no | yes |
 | [`bankItems`](#bankitems) | one problem in one bank (incl. "mine") | `<bank>:<key>` | yes | yes |
 | [`code`](#code) | the learner's code for a card, per language | `<ticketId>:<lang>` | no | yes |
 | [`pictures`](#pictures) | cached visualisation for a card or pattern | `<ticketId or pattern>` | no | yes |
 | [`atlasRuns`](#atlasruns) | a walkthrough seen / predict run | `<clientId>:<n>` | no | yes |
 | [`aiLog`](#ailog) | one AI job call | `<clientId>:<n>` | no | yes |
-| [`stageCells`](#stagecells) | a learn/build/prove cell of a capstone stage | `<stage>:<cell>` | no | **no** (table exists; no non-test code writes it) |
+| [`stageCells`](#stagecells) | RETIRED (R2, Dexie v12): a capstone stage cell | `<stage>:<cell>` | no | **no** (table exists; no non-test code writes it) |
 
 Rough sizes: a fresh install has a few hundred ticket docs (the sample plan seeds about 650) and little else; the other kinds
 grow with use. Counts from a real database are deliberately not reproduced here.
@@ -430,6 +435,7 @@ One doc, id `main`. Holds the plan start date.
 | `laneBudgets` | number[7]? | Weekday study minutes, Sunday first, 0 to 600 each; overrides the plan's `mix.budgets` (default 90, 60, 60, 60, 30, 30, 150). |
 | `careerLane` | boolean? | Career tickets join Today and Path when true (default false). |
 | `sessionMinutes` | number? | Remembered session length, 5 to 180 (default 25). |
+| `labsRoot` | string? | R2: where lab folders are created, as typed in Settings (`~/labs` expanded by the server; absent means `~/labs`). Stored as typed; the server judges it when a lab is set up. |
 | `navLabels` | `intro` \| `always` \| `hover`? | Whether the icon rail shows text labels (default `intro`). |
 | `pomFormMax` | integer 0 to 8? | The highest Pom form (index, BASE 0 to SOVEREIGN 8) ever shown. Absent means 0. Written only by a user action that grants XP and makes the form for the new level larger than the stored value, never on page load and never by the Settings debug panel; no migration. The form shown is the larger of the form for the current level and this value, so it never goes down. Level thresholds per form: 0, 10, 40, 100, 180, 300, 450, 650, 900. |
 | `trackedFrom` | number? | Written when the start date is saved: the sprint tracking began in. Legacy: the roll-over and automatic reviews that read it are gone, so nothing in the app reads it now. |
@@ -473,7 +479,7 @@ The central kind: one card. Plan cards are seeded at first launch (id = plan id)
 | `node` | string? | The skill-tree node id (`T01`, `B1`). AI-infra tickets, and since scope 2 every plan DSA problem ticket (`p<num>`, node `DA01` to `DA17`) and every plan design-item ticket (`SD01` to `SD22`); stamped from the bank entry's `node`. Bank tickets (lane `bank`) carry none. |
 | `area` | string? | The area id (`llm`, `measure`, ...); `dsa` on a DSA problem ticket and `design` on a design-item ticket (the area of its node). |
 | `phase` | number? | Plan phase 1 to 6. |
-| `explain` | string[]? | One or two "explain it simply" questions; on the last ticket of a node. |
+| `explain` | string[]? | One or two "explain it simply" questions; on the last ticket of a node, and on any watch or read ticket that carries its own. |
 | `explainAnswers` | string[]? | One reference answer per `explain` question (2 to 4 sentences, plain words), parallel to `explain`; shown after the learner answers. Plan content: a plan refresh rewrites it. |
 | `lab` | `{id, gpu: none\|free\|rented, costUsd?}`? | The lab a build ticket runs; `rented` tickets carry a cost. |
 | `asOf` | `YYYY-MM-DD`? | The day the ticket's external facts were last checked. |
@@ -584,7 +590,7 @@ The spaced-redo queue: stages `0` -> `1` -> `2` are due 3, 10 and 30 local days 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `id`, `ticketId` | string | |
-| `source` | `gave_up` \| `solved_help` \| `design_rubric` \| `design_missed` \| `journal_hard` \| `blank_test` \| `stage_built` \| `check_failed` \| `bank_q` | What created it. `journal_hard` is written by "Add to Review" in the journal's "Came up hard this week" list (never on load): id `jh-<ticketId>-<YYYY-MM-DD of the clock day>`, `stage` 0, `due` the same local day as `'YYYY-MM-DD'` (due at once, unlike a question bank's card), `piece` as below or absent; a ticket with an open `journal_hard` redo gets no second one. `bank_q` is written by a question bank's "Add to Review" (never on load): one open redo per question, `ticketId` holds the **question id** (it is not a ticket, so the redo counts as not archived), `stage` 0, `due` = three local days after creation as `'YYYY-MM-DD'`, `piece` `{topic, question, answer, qid}` (`topic` the node title). A deleted AI-made question leaves its redo in place. `design_rubric` is written when a design session is completed with a redesign due: one open redo on the design ticket, `stage` 0, `due` = the session's `redesignDue`, `passed` empty (none if the ticket already has an open redo). Completing a redesign (`redesignOf` set) closes it (`closedAt`, `passed` gains `true`) when no new redesign is due, else keeps it open with `due` = the new `redesignDue` and `passed` gaining `false`. Sessions finished before R1 get no redo; there is no back-fill. `design_missed` is written by the done view's "Keep what you missed" Add button (never on load): one redo per `interview.final.missed` entry, ids `keep-<sessionId>-1` to `-3` (so adding twice writes nothing), `ticketId` the session's design ticket, `stage` 0, `due` = the next local day as `'YYYY-MM-DD'`, `piece` the weak spot. The "one open redo per ticket" rule above counts `design_rubric` rows only. |
+| `source` | `gave_up` \| `solved_help` \| `design_rubric` \| `design_missed` \| `journal_hard` \| `blank_test` \| `stage_built` \| `check_failed` \| `bank_q` \| `explain` \| `lab_review` | What created it. `journal_hard` is written by "Add to Review" in the journal's "Came up hard this week" list (never on load): id `jh-<ticketId>-<YYYY-MM-DD of the clock day>`, `stage` 0, `due` the same local day as `'YYYY-MM-DD'` (due at once, unlike a question bank's card), `piece` as below or absent; a ticket with an open `journal_hard` redo gets no second one. `bank_q` is written by a question bank's "Add to Review" (never on load): one open redo per question, `ticketId` holds the **question id** (it is not a ticket, so the redo counts as not archived), `stage` 0, `due` = three local days after creation as `'YYYY-MM-DD'`, `piece` `{topic, question, answer, qid}` (`topic` the node title). A deleted AI-made question leaves its redo in place. `design_rubric` is written when a design session is completed with a redesign due: one open redo on the design ticket, `stage` 0, `due` = the session's `redesignDue`, `passed` empty (none if the ticket already has an open redo). Completing a redesign (`redesignOf` set) closes it (`closedAt`, `passed` gains `true`) when no new redesign is due, else keeps it open with `due` = the new `redesignDue` and `passed` gaining `false`. Sessions finished before R1 get no redo; there is no back-fill. `design_missed` is written by the done view's "Keep what you missed" Add button (never on load): one redo per `interview.final.missed` entry, ids `keep-<sessionId>-1` to `-3` (so adding twice writes nothing), `ticketId` the session's design ticket, `stage` 0, `due` = the next local day as `'YYYY-MM-DD'`, `piece` the weak spot. The "one open redo per ticket" rule above counts `design_rubric` rows only. |
 | `createdAt` | number | ms epoch. |
 | `stage` | 0 \| 1 \| 2 | Current stage. |
 | `due` | number **or** string | ms epoch of local midnight, **or** `'YYYY-MM-DD'` for a `check_failed` redo. Normalise both ([8.5](#85-redos-due-today-and-overdue)). |
@@ -635,7 +641,7 @@ One system-design session on a `kind: design` or `kind: writeup` card (a write-u
 
 ### artifacts
 
-Project artifacts (the capstone's pieces and the user's own). Legacy: no screen reads or writes this table any more and boot no longer seeds it; stored rows are kept. Status board: `not started` -> `building` -> `runs` ->
+RETIRED in R2: Dexie v12 drops this table from the browser after the server takes a backup (`dojo-<time>.db` in `backups/`) and tombstones its server documents with a `clear` op, so a reader sees no live rows. Only a database file from before R2 (or a backup) still holds them. Formerly the capstone's project artifacts. Status board: `not started` -> `building` -> `runs` ->
 `measured` -> `written up` (exact strings, spaces included).
 
 | Field | Type | Meaning |
@@ -661,7 +667,7 @@ Project artifacts (the capstone's pieces and the user's own). Legacy: no screen 
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `id`, `stage`, `piece`, `at`, `minutes` | | A blank-editor rebuild of one piece of a stage. |
+| `id`, `stage`, `piece`, `at`, `minutes` | | RETIRED in R2: dropped by Dexie v12 after a backup (see [artifacts](#artifacts)). A blank-editor rebuild of one piece of a stage, as an older file or backup holds it. |
 | `outcome` | `solved` \| `not_yet` | |
 | `redoId` | string? | |
 
@@ -732,6 +738,7 @@ The daily journal (R1 scope 2, `/journal`): a two-minute end-of-day entry, one r
 | `hardest`, `next`, `notes` | string? | Trimmed, at most 1000 characters each; absent when blank. Only on a `studied` row. |
 | `obstacle` | `time` \| `energy` \| `job` \| `tools` \| `other`? | Present only when `mode` is `none` (required there). |
 | `line` | string? | The one line of a `none` row ("What did you want to do?"), trimmed, at most 200 characters; absent when blank. |
+| `floor` | boolean? | R2: the row was written by the 15-minute Floor session (W5). |
 
 An item carries a **hard signal** when `rating` is `again` or `hard`, or `explain` is `no` (both on one item are one signal). "Came up hard this week" lists a live ticket with at least two such items in rows whose `day` is among the 14 local days ending on the clock day, whatever the ticket's current `doneAt`. A row never changes a ticket, a session, an event or a redo; the only thing the journal writes besides its own row is the `journal_hard` redo that "Add to Review" creates (see `redos`).
 
@@ -840,13 +847,87 @@ AI-made bank questions (R1 W6), added five at a time by "More questions" (the `b
 | `aiMade` | `true` | Always. |
 | `at` | number | When it was made. |
 
+### labs
+
+One row per set-up lab (R2). Written by Set up lab and by showing a hint for the first time.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `labId` | string | The lab id, equal to `tickets[].lab.id`. Primary key. |
+| `repo`, `path` | string | The lab repo folder (`ai-platform-lab`) and the lab's folder inside it (`labs/<id>`). |
+| `root` | string | The labs folder at set up, as typed in Settings (`~/labs` by default, `~` unexpanded). Every later request uses it. |
+| `baseCommit` | string | 40 hex characters: the baseline commit (`baseline: <id> template v<version>`). |
+| `version` | number | The template version. |
+| `setupAt` | number | Epoch ms. Set up again after the folder was deleted replaces `baseCommit` and `setupAt` and keeps `hints`. |
+| `hints` | `{ticketId, rung, at}[]` | One entry per ticket and rung shown (`rung` 1, 2 or 3). A rung 3 on any ticket means the lab was built "with help". |
+
+### labRuns
+
+One row per Run checks that ran (a timeout and a missing or unreadable results file included). A request that failed before anything ran writes no row.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `run-<labId>-<ms>`. Indexed `labId`, `at`. |
+| `labId`, `at`, `ms` | string, number, number | The lab, when the run started, how long it took. |
+| `exit` | number or null | `make`'s exit status (0, or 2 when a check recipe failed); null when the run was killed. The results file decides the outcome, not this. |
+| `timedOut` | boolean | The run was stopped at the lab's `timeoutSec`; `results` is then null. |
+| `results` | `{checks: [{id, name, status, detail, metrics?}], summary: {pass, fail, skip}}` or null | `status` is `pass`, `fail` or `skip`; `summary` is counted from the checks. |
+| `error` | `no_results` or `bad_results` | Absent unless the results file was missing or unreadable. |
+| `tail` | string | The last 4000 characters of the combined output. |
+
+A milestone is passed when SOME run has every one of its check ids at `pass` (it never reverts).
+
+### labReviews
+
+One row per AI review that came back valid. The newest row by `at` counts; the lab is Proven when it has `passed: true`.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `rev-<labId>-<ms>`. Indexed `labId`, `at`. |
+| `items` | `{id, score, evidence, stronger}[]` | One per rubric item. `score` is an integer 0 to 3 after the app's rules (an evidence entry whose quote is not in the work, is over 400 characters, or has no `file` or no `line` is dropped; a 2 or 3 left with no quote becomes 1). `evidence` is `{quote, file, line}[]`. |
+| `percent` | integer | `floor(sum of scores * 100 / (3 * items))`, computed by the app. |
+| `passed` | boolean | `percent >= 70`. |
+| `summary` | string | The model's summary. |
+
+Items scored 0 or 1 also become `redos` rows with `source: "lab_review"`, id `lr-<labId>-<rubricItemId>`, on the lab's closing ticket (its last build ticket), `piece {topic: lab title, question: rubric text, answer: the item's stronger text}`.
+
+### weeklyReviews
+
+R2 (W5). One row per ISO week the learner saved a weekly review for (Journal, Week view). Saving the same week again replaces the row; nothing deletes it. The table may be absent before the first save.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `wr-<week>`, for example `wr-2026-W45`. |
+| `week` | string | The ISO week (Monday first, local time), `YYYY-Www`. |
+| `worked`, `change`, `focus` | string | The three lines, trimmed, always present (`""` when blank); `worked` and `change` keep at most 1000 characters, `focus` is one line of at most 200. The `focus` of the newest week is the line Today shows as the weekly focus. |
+| `at` | number | When the row was last saved (ms epoch). |
+
+Saving also completes the week's weekly review ritual ticket (`ritual-weekly-review-<week>`) once, if the learner had opened it.
+
+### portfolioItems
+
+One row per Proven lab and output (R2). Written only by the Portfolio screen on a click or a keystroke in a text area (Create draft, typing, a successful Publish, Mark as posted), never on page load. An output with no row is "not started".
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | `<labId>:<kind>`, for example `pf-a:repo`. Primary key. Indexed `labId`. |
+| `labId` | string | The lab. |
+| `kind` | `repo` \| `site` \| `article` \| `linkedin` | The output: the lab folder in a public repo, a Markdown page in the portfolio repo, an article draft, a LinkedIn post draft. |
+| `status` | `draft` \| `published` | There is no other state. A published row is read-only in the screen and final. For `linkedin`, `published` means "posted": Dojo never posts, the learner marks it by hand. |
+| `draft` | string | The text in the text area: for `repo` the README of the lab folder, for `site` the page, for `article` and `linkedin` the post. A LinkedIn draft is at most 1300 characters (cut at the last sentence end). |
+| `updatedAt` | number | When `draft` or `status` last changed. |
+| `publishedAt` | number? | Set when `status` becomes `published`. |
+| `url` | string? | Set for a published `repo`, `site` or `article` (`https://github.com/<user>/ai-platform-lab/tree/main/labs/<labId>`, `https://<user>.github.io/ai-infra-portfolio/labs/<labId>`, `.../writing/<labId>`); never for `linkedin`. |
+
+The `portfolio_draft` AI job (kind `article` or `linkedin`) logs `aiLog` rows like every job. A repo or site draft is built without AI from `WRITEUP.md` at the lab folder's `HEAD`.
+
 ### aiLog
 
 Append-only (id `<clientId>:<n>`, `_diskId`). One row per AI job call.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `job` | `hint` \| `picture` \| `diagram` \| `interview` \| `grade` \| `solution` \| `classify` \| `brief` \| `check` \| `bank_more` ("More questions"; it has no `ticketId`) (older stored rows may also say `review_sprint`; that job is gone) | |
+| `job` | `hint` \| `picture` \| `diagram` \| `interview` \| `grade` \| `solution` \| `classify` \| `brief` \| `check` \| `bank_more` ("More questions"; it has no `ticketId`) \| `lab_review` (the AI review of a lab; its `ticketId` is the lab's closing ticket) \| `portfolio_draft` (an article or a LinkedIn post draft; its `ticketId` is the lab id) (older stored rows may also say `review_sprint`; that job is gone) | |
 | `at`, `ms` | number | Call time (ms epoch) and duration (ms). |
 | `provider` | `fake` \| `helper` | `fake` = the in-browser fake AI; `helper` = a real `claude` run. |
 | `ok` | boolean | |
@@ -861,8 +942,7 @@ Design sessions log one `interview` row per AI-partner turn or Hint (the chat), 
 
 ### stageCells
 
-Declared (learn/build/prove cells per capstone stage, id `<stage>:<cell>`), but **no non-test code in the app writes this table**
-(searched `src/`). Expect it empty. Fields if ever present: `{id, stage, cell: learn|build|prove, at, evidence, via}`.
+RETIRED in R2: dropped by Dexie v12 after a backup (see [artifacts](#artifacts)). It was never written by app code. Fields if it appears in an older file or backup: `{id, stage, cell: learn|build|prove, at, evidence, via}`.
 
 ### Append-only kinds, in short
 

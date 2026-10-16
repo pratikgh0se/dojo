@@ -33,6 +33,9 @@ test('M4: cross a level threshold in a keyboard-only Today → Do → Done → d
   await expect(page.getByTestId('xp-total')).toHaveAttribute('data-value', '295')
   await expect(page.getByTestId('shell-header').getByTestId('level')).toHaveAttribute('data-value', '29')
 
+  // 11 days after the last active day is a restart day (RIT-52): the Floor leads and the usual mix is behind its toggle
+  await page.getByTestId('today-mix-toggle').click()
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur()) // Enter then goes to the page body (TODAY-23), not the toggle
   await expect(page.getByTestId('start-button')).toBeVisible() // the quest is on screen before the key goes down
   // keyboard only from here (TODAY-23: Enter on the page body starts the quest)
   await page.keyboard.press('Enter')

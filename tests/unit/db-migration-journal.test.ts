@@ -25,10 +25,10 @@ async function seedV8(name: string) {
 
 describe('v8 to v9 journal table', () => {
   it('is database version 10 (v9 added the journal, v10 the bank tables) and the journal table is keyed by id with a day index', async () => {
-    expect(DB_VERSION).toBe(10)
+    expect(DB_VERSION).toBe(12)
     const d = createDb(dbName())
     await d.open()
-    expect(d.verno).toBe(10)
+    expect(d.verno).toBe(12)
     expect(d.journal.schema.primKey.keyPath).toBe('id')
     expect(d.journal.schema.idxByName.day).toBeDefined()
     d.close()
@@ -52,7 +52,7 @@ describe('v8 to v9 journal table', () => {
     await seedV8(name)
     const d = createDb(name)
     await d.open()
-    expect(d.verno).toBe(10)
+    expect(d.verno).toBe(12)
     expect([await d.journal.count(), await d.bankGrades.count(), await d.bankExtra.count()]).toEqual([0, 0, 0])
     expect(d.journal.schema.idxByName.day).toBeDefined()
     expect(d.bankGrades.schema.idxByName.area).toBeDefined()

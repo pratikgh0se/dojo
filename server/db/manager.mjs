@@ -119,7 +119,11 @@ export function openDojo({ home, clock = () => new Date(), hooks = {} }) {
   }
 
   function listBackups() {
-    return readdirSync(backupsDir)
+    // MIG-35: a backups folder that cannot be read (replaced by a file, or removed) lists as empty. /db/health reads this list, and the
+    // page cannot start without health; the backup itself fails on its own and the v12 step then holds.
+    let names
+    try { names = readdirSync(backupsDir) } catch { return [] }
+    return names
       .filter(f => DATED.test(f) || PRE_RESTORE.test(f))
       .map(file => {
         const st = statSync(join(backupsDir, file))

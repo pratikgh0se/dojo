@@ -37,12 +37,14 @@ describe('check-contract-hooks: parsing', () => {
     expect(hooksOf(MD)).toEqual([
       'screen-path', 'row-<ticketId>', 'start-button', 'a-1', 'a-2', 'data-home',
       'screen-onboarding', 'onboarding-start-date', 'onboarding-submit', 'form-error', 'path-row-lane', 'path-row-est', 'ladder-*',
+      'ticket-check-results', 'ticket-reviewer',
     ])
   })
-  it('does not require the reserved R2 hooks, and finds them as reserved', () => {
-    expect(hooksOf(MD)).not.toContain('ticket-check-results')
-    expect(reservedOf(MD)).toEqual(['ticket-check-results', 'ticket-reviewer'])
-    expect(FORBIDDEN).toEqual(['ticket-check-results', 'ticket-reviewer'])
+  it('requires the former R2 hooks now that they are live; nothing is reserved any more', () => {
+    expect(hooksOf(MD)).toContain('ticket-check-results')
+    expect(hooksOf(MD)).toContain('ticket-reviewer')
+    expect(reservedOf(MD)).toEqual([])
+    expect(FORBIDDEN).toEqual([])
   })
   it('collects the data-* attributes named in the parenthesised Attr part', () => {
     expect(attributesOf(MD).sort()).toEqual(['data-accent', 'data-kind', 'data-lane'])
@@ -99,9 +101,9 @@ describe('check-contract-hooks: matching', () => {
 })
 
 describe('check-contract-hooks: reserved, attributes, retired', () => {
-  it('flags the reserved R2 hooks when the source writes them', () => {
+  it('flags nothing as reserved, so the live R2 hooks may be written', () => {
     expect(forbiddenPresent('data-testid="ticket-lab"')).toEqual([])
-    expect(forbiddenPresent('<i data-testid="ticket-reviewer" /><p data-testid="ticket-check-results" />')).toEqual(['ticket-check-results', 'ticket-reviewer'])
+    expect(forbiddenPresent('<i data-testid="ticket-reviewer" /><p data-testid="ticket-check-results" />')).toEqual([])
   })
   it('finds an attribute as a JSX attribute or a quoted key and reports the absent ones', () => {
     const src = `<i data-count={n} data-empty="true" {...{ 'data-value': 3 }} />`
@@ -254,8 +256,8 @@ describe('check-contract-hooks: foundation test ids (GLOBAL-10)', () => {
     expect(new Set(RETIRED_BY_D2).size).toBe(RETIRED_BY_D2.length)
     expect(RETIRED_BY_D2.filter(n => patterns.some(p => retiredRegex(p).test(n)))).toEqual([])
   })
-  it('the README Retired table now covers every D2 name, so the list is empty', () => {
-    expect(RETIRED_BY_D2).toEqual([])
+  it('the list holds only the R2 W7 ledger: the hooks of the deleted brief editor, check dialog and deliverable dialog', () => {
+    expect(RETIRED_BY_D2).toEqual(['brief-editor', 'check-correction', 'check-dialog', 'check-no-questions', 'check-verdict', 'deliverable-dialog', 'deliverable-error', 'deliverable-feedback'])
   })
 })
 

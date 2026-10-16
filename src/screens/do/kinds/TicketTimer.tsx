@@ -6,7 +6,7 @@ import { now } from '../../../lib/clock'
 import { pad2 } from '../../../lib/dates'
 import { sessionLabel } from '../../../lib/timer'
 import { LONG_EVERY, phaseLabel } from '../../../rules/studySession'
-import { useSecondsNow } from '../../../lib/useNow'
+import { IDLE_TICK_MS, useSecondsNow } from '../../../lib/useNow'
 import { sessionMinutesOf } from '../../../rules/prefs'
 import { pauseSession, requestEndSession, resumeSession } from '../../../study/controls'
 import { useStudy } from '../../../study/useStudy'
@@ -32,7 +32,7 @@ export function TicketTimer({
   const readOnly = isReadOnly()
   const mine = study && study.ticketId === ticket.id ? study : null
   // the readout drops on the session's own seconds (anchored at the phase start), so the first reading after Start is not a second late (TICKET-03)
-  const t = useSecondsNow(mine?.phaseStart)
+  const t = useSecondsNow(mine?.phaseStart, IDLE_TICK_MS)
   const planned = sessionMinutesOf(settings)
   const over = !!mine?.over
   const paused = !!mine && mine.paused != null

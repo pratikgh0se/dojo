@@ -31,6 +31,7 @@ export const STATIC_ITEMS: readonly PaletteItem[] = [
   { id: 'designs', kind: 'page', label: 'Designs', hint: 'Design tiers', target: '/designs', words: 'system design tiers' },
   { id: 'banks', kind: 'page', label: 'Question banks', hint: 'Problem lists', target: '/banks', words: 'lists problems' },
   { id: 'atlas', kind: 'page', label: 'Algorithm atlas', hint: 'Patterns', target: '/atlas', words: 'patterns' },
+  { id: 'portfolio', kind: 'page', label: 'Portfolio', hint: 'Proven labs to publish', target: '/portfolio', words: 'publish repo article linkedin github proven' },
   { id: 'guide', kind: 'page', label: 'Guide', hint: 'How Dojo works', target: '/guide', words: 'help rules mentors ritual overview' },
   { id: 'stats', kind: 'page', label: 'Stats', hint: 'Minutes done', target: '/skills/stats', words: 'progress pace minutes' },
   { id: 'settings', kind: 'page', label: 'Settings', hint: 'Pace, labels, backups', target: '/settings', words: 'pace budget backup preferences' },

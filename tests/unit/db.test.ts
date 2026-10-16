@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, getSettings, patchSettings, SCHEMA_V10 } from '../../src/data/db'
+import { DEFAULT_SETTINGS, getSettings, patchSettings, SCHEMA_V11, SCHEMA_V12 } from '../../src/data/db'
 import { freshDb } from '../helpers/db'
 import { mkTicket } from '../helpers/tickets'
 
@@ -7,8 +7,8 @@ describe('Dexie schema', () => {
   it('opens every v2 table: the four core tables plus the eleven foundation tables', async () => {
     const d = freshDb()
     await d.open()
-    expect(d.tables.map(t => t.name).sort()).toEqual(Object.keys(SCHEMA_V10).sort())
-    expect(d.tables).toHaveLength(24) // 22 app tables (pulses is the v8 one, journal the v9 one, bankGrades and bankExtra the v10 ones) + the v3 sync tables _outbox and _meta
+    expect(d.tables.map(t => t.name).sort()).toEqual(Object.keys(SCHEMA_V11).filter(t => !(t in SCHEMA_V12)).sort())
+    expect(d.tables).toHaveLength(26) // 24 app tables (pulses is the v8 one, journal the v9 one, bankGrades and bankExtra the v10 ones, labs, labRuns, labReviews, weeklyReviews and portfolioItems the v11 ones; v12 dropped artifacts, stageCells and blankTests) + the v3 sync tables _outbox and _meta
   })
   it('returns default settings before any write', async () => {
     const d = freshDb()

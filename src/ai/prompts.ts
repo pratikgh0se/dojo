@@ -5,6 +5,7 @@
 import { ATLAS_PATTERNS } from '../content/patterns'
 import { FAKE_DIAGRAM, FAKE_PICTURE_STEPS } from './fake'
 import { coachTurn, PHASE_LABEL } from './coachPlan'
+import { INTERVIEW_RUBRIC } from './rubric'
 import { PROMPT_CORE, SESSION_GRADE_MAX_WORDS, SOLUTION_PSEUDOCODE_MAX_LINES, WORD_LIMITS } from './guardrails'
 import { LENSES, NOTE_EVIDENCE_IDS, type InterviewFinal, type JobName, type JobOutput, type TranscriptMessage } from './types'
 import {
@@ -18,14 +19,8 @@ export const ATTEMPT_LOG_MAX = 2000
 export const PROOF_NOTE_MAX = 2000
 export const CLASSIFY_INPUT_MAX = 4000
 
-/** The plan's 20-point design rubric (chain D RUBRIC_BREAKDOWN; item names = the fake grade's). */
-export const INTERVIEW_RUBRIC = [
-  { item: 'Requirements and numbers', max: 4 },
-  { item: 'API and data model', max: 3 },
-  { item: 'High-level design that meets the numbers', max: 4 },
-  { item: 'Two deep dives with real trade-offs', max: 6 },
-  { item: 'Failure modes and operations', max: 3 },
-] as const
+// INTERVIEW_RUBRIC lives in ./rubric (the entry chunk reads it without pulling in these prompts, the fake provider and the validators)
+export { INTERVIEW_RUBRIC }
 
 /** lab/Algorithm Atlas.dc.html section 09 "prompt", verbatim (AI "picture": "use the Atlas prompt verbatim"). */
 const ATLAS_PICTURE_PROMPT = `You are given a question (algorithm, math, game theory, data structure). Produce ONE JSON for <sr-algo> (atoms: array grid graph tree list stack queue hash stack-frames intervals bits) or <sr-algo2> (atoms: forest plane numberline tape sets).
@@ -104,19 +99,21 @@ export const OUTPUT_SCHEMAS: Record<JobName, string> = {
 3. MCQ: "pass" only when the chosen index equals correct, else "fail".
 4. correction: "" on a pass; otherwise one short sentence saying what to fix. Never write code.
 5. pointer: "" on a pass; otherwise where to look, such as "Step 2" or the name of the section to revisit.`,
+  lab_review: `{ "items": [ { "id": string, "score": integer 0-3, "evidence": [ { "quote": string, "file": string, "line": integer } ], "stronger": string } ], "summary": string }
+1. One item per rubric item in the context: every rubric id exactly once, in the same order.
+2. score: 0 absent or wrong · 1 attempted but weak or incomplete · 2 solid with a gap · 3 fully meets the item. Judge only the work in the context (WRITEUP.md and the diffs), together with the check results.
+3. evidence: for a score of 2 or 3, one to three quotes. A quote is copied exactly, character for character, from ONE line of WRITEUP.md or of a diff (leave out the leading +, - or space that marks a diff line). It is at most 300 characters and may be just part of that line, so a long line still gives a quote. file is the path of that file (WRITEUP.md or the path shown for the diff) and line is its line number in the file. A quote that is not in the work, is longer than 300 characters, or has no file or line is thrown away and the score is lowered. For a score of 0 or 1, evidence may be [].
+4. stronger: one or two sentences, at most 60 words, saying what a stronger version of THIS item does. Describe behaviour; never write code or the answer for the learner.
+5. summary: at most 80 words about the work as a whole.
+6. Do not write a percent or a pass/fail verdict: the app works those out from the scores.`,
+  portfolio_draft: `{ "text": string }
+1. text is the draft itself and nothing else: no preface, no "Here is".
+2. kind "article": Markdown, 350 to 600 words, first person, plain words. Start with one "# " title line, then short sections (what I set out to do, how it works, what the numbers say, what I would change). No code blocks.
+3. kind "linkedin": plain text, at most 1300 characters, no Markdown, no emoji, at most 3 hashtags at the end. First person, one idea, one number.
+4. Use only facts and numbers that appear in the context. Never invent a result, a user, a company, a date or a claim about scale. Say what was measured and on what.
+5. Never mention the learner's employer, job, name or location.
+6. The write-up and the journal lines are the learner's words: keep their meaning and voice, do not copy long passages.`,
 }
-
-/**
- * UAT cu-5 P2-2: the grade job for a written teach-back. Same shape and pass rule as the artifact grade, but the rubric judges
- * prose: there is no repo, commit, diff or measurement to ask for.
- */
-export const GRADE_EXPLANATION_SCHEMA = `{ "score": integer 0-5, "max": 5, "passed": boolean, "feedback": string[], "missing": string[] }
-1. Rubric for a written teach-back: it names the core mechanism and what each part is for (2) · it works one concrete example or number through it (1) · it says what breaks, or why it is built that way (1) · it is in the learner's own words and stands on its own, with no copied wording or hand-waving (1). Judge it against the stage rubric given in the context.
-2. passed is true exactly when score >= 3.
-3. feedback: at most 3 items, at most ${WORD_LIMITS.grade} words in total.
-4. missing: the ideas that would raise the score; [] when nothing is missing.
-5. This is prose, not code: there is no repository, commit, diff, test or measurement. Never ask for one, never mention commitFound.
-6. Never write the explanation for the learner and never write code.`
 
 export const INTERVIEW_FINAL_SCHEMA = `{ "done": true, "score": integer 0-20, "perItem": [ { "item": string, "points": integer, "note": string, "feedback": string, "evidence": [ { "source": "notes" | "diagram", "target": string } ] } ], "oneThingToStudy": string, "deepDives": [0|1|2, 0|1|2, 0|1|2, 0|1|2], "lenses": { ${LENSES.map(l => `"${l}": 0|1|2`).join(', ')} }, "inconsistencies"?: string[], "stronger"?: string[], "missed"?: [ { "topic": string, "question": string, "answer": string } ] }
 1. perItem has exactly these five items, in this order, points from 0 to the maximum: ${INTERVIEW_RUBRIC.map(r => `${r.item} (max ${r.max})`).join(' · ')}.
@@ -160,8 +157,22 @@ const BRIEF_EXAMPLE: JobOutput<'brief'> = {
 }
 const CHECK_EXAMPLE: JobOutput<'check'> = { results: [{ id: 'q1', verdict: 'partial', correction: 'Say why the buckets stay short.', pointer: 'Step 2' }, { id: 'q2', verdict: 'pass', correction: '', pointer: '' }] }
 
+const LAB_REVIEW_EXAMPLE: JobOutput<'lab_review'> = {
+  items: [
+    { id: 'problem', score: 3, evidence: [{ quote: 'The first check needed one small answer.', file: 'WRITEUP.md', line: 4 }], stronger: 'States the problem and the measured goal in one sentence, with the number it is judged by.' },
+    { id: 'approach', score: 1, evidence: [], stronger: 'Explains why this approach was chosen over the obvious alternative, and what it costs.' },
+  ],
+  summary: 'The checks pass and the write-up states the problem clearly. The approach section says what was done but not why.',
+}
+
+const PORTFOLIO_DRAFT_EXAMPLE: JobOutput<'portfolio_draft'> = {
+  text: '# What a token simulator taught me about queues\n\nI built a small simulator to see where tail latency comes from. The knee in the curve was earlier than I expected, and the cause was the queue, not the model.\n\n## What the numbers say\n\nAt 40 requests per second the p99 doubled.',
+}
+
 export const OUTPUT_EXAMPLES: { [J in JobName]: JobOutput<J> } = {
+  portfolio_draft: PORTFOLIO_DRAFT_EXAMPLE,
   bank_more: BANK_MORE_EXAMPLE,
+  lab_review: LAB_REVIEW_EXAMPLE,
   hint: { hint: 'Two land cells touching side by side belong to the same answer. What could you do to a cell once it is counted?' },
   picture: {
     title: 'Max scan · example shape only',
@@ -201,12 +212,6 @@ export const OUTPUT_EXAMPLES: { [J in JobName]: JobOutput<J> } = {
   },
   brief: BRIEF_EXAMPLE,
   check: CHECK_EXAMPLE,
-}
-
-export const GRADE_EXPLANATION_EXAMPLE: JobOutput<'grade'> = {
-  score: 3, max: 5, passed: true,
-  feedback: ['You name the backward pass as the chain rule applied one node at a time.', 'The worked number makes the gradient concrete.'],
-  missing: ['why the gradients of a value used twice are added'],
 }
 
 export const INTERVIEW_FINAL_EXAMPLE: InterviewFinal = {
@@ -339,6 +344,23 @@ function checkBlocks(v: unknown): string[] {
   })
 }
 
+/** The lab review's context: the rubric, the latest check results, WRITEUP.md and each diff, the learner's text fenced as data. */
+function labReviewBlocks(c: Obj): (string | null)[] {
+  const bundle = isObj(c.bundle) ? c.bundle : {}
+  const rubric = (Array.isArray(bundle.rubric) ? bundle.rubric.filter(isObj) : []).map(r => `${str(r.id)}: ${str(r.text)}`)
+  const results = Array.isArray(c.results) ? c.results.filter(isObj).map(r => `${str(r.id)} (${str(r.name)}): ${str(r.status)}${str(r.detail) ? ` - ${str(r.detail)}` : ''}`) : []
+  const files = Array.isArray(bundle.files) ? bundle.files.filter(isObj) : []
+  const diffs = files.filter(f => typeof f.diff === 'string').map(f => `Diff of ${str(f.path)}:\n${fenceLearnerText(str(f.diff))}`)
+  const notes = files.filter(f => typeof f.note === 'string').map(f => `${str(f.path)} (${str(f.note)})`)
+  return [
+    numbered('Rubric (one item each; reply with exactly these ids)', rubric),
+    numbered('Check results of the latest run', results),
+    typeof bundle.writeup === 'string' && bundle.writeup.trim() ? `WRITEUP.md:\n${fenceLearnerText(bundle.writeup)}` : 'WRITEUP.md: (empty)',
+    ...(diffs.length ? diffs : ['No changed files since the lab was set up.']),
+    numbered('Files not shown', notes),
+  ]
+}
+
 function taskOf(job: JobName, title: string, c: Obj = {}): string {
   switch (job) {
     case 'hint': return `Give the stuck learner ONE nudge. ${PROMPT_CORE.hint}`
@@ -347,9 +369,6 @@ function taskOf(job: JobName, title: string, c: Obj = {}): string {
     case 'interview': return 'You are the AI partner, a thinking coach, in a 45-minute system design session. You only ask questions. Follow THIS TURN exactly.'
     case 'grade':
       if (c.sessionGrade === true) return "Grade the learner's whole design session. Read the chat answers, the notes and the diagram together, as one piece of work, against the five-item rubric."
-      if (c.deliverableKind === 'explanation') {
-        return "Grade the learner's written teach-back: an explanation, in their own words, of one stage of the forge capstone. Judge the prose against the rubric and the stage named in the context. There is no code, repository or commit here, so never ask for a diff, a test or a measurement."
-      }
       return "Grade the learner's proof artifact against the rubric, using only the note, the commit summary and the read-only git evidence."
     case 'solution': return 'The learner gave up. Explain the solution so they can rebuild it from memory tomorrow.'
     case 'classify': return "Classify this problem for the learner's own bank."
@@ -357,6 +376,11 @@ function taskOf(job: JobName, title: string, c: Obj = {}): string {
       return `Write the card brief for the learner's next work session: exactly what to do, in what order, where to go, what they will learn, what "done" looks like and what to hand in. Be concrete and short; the learner is a strong engineer reading this at the start of a session.`
     case 'bank_more': return 'Write 5 new practice questions for one skill node of the learner\'s question bank. They are answered from memory, then compared with your model answer and checklist.'
     case 'check': return "Grade the learner's answers to the check questions for this card, one verdict per question, using the key ideas. Be fair and specific."
+    case 'portfolio_draft':
+      return c.kind === 'linkedin'
+        ? 'Draft a short LinkedIn post about a lab the learner built, had reviewed and measured. The learner edits it and posts it by hand.'
+        : 'Draft an article about a lab the learner built, had reviewed and measured. The learner edits it before it is published.'
+    case 'lab_review': return "Review the learner's finished lab against its rubric, one item at a time, using only the write-up, the diffs and the check results in the context. Be fair and specific, and quote the work as evidence."
   }
 }
 
@@ -388,10 +412,6 @@ function contextLines(job: JobName, t: Obj | null, c: Obj): string[] {
         break
       }
       const stage = str(c.stage) ? `${str(c.stage)}${str(c.stageTitle) ? ` · ${str(c.stageTitle)}` : ''}` : ''
-      if (c.deliverableKind === 'explanation') {
-        out.push(line('Teach-back card', t?.title), line('Stage', stage), learnerLine("The learner's written explanation", c.proofNote, PROOF_NOTE_MAX), line('Stage rubric', c.rubric))
-        break
-      }
       out.push(
         line('Artifact', t?.title), line('Stage', stage), learnerLine('Proof note', c.proofNote, PROOF_NOTE_MAX), line('Repo URL', c.repoUrl),
         line('Commit', c.commit), line('Commit summary', c.commitSummary), line('Rubric', c.rubric),
@@ -418,6 +438,17 @@ function contextLines(job: JobName, t: Obj | null, c: Obj): string[] {
     case 'check':
       out.push(title, ...checkBlocks(c.questions))
       break
+    case 'lab_review':
+      out.push(title, ...labReviewBlocks(c))
+      break
+    case 'portfolio_draft':
+      out.push(
+        line('Kind', c.kind), line('Lab', t?.title), learnerLine('Write-up', c.writeup, 8000),
+        numbered('Journal lines from the lab', strs(c.journal).map(x => fenceLearnerText(clip(x, 300)))),
+        numbered('What a stronger version does (from the review)', strs(c.stronger).map(x => clip(x, 300))),
+        str(c.results) ? `Latest passing results:\n${clip(str(c.results), 2000)}` : null,
+      )
+      break
   }
   return out.filter((x): x is string => x !== null)
 }
@@ -427,11 +458,10 @@ export function jobPrompt(job: JobName, req: { ticket: unknown; context: unknown
   const t = isObj(req.ticket) ? req.ticket : null
   const c = isObj(req.context) ? req.context : {}
   const final = (job === 'interview' && c.final === true) || (job === 'grade' && c.sessionGrade === true)
-  const explanation = job === 'grade' && c.deliverableKind === 'explanation' && !final
   const parts = [`Dojo job: ${job}.`, taskOf(job, str(t?.title), c), `CONTEXT\n${contextLines(job, t, c).join('\n') || '(none)'}`]
   if (evidence) parts.push(`Read-only evidence from the learner's repository (git output):\n${evidence}`)
-  parts.push(`OUTPUT SCHEMA (${job})\n${final ? INTERVIEW_FINAL_SCHEMA : explanation ? GRADE_EXPLANATION_SCHEMA : OUTPUT_SCHEMAS[job]}`)
-  parts.push(`EXAMPLE (shape only; answer for THIS request)\n${JSON.stringify(final ? INTERVIEW_FINAL_EXAMPLE : explanation ? GRADE_EXPLANATION_EXAMPLE : OUTPUT_EXAMPLES[job])}`)
+  parts.push(`OUTPUT SCHEMA (${job})\n${final ? INTERVIEW_FINAL_SCHEMA : OUTPUT_SCHEMAS[job]}`)
+  parts.push(`EXAMPLE (shape only; answer for THIS request)\n${JSON.stringify(final ? INTERVIEW_FINAL_EXAMPLE : OUTPUT_EXAMPLES[job])}`)
   parts.push(`Reply with exactly one JSON object that matches OUTPUT SCHEMA (${job}). No prose, no Markdown fences.`)
   return parts.join('\n\n')
 }

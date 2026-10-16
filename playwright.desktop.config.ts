@@ -5,7 +5,7 @@ process.env.DOJO_BANK_PACKS ??= 'fixtures'
 process.env.DOJO_PLAN ??= 'public'
 
 // C-DESKTOP scenarios against the packaged Dojo.app (built once into a temp dir by the spec). Never ~/Dojo or
-// ~/Applications: every launch gets its own temp DOJO_HOME.
+// /Applications: every launch gets its own temp DOJO_HOME.
 export default defineConfig({
   testDir: 'tests/desktop',
   workers: 1,

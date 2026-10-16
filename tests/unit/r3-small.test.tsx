@@ -83,7 +83,8 @@ describe('J3: repo files in a statement are file references', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     const { container } = render(<p><WithFileRefs text="grade it against forge/stages/00-setup/rubric.md." /></p>)
     const chip = container.querySelector('code.file-ref') as HTMLElement
-    expect(chip.getAttribute('title')).toMatch(/capstone repo/)
+    expect(chip.getAttribute('title')).toMatch(/your own repo/)
+    expect(chip.getAttribute('title')).not.toMatch(/capstone/)
     expect(chip.getAttribute('role')).toBe('button')
     fireEvent.click(chip)
     expect(writeText).toHaveBeenCalledWith('forge/stages/00-setup/rubric.md')

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useScreenKeys } from '../app/legend'
 import { usePlanV2 } from '../app/providers'
@@ -30,6 +30,11 @@ import { RitualWeekly } from './today/RitualWeekly'
 import { StatsDrawer } from './today/StatsDrawer'
 import './quest.css'
 
+// W5: the new Today cards load as one lazy chunk, so the entry chunk (480 KB budget) does not carry them
+const TodayRituals = lazy(() => import('./today/TodayExtras').then(m => ({ default: m.Rituals })))
+const TodayFocus = lazy(() => import('./today/TodayExtras').then(m => ({ default: m.Focus })))
+const TodayFloor = lazy(() => import('./today/TodayExtras').then(m => ({ default: m.Floor })))
+
 export function Today() {
   const model = useTodayModel()
   const pace = usePace()
@@ -49,6 +54,13 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
   const plan = usePlanV2()
   const readOnly = isReadOnly()
   const [picking, setPicking] = useState(false)
+  // W5 (RIT-52, RIT-53): while the Floor leads, the usual mix is collapsed behind a toggle; plain state, so a reload shows it collapsed again
+  const [mixOpen, setMixOpen] = useState(false)
+  const lead = model.lead ?? null
+  // RIT-54: a started ticket on a restart day is shown (below the Floor card, with the accent); only the rest of the mix stays behind the toggle
+  const resuming = model.next.kind === 'resume'
+  const behindToggle = lead !== null && !mixOpen
+  const collapsed = behindToggle && !resuming
   const pickRef = useRef<HTMLButtonElement>(null)
   const closePick = useCallback(() => { setPicking(false); pickRef.current?.focus() }, [])
   const phases = plan?.phases ?? []
@@ -76,10 +88,11 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
     : model.mix.items.find(x => x.id !== view.ticket?.id && x.status !== 'doing' && tagLane(x) !== questLane) ?? null
 
   // the legend lists Enter only while Enter has something to start
-  useScreenKeys(view.button && !(readOnly && view.tone !== 'review') ? ['Enter start'] : [])
+  useScreenKeys(collapsed || (view.button && !(readOnly && view.tone !== 'review')) ? ['Enter start'] : [])
 
   const go = () => {
-    if (view.tone === 'review') navigate('/review')
+    if (collapsed) navigate('/floor') // Enter acts on the button that holds the accent: today-floor-start while the Floor leads (RIT-62)
+    else if (view.tone === 'review') navigate('/review')
     else if (view.ticket) void start(view.ticket)
   }
   const goRef = useRef(go)
@@ -88,15 +101,15 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
   // Enter on the page starts the quest, unless the key belongs to a field, a focused control or an open dialog
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter' || !view.button || globalKeyBlocked(e) || isActivatable(e.target)) return
-      if (readOnly && view.tone !== 'review') return
+      if (e.key !== 'Enter' || (!view.button && !collapsed) || globalKeyBlocked(e) || isActivatable(e.target)) return
+      if (readOnly && view.tone !== 'review' && !collapsed) return
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
       e.preventDefault()
       goRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [view.button, view.tone, readOnly])
+  }, [view.button, view.tone, readOnly, collapsed])
 
   // the weekly card reads its minutes and due day from the plan's ritual entry; the mockup's 30 minutes and Saturday when the plan has none
   const tryModel = plan?.rituals?.find(r => r.id === TRY_MODEL_ID)
@@ -114,11 +127,13 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
       </div>
       <div className="qc-grid">
         <div className="qc-col">
-          <QuestCard ref={pickRef} view={view} action={model.next.kind} count={model.dueReviews} readOnly={readOnly} picking={picking} topic={topic} onPick={() => (picking ? closePick() : setPicking(true))} onStart={go} />
-          {picking && <PickElse pick={model.pick} onClose={closePick} />}
+          <Suspense fallback={null}><TodayFocus /></Suspense>
+          {!collapsed && <QuestCard ref={pickRef} view={view} action={model.next.kind} count={model.dueReviews} readOnly={readOnly} picking={picking} topic={topic} onPick={() => (picking ? closePick() : setPicking(true))} onStart={go} />}
+          {!collapsed && picking && <PickElse pick={model.pick} onClose={closePick} />}
+          <Suspense fallback={null}><TodayFloor lead={lead} open={mixOpen} resuming={resuming} onToggle={() => setMixOpen(o => !o)} /></Suspense>
         </div>
         <div className="qc-col">
-          {second && (
+          {second && !behindToggle && (
             <section className="qc-second sr-panel" data-testid="today-second" aria-label="Also today">
               <span className="qc-cap">Also today</span>
               <span className="qc-stitle" data-testid="today-second-title" data-content="plan">{second.title}</span>
@@ -129,6 +144,7 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
           <PomCard xp={xp} formMax={settings.pomFormMax} />
           <RitualPulse nowMs={t} readOnly={readOnly} />
           <RitualWeekly tickets={tickets} nowMs={t} minutes={tryModel?.minutes ?? DEFAULT_TRY_MINUTES} dueWeekday={tryModel?.dueWeekday ?? DEFAULT_DUE_WEEKDAY} readOnly={readOnly} />
+          <Suspense fallback={null}><TodayRituals tickets={tickets} nowMs={t} rituals={plan?.rituals ?? []} readOnly={readOnly} /></Suspense>
           {!dayZero && <RitualSlots tickets={tickets} nowMs={t} questId={view.ticket?.id} />}
           <JournalCard nowMs={t} />
         </div>

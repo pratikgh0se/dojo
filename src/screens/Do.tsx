@@ -1,6 +1,7 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useScreenKeys } from '../app/legend'
+import { Screen } from '../app/Screen'
 import { useDb, usePlan } from '../app/providers'
 import { buildJobRequest, type DiagramJson, type JobContext, type JobName, type SolutionOutput, type SrAlgoJson } from '../ai/types'
 import { approachesFor } from '../content/approaches'
@@ -13,7 +14,6 @@ import type { EndLog, HelpRung, Kind, Outcome, Redo, RungUse, Ticket } from '../
 import { playChime } from '../lib/chime'
 import { now } from '../lib/clock'
 import { appRoute } from '../lib/appLinks'
-import { openCheck } from '../lib/checkGate'
 import {
   bankRun, clearCycle, cycleElapsedMs, gaveUpFor, isStaleEmpty, loadCycle, newCycle, saveCycle, saveGaveUp,
   type Cycle, type GaveUp,
@@ -23,7 +23,7 @@ import { clearDraft, closingNotes, isEmptyDraft, loadDraft, saveDraft, type Draf
 import { isActivatable, isPlainKey, isStrayBackgroundKey, isTypingTarget } from '../lib/keys'
 import { clearStudy, loadChimePref, loadStudy, notifyStudy, subscribeStudy } from '../lib/studyStore'
 import { clearTimer, loadTimer, saveTimer, sessionLabel, timerView, type TimerState } from '../lib/timer'
-import { useSecondsNow } from '../lib/useNow'
+import { IDLE_TICK_MS, useSecondsNow } from '../lib/useNow'
 import { shortSource } from '../rules/board'
 import {
   announceText, helpUsed, HINT_UNLOCK_SECONDS, ladderView, newlyUnlocked, RUNG_NAMES, RUNG_OF, spentOf, spentOn, type RungName, type RungView,
@@ -33,8 +33,6 @@ import {
   aiTicketOf, designDeepDives, diagramSummary, NO_VIDEO, NO_WATCH_LINK, pairedWatchId,
   pictureSummary, QUIZ_PASS, quizResultText, quizScore, taskPictureLinks, videoLinks,
 } from '../rules/rungContent'
-import { needsCheck } from '../rules/brief'
-import { lastDraftFailure, useDraftStore } from '../data/draftJob'
 import { shownText } from '../rules/ticketText'
 import { CardBrief } from './brief/CardBrief'
 import { ApproachQuestion, ApproachStrip } from '../ui/algo/ApproachStrip'
@@ -92,11 +90,12 @@ const DIFF: Record<string, string> = { E: 'Easy', M: 'Medium', H: 'Hard' }
 export function Do() {
   const { ticketId = '' } = useParams()
   const q = useDoQuery(ticketId)
+  // RIT-69: the `screen-do` root is drawn together with the ticket (never as an empty shell), so a read right after the URL changes sees the title
   if (q === undefined) return <Loading />
   const { ticket, redo, uses } = q
-  if (ticket === null || ticket.archived) return <TicketMissing />
-  if (ticket.kind === 'problem' || ticket.kind === 'stage') return <DoScreen key={ticket.id} ticket={ticket} redo={redo} allUses={uses} />
-  return <TicketView key={ticket.id} ticket={ticket} />
+  if (ticket === null || ticket.archived) return <Screen name="do"><TicketMissing /></Screen>
+  if (ticket.kind === 'problem' || ticket.kind === 'stage') return <Screen name="do"><DoScreen key={ticket.id} ticket={ticket} redo={redo} allUses={uses} /></Screen>
+  return <Screen name="do"><TicketView key={ticket.id} ticket={ticket} /></Screen>
 }
 
 interface CycleState { cycle: Cycle | null; gaveUp: GaveUp | null }
@@ -175,7 +174,7 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
   const settings = useSettings()
   const study = useStudyFor(ticket.id)
   // ticks on the study session's own seconds (anchored at its phase start), so the header reading is not a second late after Start (TICKET-03)
-  const t = useSecondsNow(study.study?.phaseStart)
+  const t = useSecondsNow(study.study?.phaseStart, timer?.running ? 1000 : IDLE_TICK_MS)
   // the session can end away from Do's own buttons (a passed check, another tab): leave focus mode with it
   const hasStudy = study.study !== null
   useEffect(() => { if (!hasStudy) setFocusMode(false) }, [hasStudy]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -196,11 +195,6 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
   }), [ticket.id])
   const pair = useTicket(pairedWatchId(ticket.id) ?? '') ?? null
   const itemId = ticket.id
-  // ruling 20 S7: the last Draft briefs run failed because Claude Code isn't signed in (re-read as the run ends)
-  const draftJob = useDraftStore().job
-  const signedOut = useMemo(() => lastDraftFailure() === 'claude_signed_out', [draftJob]) // eslint-disable-line react-hooks/exhaustive-deps
-  // a learning card with a brief is finished through its check ("Mark done"), not by Solved
-  const checkGate = needsCheck(ticket)
   /** the closed session awaiting "Which approach did you use?" (labs §7.3), and his answer */
   const [asking, setAsking] = useState<{ sessionId: string; chosen: string | null } | null>(null)
   const hasApproaches = ticket.kind === 'problem' && approachesFor(itemId).length > 0
@@ -349,7 +343,6 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
 
   async function finish(outcome: Outcome) {
     if (!cycle || gaveUp) return
-    if (checkGate && outcome !== 'gave_up') return openCheck(ticket.id) // a learning card is finished through its check
     const t0 = now()
     const tm = loadTimer()
     const banked = bankRun(cycle, tm && tm.ticketId === ticket.id ? tm : null, t0)
@@ -558,10 +551,10 @@ function DoScreen({ ticket, redo, allUses }: { ticket: Ticket; redo: Redo | null
             {shownText(ticket.text) && <p className="st-text" data-content="plan"><WithFileRefs text={shownText(ticket.text)} /></p>}
           </Panel>
 
-          <CardBrief ticket={ticket} actions={false} />
+          <CardBrief ticket={ticket} />
           {!ticket.brief && (
             <p className="brief-note" data-testid="no-brief">
-              No brief for this ticket yet.{signedOut ? ' Drafting needs Claude Code signed in.' : ''}
+              No brief for this ticket yet.
             </p>
           )}
 

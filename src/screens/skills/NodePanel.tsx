@@ -7,9 +7,10 @@ import { KIND_LABEL, minutesLabel } from '../../rules/ticketMeta'
 import { Glyph } from '../../ui/Glyph'
 import { SkMeter } from './Meter'
 import { NodeItems, NodeStart } from './NodeItems'
+import type { TopicView } from './useTopicViews'
 
 /** The selected topic: what it is, what it needs and unlocks, ticket progress and the one way to start its next ticket. */
-export function NodePanel({ node, plan, tickets, states }: { node: PlanNode; plan: PlanV2; tickets: readonly Ticket[]; states: ReadonlyMap<string, NodeState> }) {
+export function NodePanel({ node, plan, tickets, states, topic }: { node: PlanNode; plan: PlanV2; tickets: readonly Ticket[]; states: ReadonlyMap<string, NodeState>; topic?: TopicView }) {
   const st = states.get(node.id) ?? 'locked'
   const mine = nodeTickets(node.id, tickets)
   const done = mine.filter(t => t.status === 'done').length
@@ -33,6 +34,13 @@ export function NodePanel({ node, plan, tickets, states }: { node: PlanNode; pla
       </div>
       <p className="sk-meta" id={`sk-p1-${node.id}`} data-content="plan">{node.oneLiner}</p>
       {reason && <p className="sk-meta" id={`sk-p2-${node.id}`} data-content="plan">{reason}</p>}
+      {/* R2: where this topic goes next, by its topic state (labs.md); AI nodes only */}
+      {topic?.line && (
+        <div>
+          <span className="sk-cap">Next step</span>
+          <p className="sk-meta sk-nextline" data-testid="skills-node-nextline" data-topic-state={topic.state ?? 'none'} data-content="plan">{topic.line}</p>
+        </div>
+      )}
       {/* a tree node says what it builds on in one line, each title a link to that node in the same tree (no locked state, no "Needs first" list) */}
       {tree && pre.length > 0 && (
         <p className="sk-builds" data-testid="skills-node-builds-on">

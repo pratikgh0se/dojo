@@ -76,3 +76,13 @@
   .jr-save .sr-btn { flex: 1 1 auto; }
   .jr-hard-row { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* W5: Day/Week switch and the Week view */
+.jr-views { display: flex; gap: 8px; }
+.jr-views [aria-current='page'] { border-color: var(--sr-text-primary); }
+.wk { display: grid; gap: 20px; min-width: 0; }
+.wk-nb { white-space: nowrap; }
+.wk-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.wk-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; font-size: var(--type-body); line-height: 1.4; overflow-wrap: anywhere; }
+.wk-line { margin: 0; font-size: var(--type-body); line-height: 1.4; }
+@media (max-width: 767px) { .wk-head { justify-content: center; } }

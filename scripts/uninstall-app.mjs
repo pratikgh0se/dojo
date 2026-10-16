@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // `npm run uninstall:app`: removes the Dojo.app bundle only. Data in DOJO_HOME is never touched.
 import { existsSync, rmSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { DEFAULT_DEST } from './install-app.mjs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export function uninstall(dest = join(homedir(), 'Applications')) {
+export function uninstall(dest = DEFAULT_DEST) {
   const app = join(resolve(dest), 'Dojo.app')
   if (!existsSync(app)) return { removed: false, app }
   rmSync(app, { recursive: true, force: true })

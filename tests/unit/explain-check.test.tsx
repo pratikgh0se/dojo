@@ -48,8 +48,41 @@ describe('submitExplainCheck', () => {
     const rows = await d.checkAttempts.toArray()
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({ ticketId: 'w1', passed: true })
-    expect(await d.redos.count()).toBe(0)
+    // W5: a pass schedules the explain Review cards, 0-based ids, nothing else
+    expect((await d.redos.toArray()).map(r => [r.id, r.source, r.stage])).toEqual([['ex-w1-0', 'explain', 0], ['ex-w1-1', 'explain', 0]])
     expect(await d.tickets.get('w1')).toMatchObject({ status: 'done', xp: 0 })
+  })
+
+  it('a pass uses the given topic for the cards and a second pass creates nothing new', async () => {
+    ai.call.mockResolvedValue(verdicts('pass'))
+    const d = await setup()
+    await submitExplainCheck(d, 'w1', ['a', 'b'], AT, 'Neural network basics')
+    expect((await d.redos.get('ex-w1-0'))!.piece).toMatchObject({ topic: 'Neural network basics' })
+    await submitExplainCheck(d, 'w1', ['a', 'b'], AT + 1000, 'Neural network basics')
+    expect(await d.redos.count()).toBe(2)
+  })
+
+  it('a fail makes the check_failed redo and no explain cards; a skipped check makes nothing', async () => {
+    ai.call.mockResolvedValue(verdicts('fail'))
+    const d = await setup()
+    await submitExplainCheck(d, 'w1', ['x', 'y'], AT)
+    expect((await d.redos.toArray()).map(r => r.source)).toEqual(['check_failed'])
+    const d2 = await setup({ ...t1, id: 'w9', explainAnswers: undefined })
+    await submitExplainCheck(d2, 'w9', ['x', 'y'], AT)
+    expect(await d2.redos.count()).toBe(0)
+  })
+
+  it('a re-run check does not close or push back an explain card', async () => {
+    ai.call.mockResolvedValue(verdicts('pass'))
+    const d = await setup()
+    await submitExplainCheck(d, 'w1', ['a', 'b'], AT)
+    ai.call.mockResolvedValue(verdicts('fail'))
+    await submitExplainCheck(d, 'w1', ['a', 'b'], AT + 86_400_000)
+    const all = await d.redos.toArray()
+    const ex = all.filter(r => r.source === 'explain')
+    expect(ex).toHaveLength(2)
+    expect(ex.every(r => r.closedAt === undefined && r.due === ex[0].due && r.passed.length === 0)).toBe(true)
+    expect(all.filter(r => r.source === 'check_failed')).toHaveLength(1)
   })
 
   it('schedules the same three-day check redo on a fail', async () => {

@@ -16,6 +16,7 @@ export const DEST_LINE: Record<DestinationId, string> = {
   designs: 'holds the design tiers and opens a design session.',
   banks: 'holds the question banks, answer first.',
   atlas: 'maps algorithm patterns to the pictures and problems that use them.',
+  portfolio: 'holds the labs you have proved, with drafts to publish.',
   guide: 'is this page, which explains how Dojo works.',
 }
 

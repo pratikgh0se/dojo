@@ -1,0 +1,8 @@
+/* W5: the Floor session (/floor). One accent at a time: REVEAL · ANSWER, REDO · <KIND> or SAVE · FLOOR. */
+.fl { display: grid; gap: 16px; align-content: start; max-width: 720px; min-width: 0; }
+.fl-h { margin: 0; font-family: var(--sr-font-pixel); font-size: var(--type-display-m); font-weight: 400; line-height: 1.25; letter-spacing: 1px; -webkit-font-smoothing: none; font-smooth: never; text-rendering: optimizeSpeed; }
+.fl-line { display: grid; gap: 12px; }
+.fl-field { display: grid; gap: 6px; font-size: var(--type-small); text-transform: none; letter-spacing: 0; }
+.fl-field input { height: var(--sr-size-control-h); box-sizing: border-box; min-width: 0; font-size: var(--type-body); }
+.fl-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+@media (max-width: 767px) { .fl-actions .sr-btn { flex: 1 1 100%; height: var(--sr-size-hit-touch); } }

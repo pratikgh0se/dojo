@@ -16,7 +16,7 @@ describe('nav', () => {
     expect(currentDestination('/skills/area/llm')).toBe('skills')
     expect(currentDestination('/skills/stats')).toBe('skills')
     for (const p of ['/do/t1', '/designs/session/d1', '/settings']) expect(currentDestination(p), p).toBeNull()
-    for (const [p, id] of [['/guide', 'guide'], ['/dsa', 'dsa'], ['/designs', 'designs'], ['/atlas', 'atlas'], ['/banks', 'banks']] as const) expect(currentDestination(p), p).toBe(id)
+    for (const [p, id] of [['/guide', 'guide'], ['/dsa', 'dsa'], ['/designs', 'designs'], ['/atlas', 'atlas'], ['/portfolio', 'portfolio'], ['/banks', 'banks']] as const) expect(currentDestination(p), p).toBe(id)
     expect(titleFor('/do/t1')).toBe('Ticket')
     expect(titleFor('/settings')).toBe('Settings')
     expect(titleFor('/skills/stats')).toBe('Skills')

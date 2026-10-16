@@ -8,6 +8,8 @@ import { Glyph } from '../../ui/Glyph'
 import { layoutTree, treeSize } from '../../rules/treeLayout'
 import { NodePanel } from './NodePanel'
 import { SkMeter, StateGlyph } from './Meter'
+import { TopicBadge } from './TopicBadge'
+import { withTopicWord, type TopicView } from './useTopicViews'
 import { NextPanel, SkillsList } from './SkillsList'
 
 /** The pixel width of an element, kept current (0 until measured; jsdom never measures, so callers pick a default). */
@@ -54,7 +56,7 @@ function useTitleMeasure(): TextWidth | undefined {
   }, [fontsIn])
 }
 
-interface Props { plan: PlanV2; tickets: readonly Ticket[]; states: ReadonlyMap<string, NodeState>; phone: boolean; nextTicket: Ticket | null }
+interface Props { plan: PlanV2; tickets: readonly Ticket[]; states: ReadonlyMap<string, NodeState>; phone: boolean; nextTicket: Ticket | null; topics?: ReadonlyMap<string, TopicView> }
 
 /**
  * The route wrapper. `/skills/area/<id>` is an AI area; `/skills/dsa` and `/skills/design` pass `treeArea` (the tree tabs, TREE-05, TREE-06),
@@ -73,7 +75,7 @@ export function AreaView(props: Props & { treeArea?: string }) {
   return <AreaViewBody key={`${areaId}|${nodeParam ?? ''}`} areaId={areaId} nodeParam={nodeParam} {...rest} />
 }
 
-function AreaViewBody({ areaId, nodeParam, plan, tickets, states, phone, nextTicket }: Props & { areaId: string; nodeParam: string | null }) {
+function AreaViewBody({ areaId, nodeParam, plan, tickets, states, phone, nextTicket, topics }: Props & { areaId: string; nodeParam: string | null }) {
   const navigate = useNavigate()
   const area = plan.areas.find(a => a.id === areaId)!
   const tree = isTreeArea(areaId)
@@ -133,7 +135,7 @@ function AreaViewBody({ areaId, nodeParam, plan, tickets, states, phone, nextTic
         <>
           <div className="sk-phone sr-panel">
             {head}
-            <SkillsList plan={plan} tickets={tickets} states={states} nodes={nodes} initialOpen={paramNode} />
+            <SkillsList plan={plan} tickets={tickets} states={states} nodes={nodes} initialOpen={paramNode} topics={topics} />
             {!tree && <ul className="sk-others" aria-label="Other areas">
               {summaries.filter(x => x.area.id !== areaId).map(x => (
                 <li key={x.area.id}>
@@ -167,12 +169,13 @@ function AreaViewBody({ areaId, nodeParam, plan, tickets, states, phone, nextTic
                 {layout.placed.map(({ node, x, y, w, h }) => {
                   const st = states.get(node.id) ?? 'locked'
                   const mine = nodeTickets(node.id, tickets)
+                  const topic = topics?.get(node.id)?.state
                   const pick = () => setPicked(node.id)
                   // R9: a node is an SVG group with role=button (not a <button>), so the one accent-filled node is not a second accent button.
                   return (
                     <g
                       key={node.id} className="sk-node" role="button" tabIndex={0} data-testid={`skills-node-${node.id}`} data-state={st} data-row={rowOf.get(node.id)}
-                      aria-current={selectedId === node.id ? 'true' : undefined} aria-label={`${node.title}, ${STATE_WORD[st]}`}
+                      aria-current={selectedId === node.id ? 'true' : undefined} aria-label={withTopicWord(`${node.title}, ${STATE_WORD[st]}`, topic)}
                       onClick={pick} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick() } }}
                     >
                       <foreignObject x={x} y={y} width={w} height={h} style={{ overflow: 'visible' }}>
@@ -180,7 +183,8 @@ function AreaViewBody({ areaId, nodeParam, plan, tickets, states, phone, nextTic
                           <span className="sk-nl" data-content="plan">{node.title}</span>
                           <span className="sk-nb">
                             <StateGlyph id={node.id} attr={STATE_ATTR[st]}><Glyph name={STATE_GLYPH[st]} /></StateGlyph>
-                            <SkMeter done={mine.filter(t => t.status === 'done').length} total={mine.length} label="Tickets done" testId={`skills-node-meter-${node.id}`} segments={Math.min(6, Math.max(1, mine.length))} tone={st === 'done' ? 'ok' : 'accent'} />
+                            <TopicBadge id={node.id} topic={topic} />
+                            <SkMeter done={mine.filter(t => t.status === 'done').length} total={mine.length} label="Tickets done" testId={`skills-node-meter-${node.id}`} segments={Math.min(topic ? 3 : 6, Math.max(1, mine.length))} tone={st === 'done' ? 'ok' : 'accent'} />
                           </span>
                         </div>
                       </foreignObject>
@@ -190,7 +194,7 @@ function AreaViewBody({ areaId, nodeParam, plan, tickets, states, phone, nextTic
               </svg>
             </div>
           </div>
-          {selected && <NodePanel node={selected} plan={plan} tickets={tickets} states={states} />}
+          {selected && <NodePanel node={selected} plan={plan} tickets={tickets} states={states} topic={topics?.get(selected.id)} />}
         </div>
       )}
     </section>

@@ -45,7 +45,7 @@ describe('routes (SHELL-20, SHELL-21)', () => {
   it.each(ROUTES)('%s renders screen-%s without redirecting', async (to, name) => {
     await renderAt(to)
     expect(screen.getByTestId('where').textContent).toBe(to)
-    const root = screen.getByTestId(`screen-${name}`)
+    const root = await screen.findByTestId(`screen-${name}`) // screen-do is drawn with its ticket (RIT-69), so wait for it
     await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
     expect(root.querySelector('.loading')).toBeNull()
     expect(screen.queryByTestId('screen-error')).toBeNull()
@@ -54,7 +54,7 @@ describe('routes (SHELL-20, SHELL-21)', () => {
   it.each(LEGACY)('%s stays routed and renders screen-%s (off the nav)', async (to, name) => {
     await renderAt(to, true)
     expect(screen.getByTestId('where').textContent).toBe(to)
-    const root = screen.getByTestId(`screen-${name}`)
+    const root = await screen.findByTestId(`screen-${name}`) // screen-do is drawn with its ticket (RIT-69), so wait for it
     await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
   })
 
@@ -91,7 +91,7 @@ describe('routes (SHELL-20, SHELL-21)', () => {
 
   it('carries screen-do next to its own do-screen', async () => {
     await renderAt('/do/ai.l3.learn')
-    const root = screen.getByTestId('screen-do')
+    const root = await screen.findByTestId('screen-do')
     await waitFor(() => expect(root).toHaveAttribute('data-ready', 'true'), { timeout: 4000 })
     expect(root.querySelector('[data-testid="do-screen"]')).not.toBeNull()
   })

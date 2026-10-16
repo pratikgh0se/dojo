@@ -1,0 +1,38 @@
+/* R2 W3: the lab block, hint ladder and review panel of the ticket view. Prefixes dk-lab-, dk-hint-, dk-rv-, dk-links (css:check allows one file per class). */
+.dk-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.dk-lab-sub { display: grid; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; gap: 12px; padding-top: 12px; border-top: 2px solid var(--sr-edge-mid); }
+.dk-lab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.dk-lab-path { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.dk-lab-path code { display: block; padding: 6px 10px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.5; overflow-wrap: anywhere; }
+.dk-lab-error { margin: 0; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-signal-warn); font-size: var(--type-small); overflow-wrap: anywhere; }
+.dk-lab-checks { list-style: none; margin: 0; padding: 0; display: grid; }
+.dk-lab-check { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 2px 12px; align-items: start; padding: 8px 0; border-top: 2px solid var(--sr-edge-mid); font-size: var(--type-small); }
+.dk-lab-check:first-child { border-top: 0; }
+.dk-lab-mark { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.dk-lab-check[data-status='pass'] .dk-lab-mark { color: var(--sr-label-ok); }
+.dk-lab-check[data-status='fail'] .dk-lab-mark { color: var(--sr-label-danger); }
+.dk-lab-name { font-weight: 700; overflow-wrap: anywhere; }
+.dk-lab-detail { grid-column: 2; color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+.dk-lab-later { display: grid; gap: 6px; }
+.dk-lab-tail { margin: 0; padding: 8px 12px; max-height: 240px; overflow: auto; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-meta); white-space: pre-wrap; overflow-wrap: anywhere; }
+.dk-hint-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.dk-hint-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.dk-hint-item { margin: 0; padding: 10px 12px; display: grid; gap: 8px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); line-height: 1.5; overflow-wrap: anywhere; }
+.dk-hint-item p { margin: 0; }
+.dk-hint-code { margin: 0; padding: 8px 12px; max-height: 260px; overflow: auto; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); font-family: var(--sr-font-mono); font-size: var(--type-meta); white-space: pre; }
+.dk-hint-confirm { margin: 0; padding: 10px 12px; display: grid; gap: 10px; background: var(--sr-surface-well); border: 2px solid var(--sr-signal-warn); font-size: var(--type-small); }
+.dk-hint-confirm p { margin: 0; }
+.dk-rv-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.dk-rv-item { display: grid; gap: 6px; padding: 10px 12px; background: var(--sr-surface-well); border: 2px solid var(--sr-edge-mid); font-size: var(--type-small); overflow-wrap: anywhere; }
+.dk-rv-item p { margin: 0; }
+.dk-rv-item code { font-family: var(--sr-font-mono); font-size: var(--type-meta); }
+.dk-rv-badge[data-state='proven'] { border-color: var(--sr-signal-ok); color: var(--sr-label-ok); }
+.dk-rv-percent { font-family: var(--sr-font-mono); font-size: var(--type-body); font-weight: 700; }
+.dk-rv-weak { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: var(--type-small); overflow-wrap: anywhere; }
+@media (max-width: 767px) {
+  .dk-lab-path { grid-template-columns: minmax(0, 1fr); }
+  .dk-lab-check { grid-template-columns: minmax(0, 1fr); }
+  .dk-lab-detail { grid-column: 1; }
+  .dk-links .dk-res { min-height: var(--sr-size-hit-touch); }
+  .dk-lab-row .sr-btn, .dk-hint-row .sr-btn, .dk-lab-path .sr-btn, .dk-hint-confirm .sr-btn { width: 100%; height: var(--sr-size-hit-touch); }
+}

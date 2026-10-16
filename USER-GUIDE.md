@@ -1,8 +1,8 @@
 # Dojo user guide
 
 Dojo is a study planner and practice app for a long study plan. It runs as a Mac app and keeps
-all of your data on your own machine. It needs the internet only for the links you open, the optional link check
-on a brief, and the optional AI features.
+all of your data on your own machine. It needs the internet only for the links you open and the optional AI
+features.
 
 Dojo ships with a sample plan: a path of AI-infrastructure cards, a DSA track and a design track, a DSA problem bank,
 a system design bank and a skill tree. You can replace it with your own plan (see
@@ -23,7 +23,7 @@ Screenshots of each screen are in the [README](README.md#a-day-in-dojo).
 5. [How the plan works](#how-the-plan-works)
 6. [The screens](#the-screens)
 7. [Working on a card: the Do screen](#working-on-a-card-the-do-screen)
-8. [Briefs and learning checks](#briefs-and-learning-checks)
+8. [Card briefs and the explain check](#card-briefs-and-the-explain-check)
 9. [Running code: Go and Python](#running-code-go-and-python)
 10. [AI features](#ai-features)
 11. [Keyboard shortcuts](#keyboard-shortcuts)
@@ -54,8 +54,8 @@ npm ci
 npm run install:app
 ```
 
-This builds `Dojo.app` and installs it in `~/Applications`. Open it from there, or drag it to the Dock. To install it in
-`/Applications` instead, run `npm run install:app -- --dest /Applications`.
+This builds `Dojo.app` and installs it in `/Applications`. Open it from there, or drag it to the Dock. To install it somewhere
+else (for example `~/Applications`), run `npm run install:app -- --dest ~/Applications`.
 
 - **Update:** pull the new code and run `npm ci` and `npm run install:app` again. Only the app bundle is
   replaced. Your data folder is never touched.
@@ -65,7 +65,7 @@ This builds `Dojo.app` and installs it in `~/Applications`. Open it from there, 
 - **Install somewhere else:** `npm run install:app -- --dest <folder>`.
 - **Keep your data somewhere else:** `npm run install:app -- --home <folder>`. The folder is remembered inside
   that copy of the app.
-- **Remove:** `npm run uninstall:app` deletes `~/Applications/Dojo.app` and nothing else. Your data stays in
+- **Remove:** `npm run uninstall:app` deletes `/Applications/Dojo.app` and nothing else. Your data stays in
   `~/Dojo`.
 
 The app is signed ad hoc on your machine during install. It is not notarized.
@@ -150,9 +150,10 @@ Finishing a card earns XP:
 
 | Card | Base XP |
 |---|---|
-| Task, watch, read, stage | 10 |
+| Task, watch, read | 10 |
 | Problem | Easy 5, Medium 10, Hard 15 |
-| Design | 20 |
+| Build, write-up, design | 20 |
+| Ritual | 5 |
 | Codeforces problem | rating / 100, rounded, minus 7, at least 1 |
 
 Help you open on the Do screen costs XP (see [The help ladder](#the-help-ladder)). A card's XP never goes below 0.
@@ -367,25 +368,18 @@ Review when due. A redo passes when you solve the card using at most a Hint. Pas
 Solution cost double. Passing refunds XP: up to half of the help you paid at the first pass, the rest at the second,
 and a bonus of 3 at the third.
 
-## Briefs and learning checks
+## Card briefs and the explain check
 
-A **brief** turns a card into a concrete plan: a goal, steps with links, minutes, a day type, what you will learn,
-the outcome, a deliverable and, for learning cards, questions.
+A card that was planned with a **brief** shows it under the statement, read-only: a goal, steps with links, minutes, a
+day type, what you will learn, the outcome and the deliverable. Dojo does not edit or approve briefs any more, and
+nothing on a brief blocks a card.
 
-- **Edit and approve.** On the Do screen, **Edit brief** changes any part of it, and **Approve** marks it approved.
-  **Check links** tests the brief's links and flags broken ones.
-- **AI-track build cards never get code from the AI.** Their deliverable is your own code, typed by hand.
+**Done** never waits. Press it and the card is finished, the XP is counted and the timer ends. A card that has
+explain questions keeps your answers as you type them. After **Done**, Dojo sends them to the AI in the background
+if it can; the check is optional and fails quietly when the AI is not available. If your answers fall short, they
+come back in Review in 3 days, and Dojo tells you so. A card with no explain questions needs nothing else.
 
-**Mark done** depends on the card:
-
-- A **learning card** (a watch or read card, or a capstone watch session) opens **Check your understanding**.
-  Multiple-choice answers are graded by Dojo; open answers are graded by the AI. The card is done when every answer
-  passes, or when at most one is partial and none fail. Otherwise you see corrections and a redo is scheduled 3
-  days out; you can fix your answers and try again at once.
-- A **build card** asks for the **Deliverable**. **Get feedback** is optional and asks the AI for feedback only; it
-  never writes code and never finishes the card for you.
-
-A card with no brief can be finished directly from Today or its ticket page.
+**AI-track build cards never get code from the AI.** The work on a build card is your own code, typed by hand.
 
 ## Running code: Go and Python
 
@@ -420,9 +414,8 @@ The AI features use **your own Claude Code login**. Dojo runs the `claude` comma
 stores no API key and has no account of its own.
 
 **What leaves your machine:** the text of each request is sent to Anthropic by the `claude` tool, the same as any
-other Claude Code session. That is the card's title and text, your attempt notes, your answers, your deliverable
-text, what you paste into Classify, your AI partner chat messages, and for grading your proof note and commit summary plus, if you set a project repo, the
-last 20 commit subjects, the graded commit's file list and `git diff --stat` of that repo.
+other Claude Code session. That is the card's title and text, your attempt notes, your explain answers, what you
+paste into Classify and your AI partner chat messages. Dojo does not send the contents of any repo.
 
 | Feature | Where |
 |---|---|
@@ -431,9 +424,8 @@ last 20 commit subjects, the graded commit's file list and `git diff --stat` of 
 | Diagram | Do, help ladder, on designs; the reference diagram at the end of a design session |
 | Solution | Do, help ladder, after Give up |
 | AI partner and its grade | Design sessions with the AI partner (Solo · AI partner) |
-| Grade | **Get feedback** on a deliverable |
 | Classify | Banks, Mine; Atlas search when nothing matches locally |
-| Check your understanding | Mark done on learning cards (Dojo grades multiple-choice answers itself, but the check runs through the AI) |
+| Explain check | After Done on a card with explain questions, in the background (optional) |
 
 **Without Claude Code.** Everything that is not in the table above works without it. When you use an AI feature
 and Dojo cannot find `claude`, the panel shows **Claude Code is not installed or not on PATH.**, the raw error
@@ -452,8 +444,6 @@ Other messages you may see:
 | The AI helper is busy. Try again in a moment. | Two AI requests are already running. |
 | The AI returned something unusable. | The reply did not match the expected format, even after one automatic retry. |
 | That request is not allowed before you give up. | Solutions are only given after Give up. |
-
-**Grading and your project repo.** The artifact grader belongs to the capstone screen, which is not in this version (it returns later). Your project repo setting in [profile.json](#your-profile-file) is kept for it.
 
 ## Keyboard shortcuts
 
@@ -529,7 +519,7 @@ This reads `~/Dojo/dojo.db` (or `DOJO_HOME/dojo.db`) read-only, so it can run wh
 `~/Dojo/export/dojo-pg-<time>.sql`: a `dojo` schema, the tables, one INSERT per row, and the row counts to check
 after loading. It needs Node 22.13 or newer.
 
-Other exports: **Export Markdown** on the Measures wall, and **Export PNG** for design diagrams.
+Another export: **Export PNG** for design diagrams.
 
 ## Your profile file
 
@@ -537,7 +527,7 @@ An optional file, `~/Dojo/profile.json`, holds your own values without changing 
 
 ```json
 {
-  "projectRepo": "~/projects/my-capstone",
+  "projectRepo": "~/projects/my-project",
   "plan": {
     "schedule": {
       "intro": "One block a day, tracks alternate, Friday is free.",
@@ -559,7 +549,7 @@ An optional file, `~/Dojo/profile.json`, holds your own values without changing 
 
 | Key | Effect |
 |---|---|
-| `projectRepo` | The local repo the grader may read. An absolute path or one starting with `~/`. Unset by default. |
+| `projectRepo` | A local repo path, absolute or starting with `~/`. Kept in the file and shown in Settings; no screen reads the repo in this version. Unset by default. |
 | `plan.schedule` | Legacy field. The screens that showed it (Ritual, Overview) are gone, so it is kept in the file but not shown. |
 | `plan.learner.patternsRepo` | Your own coding-patterns notes. Used for the DSA study links and for any plan link written as `{{learner.patternsRepo}}`; such links are dropped while it is unset. |
 
@@ -614,6 +604,6 @@ The folder is readable only by you, and the database and backups are private to 
 **Starting completely fresh.** Quit Dojo and rename `~/Dojo` (for example to `~/Dojo-old`). The next launch creates
 a new, empty data folder and asks for a start date again.
 
-**Network use.** Dojo's server listens only on `127.0.0.1`. The only outbound requests it makes itself are
-**Check links** on a brief (a HEAD or GET to each public link, never to private or local addresses). AI requests go
-through the `claude` tool, and the links you open go through your browser.
+**Network use.** Dojo's server listens only on `127.0.0.1`. It starts no outbound request of its own in
+this version (its link-check endpoint is not used by any screen). AI requests go through the `claude` tool, and the
+links you open go through your browser.

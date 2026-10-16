@@ -23,7 +23,7 @@ export interface PlanV2 {
   /** R1 W6: the shipped Design and AI questions (BANK-02); absent on a plan older than the question banks */
   qbank?: PlanQuestion[]
   tasks: PlanTicketV2[]
-  mix: PlanMix; rituals: { id: string; title: string; cadence: 'daily' | 'weekly' | 'monthly'; minutes: number; /** weekly rituals: the due day, 0 = Sunday ... 6 = Saturday */ dueWeekday?: number }[]
+  mix: PlanMix; rituals: { id: string; title: string; cadence: 'daily' | 'weekly' | 'monthly'; minutes: number; /** weekly or monthly rituals: the due day, 0 = Sunday ... 6 = Saturday (monthly: the first such weekday of the month) */ dueWeekday?: number; /** weekly rituals: the local hour the ritual becomes due, 0 to 23 */ dueHour?: number; /** the ritual's fixed card and ticket text, when it has one */ body?: string }[]
   idMap: Record<string, string>; learner?: PlanLearner
 }
 

@@ -75,12 +75,12 @@ describe('App boot (Review Focus #1, #2)', () => {
     expect(screen.queryByTestId('screen-error')).toBeNull()
   })
 
-  it('boot writes no artifact rows: the AI capstone screen is gone, so nothing seeds its table', async () => {
+  it('boot seeds no artifact table: the AI capstone screen and its table are gone (v12)', async () => {
     setNow(() => ist('2026-09-08T10:00:00'))
     const d = await readyDb()
     render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><App database={d} fetcher={serve(200, async () => flatPlanV2)} /></MemoryRouter>)
     expect(await screen.findByRole('link', { name: 'Today' })).toBeInTheDocument()
-    expect(await d.artifacts.count()).toBe(0)
+    expect(d.tables.map(t => t.name)).not.toContain('artifacts')
   })
 
   it('SHELL-20: a deleted route opens Today inside the shell, with Today current and the other three items present', async () => {

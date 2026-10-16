@@ -35,6 +35,16 @@ describe('useGlobalKeys', () => {
     for (const k of ['7', '8', '9', '0']) fireEvent.keyDown(document.body, { key: k })
     expect(go).toHaveBeenCalledTimes(6)
   })
+  it('"/" on /path focuses a search box that is already drawn even before Path has registered its own handler (UAT A J11.8)', () => {
+    setup()
+    window.history.pushState({}, '', '/path')
+    try {
+      const box = add(document.createElement('input'))
+      box.setAttribute('data-testid', 'path-search')
+      fireEvent.keyDown(document.body, { key: '/' })
+      expect(document.activeElement).toBe(box)
+    } finally { window.history.pushState({}, '', '/') }
+  })
   it('stays out of text fields, the canvas, [data-no-global-keys] zones and modified presses', () => {
     const { onShortcuts } = setup()
     const box = add(document.createElement('input'))

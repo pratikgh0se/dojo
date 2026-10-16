@@ -19,9 +19,11 @@ const DesignSessionScreen = lazy(() =>
 const Dsa = lazy(() => import('../screens/Dsa').then(m => ({ default: m.Dsa })))
 const Atlas = lazy(() => import('../screens/Atlas').then(m => ({ default: m.Atlas })))
 const Designs = lazy(() => import('../screens/Designs').then(m => ({ default: m.Designs })))
+const Portfolio = lazy(() => import('../screens/Portfolio').then(m => ({ default: m.Portfolio })))
 const Banks = lazy(() => import('../screens/Banks').then(m => ({ default: m.Banks })))
 const Board = lazy(() => import('../screens/Board').then(m => ({ default: m.Board })))
 const AiTopics = lazy(() => import('../screens/AiTopics').then(m => ({ default: m.AiTopics })))
+const Floor = lazy(() => import('../screens/Floor').then(m => ({ default: m.Floor })))
 
 /** While a screen's chunk loads: a calm block as tall as a short screen (no jump), the line itself only after 300 ms. */
 function RouteFallback() {
@@ -42,7 +44,7 @@ export function AppRoutes() {
       <Route path="/skills/*" element={lazyScreen('skills', <Skills />)} />
       <Route path="/journal" element={lazyScreen('journal', <Journal />)} />
       <Route path="/review" element={lazyScreen('review', <Review />)} />
-      <Route path="/do/:ticketId" element={lazyScreen('do', <Do />)} />
+      <Route path="/do/:ticketId" element={<Suspense fallback={<RouteFallback />}><Do /></Suspense>} />
       <Route path="/designs/session/:designId" element={lazyScreen('design-session', <DesignSessionScreen />)} />
       <Route path="/settings" element={lazyScreen('settings', <Settings />)} />
       <Route path="/guide" element={lazyScreen('guide', <Guide />)} />
@@ -50,7 +52,9 @@ export function AppRoutes() {
       <Route path="/designs" element={lazyScreen('designs', <Designs />)} />
       <Route path="/atlas" element={lazyScreen('atlas', <Atlas />)} />
       <Route path="/banks" element={lazyScreen('banks', <Banks />)} />
+      <Route path="/portfolio" element={lazyScreen('portfolio', <Portfolio />)} />
       <Route path="/ai-topics" element={lazyScreen('ai-topics', <AiTopics />)} />
+      <Route path="/floor" element={<Suspense fallback={<RouteFallback />}><Floor /></Suspense>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

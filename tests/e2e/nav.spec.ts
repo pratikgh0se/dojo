@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { IST, onboard } from './helpers'
 
-// R1 navigation: the twelve destinations (rail on a desktop; tab bar and More sheet on a phone), keys 1 to 6, the ? overlay,
+// R1 navigation: the thirteen destinations (rail on a desktop; tab bar and More sheet on a phone), keys 1 to 6, the ? overlay,
 // the Ctrl or Cmd K palette reaching every screen, and every retired route landing on Today (SHELL-01, 03, 05, 19, 20, 21).
 // Board and Journal belong to other workstreams: here they are only listed, their navigation is the merger's check.
 const ITEMS: Array<[id: string, label: string, path: string, key: string]> = [
@@ -27,7 +27,7 @@ async function ready(page: Page, screen: string) {
 for (const width of [560, 1280]) {
   test.describe(`nav at ${width}px`, () => {
     test.use({ viewport: { width, height: 900 } })
-    // the rail is the wide-window chrome (twelve items), the tab bar the narrow-window one (four items and More)
+    // the rail is the wide-window chrome (thirteen items), the tab bar the narrow-window one (four items and More)
     const bar = (page: Page) => page.getByTestId(width < 768 ? 'shell-tabbar' : 'shell-rail')
 
     test('the destinations in order, each reachable, and no old More button or key legend', async ({ page }) => {
@@ -39,8 +39,8 @@ for (const width of [560, 1280]) {
         await expect(items).toHaveText([/^Today/, /^Path/, /^Board/, /^Review/])
         await expect(bar(page).getByTestId('shell-tab-more')).toHaveText('More')
       } else {
-        await expect(items).toHaveCount(12)
-        await expect(items).toHaveText(['Today', 'Path', 'Board', 'Journal', 'Skills', 'Review', 'AI', 'DSA', 'Designs', 'Banks', 'Atlas', 'Guide'].map(l => new RegExp(`^${l}`)))
+        await expect(items).toHaveCount(13)
+        await expect(items).toHaveText(['Today', 'Path', 'Board', 'Journal', 'Skills', 'Review', 'AI', 'DSA', 'Designs', 'Banks', 'Atlas', 'Portfolio', 'Guide'].map(l => new RegExp(`^${l}`)))
       }
       for (const [id, label, path] of ITEMS.filter(i => width >= 768 || i[0] !== 'skills')) {
         await bar(page).getByTestId(`shell-nav-${id}`).click()
@@ -93,6 +93,31 @@ for (const width of [560, 1280]) {
         else await expect(bar(page).locator('[aria-current="page"]')).toHaveAttribute('data-testid', `shell-nav-${dest}`)
         await noHorizontalOverflow(page)
       }
+    })
+
+    test('the rail toggle survives a reload straight after the click, in both directions (NAV-42)', async ({ page }) => {
+      test.skip(width < 768, 'the rail is desktop chrome')
+      await page.clock.setFixedTime(IST('2026-10-06T21:10:00'))
+      await onboard(page, '2026-10-05')
+      const rail = page.getByTestId('shell-rail')
+      const toggle = page.getByTestId('shell-rail-toggle')
+      const widthNow = async () => (await rail.boundingBox())!.width
+      await expect(rail).toBeVisible()
+      expect(Math.abs((await widthNow()) - 200)).toBeLessThanOrEqual(2) // the first session shows the labels (SHELL-08)
+      await toggle.click() // collapse
+      await page.reload() // no wait: the write may not have committed
+      await expect(rail).toBeVisible()
+      expect(Math.abs((await widthNow()) - 56)).toBeLessThanOrEqual(2)
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await toggle.click() // expand again
+      await page.reload()
+      await expect(rail).toBeVisible()
+      expect(Math.abs((await widthNow()) - 200)).toBeLessThanOrEqual(2)
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      await page.waitForTimeout(2000)
+      await page.reload()
+      await expect(rail).toBeVisible()
+      expect(Math.abs((await widthNow()) - 200)).toBeLessThanOrEqual(2)
     })
 
     test('each retired route ends at Today', async ({ page }) => {

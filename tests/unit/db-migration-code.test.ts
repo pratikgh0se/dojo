@@ -28,7 +28,7 @@ async function seedV5(name: string) {
 
 describe('v5 → v7 code table migration', () => {
   it('declares the new compound key and drops the temp table', () => {
-    expect(DB_VERSION).toBe(10)
+    expect(DB_VERSION).toBe(12)
     expect(SCHEMA_V7.code).toBe('[ticketId+lang]')
   })
 
@@ -37,7 +37,7 @@ describe('v5 → v7 code table migration', () => {
     const rows = await seedV5(name)
     const d = createDb(name)
     await d.open()
-    expect(d.verno).toBe(10)
+    expect(d.verno).toBe(12)
     expect(d.tables.map(t => t.name)).not.toContain('_codeTmp')
     expect((await d.code.toArray()).sort((a, b) => a.ticketId.localeCompare(b.ticketId))).toEqual([rows[1], rows[0]])
     expect(await d.code.get(['p91', 'go'])).toEqual(rows[0])

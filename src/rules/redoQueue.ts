@@ -4,10 +4,12 @@ import { redesignQueue } from './designEvidence'
 import type { PlanDesignRef } from './designs'
 import { RUBRIC_MAX } from './designSession'
 import { bankPieceOf } from './bankQuestions'
-import { missedPieceOf } from './keepMissed'
+import { isPieceSource, missedPieceOf } from './keepMissed'
 import { needsRedo, passesRedo, REDO_DAYS, redoDue, redoRefund } from './ladder'
 import { xpSavedText } from './ladderView'
 
+/** W5 (rituals.md "Explain cap"): at most this many `explain` cards are in the queue at once (the oldest due); the rest wait, still open and due. */
+export const EXPLAIN_DAILY_CAP = 10
 /** PL "Motion and reward": Pom's power-up runs 2.5 s on a redo pass. */
 export const REDO_POWERUP_MS = 2500
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -126,13 +128,16 @@ export interface RedoRow { ticketId: string; title: string; days?: number; refun
  * and its entry carries `ticket: null`. */
 export function dueRedos(redos: readonly Redo[], tickets: readonly Ticket[], nowMs: number): { redo: Redo; ticket: Ticket | null; dueDay: string }[] {
   const byId = new Map(tickets.map(t => [t.id, t]))
+  let explainSeen = 0
   return redos
     .flatMap((redo): { redo: Redo; ticket: Ticket | null; dueDay: string }[] => {
       if (redo.source === 'bank_q') return bankPieceOf(redo) && isRedoDue(redo, nowMs) ? [{ redo, ticket: null, dueDay: localDayKey(dueMs(redo.due)) }] : []
       const ticket = byId.get(redo.ticketId)
       return ticket && !ticket.archived && isRedoDue(redo, nowMs) ? [{ redo, ticket, dueDay: localDayKey(dueMs(redo.due)) }] : []
     })
-    .sort((a, b) => a.dueDay.localeCompare(b.dueDay) || a.redo.createdAt - b.redo.createdAt || a.redo.ticketId.localeCompare(b.redo.ticketId))
+    .sort((a, b) => a.dueDay.localeCompare(b.dueDay) || a.redo.createdAt - b.redo.createdAt || a.redo.ticketId.localeCompare(b.redo.ticketId) || a.redo.id.localeCompare(b.redo.id))
+    // W5: the explain cap is stateless: the 10 oldest-due explain cards of the sorted set are in; the others wait (R-7)
+    .filter(e => e.redo.source !== 'explain' || ++explainSeen <= EXPLAIN_DAILY_CAP)
 }
 
 /** PL "Today": the Redo · N drawer lists redos due today or earlier, oldest due first (see `dueRedos`). */
@@ -149,7 +154,7 @@ export function redoRows(redos: Redo[], tickets: Ticket[], sessions: Session[], 
     const title = displayTitle(t)
     // F3 (REVIEW-23): a kept weak spot is a Review card, not a ladder redo: it reads as its question and opens Review
     // W2: a `journal_hard` redo with a piece reads the same way (JOURNAL-23)
-    const piece = r.source === 'design_missed' || r.source === 'journal_hard' ? missedPieceOf(r) : null
+    const piece = isPieceSource(r.source) ? missedPieceOf(r) : null
     if (piece) return { ticketId: t.id, title, text: `${title} · ${piece.question}`, to: '/review' }
     const days = localDaysBetween(firstStart.get(t.id) ?? r.createdAt, nowMs)
     const refund = refundWaiting(r)

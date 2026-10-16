@@ -3,14 +3,13 @@ import type { Ticket } from '../data/types'
 /** The statuses a move can set. `slid` survives only as a refused target (retired Board). */
 export type Column = 'slid' | 'todo' | 'doing' | 'blocked' | 'help' | 'done'
 
-export type MoveReason = 'missing' | 'same' | 'slid_column' | 'check_required'
+export type MoveReason = 'missing' | 'same' | 'slid_column'
 export type MoveCheck = { ok: true } | { ok: false; reason: MoveReason }
 
 export const MOVE_MESSAGES: Record<MoveReason, string> = {
   missing: 'Ticket not found',
   same: '',
   slid_column: 'Slid in fills itself: slide a ticket from an earlier sprint',
-  check_required: 'Check your understanding first',
 }
 
 const live = (t: Ticket) => !t.archived

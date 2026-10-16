@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { FAKE_FAIL_KEY } from '../../src/ai/fake'
-import { deliverableFeedback, submitCheck, submitDeliverable } from '../../src/data/checkActions'
+import { submitCheck } from '../../src/data/checkActions'
 import { seedBrief } from '../helpers/briefs'
 import { totalXp } from '../../src/rules/xp'
 import { freshDb } from '../helpers/db'
@@ -84,70 +84,5 @@ describe('submitCheck', () => {
     expect(await submitCheck(d, 'w1', good, NOW)).toEqual({ ok: false, code: 'claude_failed', error: 'fake check unavailable' })
     expect(await d.checkAttempts.count()).toBe(0)
     expect((await d.tickets.get('w1'))!.status).toBe('todo')
-  })
-})
-
-describe('submitDeliverable', () => {
-  async function build() {
-    const d = freshDb()
-    await d.tickets.put(mkTicket({ id: 'c1', kind: 'problem', track: 'interview', title: 'Two Sum', difficulty: 'E' }))
-    await seedBrief(d, 'c1')
-    return d
-  }
-  it('BR-07: stores the text on the ticket and finishes the card with base XP', async () => {
-    const d = await build()
-    const r = await submitDeliverable(d, 'c1', '  def two_sum(): ...  ', NOW)
-    expect(r).toMatchObject({ ok: true, xpDelta: 5, deliverable: { kind: 'code', text: 'def two_sum(): ...', at: NOW } })
-    expect(await d.tickets.get('c1')).toMatchObject({ status: 'done', xp: 5, deliverable: { text: 'def two_sum(): ...' } })
-  })
-  it('refuses empty text and a card without a brief', async () => {
-    const d = await build()
-    expect(await submitDeliverable(d, 'c1', '   ', NOW)).toEqual({ ok: false, error: 'Hand something in first' })
-    await d.tickets.put(mkTicket({ id: 'plain' }))
-    expect(await submitDeliverable(d, 'plain', 'x', NOW)).toEqual({ ok: false, error: 'This card has no brief yet' })
-    expect((await d.tickets.get('c1'))!.status).toBe('todo')
-  })
-  it('the deliverable and the finished card land together: a refusal leaves the ticket untouched', async () => {
-    const d = await build()
-    await d.tickets.update('c1', { archived: true }) // an archived card cannot be finished by hand
-    expect(await submitDeliverable(d, 'c1', 'text', NOW)).toMatchObject({ ok: false })
-    expect((await d.tickets.get('c1'))!.deliverable).toBeUndefined()
-    expect((await d.tickets.get('c1'))!.status).toBe('todo')
-  })
-  it('optional feedback is stored with the deliverable and never finishes the card by itself', async () => {
-    const d = await build()
-    const f = await deliverableFeedback(d, 'c1', 'my attempt', NOW)
-    expect(f).toEqual({ ok: true, feedback: ['[fake:grade] c1 runs, is hand-written, and is measured.'] })
-    expect((await d.tickets.get('c1'))!.status).toBe('todo')
-    await submitDeliverable(d, 'c1', 'my attempt', NOW, f.ok ? f.feedback : undefined)
-    expect((await d.tickets.get('c1'))!.deliverable!.feedback).toHaveLength(1)
-    failHook('grade')
-    expect(await deliverableFeedback(d, 'c1', 'x', NOW)).toMatchObject({ ok: false, code: 'claude_failed' })
-  })
-})
-
-describe('a teach-back card (UAT cu-5 P2-2)', () => {
-  async function teachback() {
-    const d = freshDb()
-    await d.tickets.put(mkTicket({ id: 'tb1', kind: 'stage', track: 'ai', session: 'teachback', stage: 0, title: 'Stage 00 · teach-back' }))
-    await seedBrief(d, 'tb1', { deliverable: { kind: 'explanation', prompt: 'Explain it in your own words' } })
-    return d
-  }
-  it('"Get feedback" grades the prose as an explanation (no commit, diff or measurement), and the hand-in keeps the explanation kind', async () => {
-    const d = await teachback()
-    const f = await deliverableFeedback(d, 'tb1', 'The forward pass multiplies and adds; the backward pass reverses it.', NOW)
-    expect(f).toEqual({ ok: true, feedback: ["[fake:grade] tb1: the explanation names the mechanism in the learner's own words."] })
-    const r = await submitDeliverable(d, 'tb1', 'The forward pass multiplies and adds; the backward pass reverses it.', NOW, f.ok ? f.feedback : undefined)
-    expect(r).toMatchObject({ ok: true, deliverable: { kind: 'explanation' } })
-    expect((await d.tickets.get('tb1'))!.status).toBe('done')
-  })
-  it('a low grade names what to add, still as feedback only', async () => {
-    const d = await teachback()
-    localStorage.setItem('dojo:fake-ai-grade', 'low')
-    try {
-      expect(await deliverableFeedback(d, 'tb1', 'short', NOW)).toEqual({
-        ok: true, feedback: ['[fake:grade] tb1: the explanation names the parts but not what each is for.', 'Missing: [fake:grade] a worked example'],
-      })
-    } finally { localStorage.removeItem('dojo:fake-ai-grade') }
   })
 })

@@ -56,6 +56,14 @@ export function Entry({ day, today, tickets, stored, onPick }: {
   const text = (key: 'hardest' | 'next' | 'notes') => (e: { target: { value: string } }) => set({ [key]: e.target.value.slice(0, JOURNAL_TEXT_MAX) })
   const enabled = canSave(form, ids) && !saved && !readOnly && !saving
 
+  // a Floor day was a study day: the "No study today" button must not sit right under the Floor line, so it moves below the fields (UAT A J7.5)
+  const floorShown = stored?.floor === true && !!stored.line && !none
+  const modeToggle = (
+    <div className="jr-mode">
+      <Button variant="quiet" data-testid="journal-mode-none" aria-pressed={none} disabled={readOnly} onClick={() => set({ mode: none ? 'studied' : 'none' })}>No study today</Button>
+    </div>
+  )
+
   async function save() {
     if (!enabled) return
     setSaving(true)
@@ -88,9 +96,15 @@ export function Entry({ day, today, tickets, stored, onPick }: {
         </section>
       )}
 
-      <div className="jr-mode">
-        <Button variant="quiet" data-testid="journal-mode-none" aria-pressed={none} disabled={readOnly} onClick={() => set({ mode: none ? 'studied' : 'none' })}>No study today</Button>
-      </div>
+      {/* W5 (JOURNAL-30): the day's Floor line, read-only; present only on a day whose stored row came from a Floor session */}
+      {floorShown && (
+        <section className="jr-pulse" data-testid="journal-floor" aria-label="Floor session">
+          <span className="jr-cap">Floor session</span>
+          <p className="jr-pulse-text" data-testid="journal-floor-text" data-content="learner">{stored.line}</p>
+        </section>
+      )}
+
+      {!floorShown && modeToggle}
 
       {none ? (
         <div className="jr-none">
@@ -147,6 +161,7 @@ export function Entry({ day, today, tickets, stored, onPick }: {
             <span>Notes</span>
             <textarea data-testid="journal-notes" data-content="learner" maxLength={JOURNAL_TEXT_MAX} rows={3} value={form.notes} disabled={readOnly} onChange={text('notes')} />
           </label>
+          {floorShown && modeToggle}
         </>
       )}
 

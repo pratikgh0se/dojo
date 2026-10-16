@@ -324,6 +324,39 @@ function validateBankMore(o: Obj): string[] {
   return e
 }
 
+/** lab_review: the shape only. Every rubric id exactly once and the verbatim-quote rule need the bundle: src/rules/labReview.ts checkReview. */
+export const LAB_REVIEW_LIMITS = { items: 8, evidence: 3, quoteChars: 400, strongerWords: 80, summaryWords: 120 } as const
+function validateLabReview(o: Obj): string[] {
+  if (!Array.isArray(o.items) || o.items.length < 1 || o.items.length > LAB_REVIEW_LIMITS.items) return [`items must be a list of 1 to ${LAB_REVIEW_LIMITS.items}`]
+  const e: string[] = []
+  const ids = new Set<string>()
+  o.items.forEach((it: unknown, i: number) => {
+    const w = `item ${i + 1}`
+    if (!isObj(it) || !isStr(it.id)) { e.push(`${w}: id missing`); return }
+    if (ids.has(it.id)) e.push(`${w}: id ${it.id} appears twice`)
+    ids.add(it.id)
+    if (!isInt(it.score, 0, 3)) e.push(`${w}: score must be an integer from 0 to 3`)
+    if (!isStr(it.stronger)) e.push(`${w}: stronger missing`)
+    else if (wordCount(it.stronger) > LAB_REVIEW_LIMITS.strongerWords) e.push(`${w}: stronger is ${wordCount(it.stronger)} words (max ${LAB_REVIEW_LIMITS.strongerWords})`)
+    // An entry with no file, no line or too long a quote is not checked here: src/rules/labReview.ts checkReview drops it (LAB-71).
+    if (!Array.isArray(it.evidence)) e.push(`${w}: evidence must be a list`)
+  })
+  if (typeof o.summary !== 'string') e.push('summary must be a string')
+  else if (wordCount(o.summary) > LAB_REVIEW_LIMITS.summaryWords) e.push(`summary is ${wordCount(o.summary)} words (max ${LAB_REVIEW_LIMITS.summaryWords})`)
+  return e
+}
+
+/** portfolio_draft: one non-empty text, at most this many characters (a LinkedIn post is trimmed to 1300 by the app afterwards). */
+export const PORTFOLIO_DRAFT_MAX_CHARS = 9000
+function validatePortfolioDraft(o: Obj): string[] {
+  if (!isStr(o.text)) return ['text missing']
+  const e: string[] = []
+  if (o.text.length > PORTFOLIO_DRAFT_MAX_CHARS) e.push(`text is ${o.text.length} characters (max ${PORTFOLIO_DRAFT_MAX_CHARS})`)
+  const extra = Object.keys(o).filter(k => k !== 'text')
+  if (extra.length) e.push(`unexpected field ${extra.join(', ')}`)
+  return e
+}
+
 export function validateOutput(job: JobName, output: unknown): string[] {
   if (job === 'picture') return validatePicture(output)
   if (job === 'diagram') return validateDiagram(output)
@@ -341,6 +374,8 @@ export function validateOutput(job: JobName, output: unknown): string[] {
     case 'brief': return validateBrief(output)
     case 'check': return validateCheck(output)
     case 'bank_more': return validateBankMore(output)
+    case 'lab_review': return validateLabReview(output)
+    case 'portfolio_draft': return validatePortfolioDraft(output)
     default: return [`unknown job ${String(job)}`]
   }
 }

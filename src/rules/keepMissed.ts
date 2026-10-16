@@ -1,5 +1,5 @@
 import type { MissedSpot } from '../ai/types'
-import type { DesignSession, JournalPiece, MissedPiece, Redo } from '../data/types'
+import type { DesignSession, JournalPiece, MissedPiece, Redo, RedoSource } from '../data/types'
 import { addLocalDays, localDayKey } from '../lib/dates'
 import { readDesignMode } from './designMode'
 import { learnerWords } from './learnerWords'
@@ -38,6 +38,9 @@ export function keepRedos(s: Pick<DesignSession, 'id' | 'designId' | 'mode' | 'i
     }
   })
 }
+
+/** Redo sources whose `piece` is the card: the question, then the stored answer (a check card whatever the ticket's kind). */
+export const isPieceSource = (s: RedoSource): boolean => s === 'design_missed' || s === 'journal_hard' || s === 'lab_review' || s === 'explain'
 
 /** The question and stored answer a redo's piece holds, when it holds them (a legacy redo's `piece` is a plain string). A `design_missed` redo's piece has a session id too; a `journal_hard` redo's does not; a `bank_q` redo's holds a question id (`qid`) and is read by `bankPieceOf`, never here. */
 export function missedPieceOf(r: Pick<Redo, 'piece'>): JournalPiece | MissedPiece | null {

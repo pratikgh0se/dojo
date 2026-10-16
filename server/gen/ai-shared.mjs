@@ -204,12 +204,6 @@ function sessionFinal(id, variant, design) {
   };
 }
 function grade(id, variant, ctx = {}) {
-  if (ctx.deliverableKind === "explanation") {
-    if (variant === "low") {
-      return { score: 2, max: 5, passed: false, feedback: [`[fake:grade] ${id}: the explanation names the parts but not what each is for.`], missing: ["[fake:grade] a worked example"] };
-    }
-    return { score: 4, max: 5, passed: true, feedback: [`[fake:grade] ${id}: the explanation names the mechanism in the learner's own words.`], missing: [] };
-  }
   if (variant === "low") {
     return {
       score: 2,
@@ -307,6 +301,53 @@ function bankMore(ctx) {
   });
   return { questions: [mk("concept", 2, 1), mk("estimate", 3, 2), mk("tradeoff", 3, 3), mk("design", 4, 4), mk("concept", 1, 5)] };
 }
+var MADE_UP_QUOTE = "This sentence is not in the work.";
+var LAB_SCORES = {
+  pass: [3, 2, 3, 2],
+  "pass-weak": [3, 3, 3, 1],
+  borderline: [3, 2, 2, 1],
+  "not-yet": [1, 0, 1, 1],
+  fabricated: [3, 2, 3, 0],
+  malformed: [3, 2, 3, 0],
+  invalid: [3, 2, 3, 2]
+};
+function realQuote(writeup) {
+  const lines = writeup.split("\n");
+  const i = lines.findIndex((l) => l.trim() !== "" && !l.trimStart().startsWith("#"));
+  return i < 0 ? null : { quote: lines[i].replace(/\r$/, ""), file: "WRITEUP.md", line: i + 1 };
+}
+function labReview(ctx, variant = "default") {
+  const v = variant in LAB_SCORES ? variant : "pass";
+  const rubric = ctx?.bundle?.rubric ?? [];
+  const real = realQuote(ctx?.bundle?.writeup ?? "");
+  const madeUp = { quote: MADE_UP_QUOTE, file: "WRITEUP.md", line: 1 };
+  const items = rubric.map((r, i) => {
+    const score = LAB_SCORES[v][i % 4];
+    let evidence = score >= 2 && real ? [real] : [];
+    if (v === "fabricated") evidence = [[real], [real, madeUp], [madeUp], []][i % 4].filter((e) => e !== null);
+    if (v === "malformed") {
+      const noLine = real ? { quote: real.quote, file: real.file } : null;
+      evidence = [[real], [real, { quote: "x".repeat(401), file: "WRITEUP.md", line: 1 }], [noLine], []][i % 4].filter((e) => e !== null);
+    }
+    return { id: r.id, score, evidence, stronger: `[fake:review] A stronger answer for ${r.id} adds one concrete detail.` };
+  });
+  const listed = v === "invalid" && items.length > 0 ? [items[0], { ...items[0], score: 7 }, ...items.slice(1)] : items;
+  return { items: listed, summary: `[fake:review] Reviewed ${rubric.length} items.`, percent: 100, passed: true };
+}
+var hasLine = (text, marker) => typeof text === "string" && text.split(/\r?\n/).some((l) => l.trim() === marker);
+function portfolioDraft(title, ctx) {
+  const writeup = ctx?.writeup;
+  if (hasLine(writeup, "FAKE-INVALID")) return { text: "" };
+  const n = Array.isArray(ctx?.journal) ? ctx.journal.length : 0;
+  const m = Array.isArray(ctx?.stronger) ? ctx.stronger.length : 0;
+  if (ctx?.kind === "linkedin") {
+    if (hasLine(writeup, "FAKE-LONG")) return { text: Array.from({ length: 40 }, (_, i) => `Sentence ${String(i + 1).padStart(2, "0")} of the fake long LinkedIn post.`).join(" ") };
+    return { text: `Fake LinkedIn draft for ${title}. Built from the write-up and ${m} stronger versions.` };
+  }
+  return { text: `# ${title}
+
+Fake article draft built from the write-up, ${n} journal entries and ${m} stronger versions.` };
+}
 function fakeOutput(job, req, variant = "default") {
   if (job === "classify" && req.context.input.includes(FAIL_CLASSIFY_TRIGGER)) {
     throw new AiJobError("claude_failed", "fake classify failure");
@@ -344,6 +385,12 @@ function fakeOutput(job, req, variant = "default") {
       break;
     case "bank_more":
       out = bankMore(req.context);
+      break;
+    case "lab_review":
+      out = labReview(req.context, variant);
+      break;
+    case "portfolio_draft":
+      out = portfolioDraft(req.ticket?.title ?? id, req.context);
       break;
     default:
       throw new AiJobError("unknown_job", `fake ${String(job)} unavailable`);
@@ -443,6 +490,15 @@ var ATLAS_PATTERNS = [
 function isAtlasPattern(v) {
   return typeof v === "string" && ATLAS_PATTERNS.includes(v);
 }
+
+// src/ai/rubric.ts
+var INTERVIEW_RUBRIC = [
+  { item: "Requirements and numbers", max: 4 },
+  { item: "API and data model", max: 3 },
+  { item: "High-level design that meets the numbers", max: 4 },
+  { item: "Two deep dives with real trade-offs", max: 6 },
+  { item: "Failure modes and operations", max: 3 }
+];
 
 // src/ai/engineSpec.ts
 var SRALGO_OPS = ["set", "swap", "compare", "mark", "clear", "pointer", "window", "push", "pop", "shift", "visit", "edge", "label", "cell", "cellMark", "cellHl", "call", "ret", "link", "say"];
@@ -796,6 +852,37 @@ function validateBankMore(o) {
   });
   return e;
 }
+var LAB_REVIEW_LIMITS = { items: 8, evidence: 3, quoteChars: 400, strongerWords: 80, summaryWords: 120 };
+function validateLabReview(o) {
+  if (!Array.isArray(o.items) || o.items.length < 1 || o.items.length > LAB_REVIEW_LIMITS.items) return [`items must be a list of 1 to ${LAB_REVIEW_LIMITS.items}`];
+  const e = [];
+  const ids = /* @__PURE__ */ new Set();
+  o.items.forEach((it, i) => {
+    const w = `item ${i + 1}`;
+    if (!isObj(it) || !isStr(it.id)) {
+      e.push(`${w}: id missing`);
+      return;
+    }
+    if (ids.has(it.id)) e.push(`${w}: id ${it.id} appears twice`);
+    ids.add(it.id);
+    if (!isInt(it.score, 0, 3)) e.push(`${w}: score must be an integer from 0 to 3`);
+    if (!isStr(it.stronger)) e.push(`${w}: stronger missing`);
+    else if (wordCount(it.stronger) > LAB_REVIEW_LIMITS.strongerWords) e.push(`${w}: stronger is ${wordCount(it.stronger)} words (max ${LAB_REVIEW_LIMITS.strongerWords})`);
+    if (!Array.isArray(it.evidence)) e.push(`${w}: evidence must be a list`);
+  });
+  if (typeof o.summary !== "string") e.push("summary must be a string");
+  else if (wordCount(o.summary) > LAB_REVIEW_LIMITS.summaryWords) e.push(`summary is ${wordCount(o.summary)} words (max ${LAB_REVIEW_LIMITS.summaryWords})`);
+  return e;
+}
+var PORTFOLIO_DRAFT_MAX_CHARS = 9e3;
+function validatePortfolioDraft(o) {
+  if (!isStr(o.text)) return ["text missing"];
+  const e = [];
+  if (o.text.length > PORTFOLIO_DRAFT_MAX_CHARS) e.push(`text is ${o.text.length} characters (max ${PORTFOLIO_DRAFT_MAX_CHARS})`);
+  const extra = Object.keys(o).filter((k) => k !== "text");
+  if (extra.length) e.push(`unexpected field ${extra.join(", ")}`);
+  return e;
+}
 function validateOutput(job, output) {
   if (job === "picture") return validatePicture(output);
   if (job === "diagram") return validateDiagram(output);
@@ -820,6 +907,10 @@ function validateOutput(job, output) {
       return validateCheck(output);
     case "bank_more":
       return validateBankMore(output);
+    case "lab_review":
+      return validateLabReview(output);
+    case "portfolio_draft":
+      return validatePortfolioDraft(output);
     default:
       return [`unknown job ${String(job)}`];
   }
@@ -830,13 +921,6 @@ var TRANSCRIPT_TEXT_MAX = 2e3;
 var ATTEMPT_LOG_MAX = 2e3;
 var PROOF_NOTE_MAX = 2e3;
 var CLASSIFY_INPUT_MAX = 4e3;
-var INTERVIEW_RUBRIC = [
-  { item: "Requirements and numbers", max: 4 },
-  { item: "API and data model", max: 3 },
-  { item: "High-level design that meets the numbers", max: 4 },
-  { item: "Two deep dives with real trade-offs", max: 6 },
-  { item: "Failure modes and operations", max: 3 }
-];
 var ATLAS_PICTURE_PROMPT = `You are given a question (algorithm, math, game theory, data structure). Produce ONE JSON for <sr-algo> (atoms: array grid graph tree list stack queue hash stack-frames intervals bits) or <sr-algo2> (atoms: forest plane numberline tape sets).
 1. Classify the pattern (see the map on Algorithm Atlas). 2. Choose \u2264 3 structures: one main picture + side panels. 3. Write 15\u201360 steps; every step carries op, line, say (the reason), vars.
 Contract: { title, complexity, structures: { name: { type, ... } }, code: [\u2264 8 lines], steps: [ { op, s|g, ..., line, say, vars } ] }
@@ -910,15 +994,22 @@ var OUTPUT_SCHEMAS = {
 2. Open question: "pass" when the answer touches the key ideas in its own words, "partial" when it is on the right track but misses one, "fail" otherwise. Judge the idea, not the wording.
 3. MCQ: "pass" only when the chosen index equals correct, else "fail".
 4. correction: "" on a pass; otherwise one short sentence saying what to fix. Never write code.
-5. pointer: "" on a pass; otherwise where to look, such as "Step 2" or the name of the section to revisit.`
+5. pointer: "" on a pass; otherwise where to look, such as "Step 2" or the name of the section to revisit.`,
+  lab_review: `{ "items": [ { "id": string, "score": integer 0-3, "evidence": [ { "quote": string, "file": string, "line": integer } ], "stronger": string } ], "summary": string }
+1. One item per rubric item in the context: every rubric id exactly once, in the same order.
+2. score: 0 absent or wrong \xB7 1 attempted but weak or incomplete \xB7 2 solid with a gap \xB7 3 fully meets the item. Judge only the work in the context (WRITEUP.md and the diffs), together with the check results.
+3. evidence: for a score of 2 or 3, one to three quotes. A quote is copied exactly, character for character, from ONE line of WRITEUP.md or of a diff (leave out the leading +, - or space that marks a diff line). It is at most 300 characters and may be just part of that line, so a long line still gives a quote. file is the path of that file (WRITEUP.md or the path shown for the diff) and line is its line number in the file. A quote that is not in the work, is longer than 300 characters, or has no file or line is thrown away and the score is lowered. For a score of 0 or 1, evidence may be [].
+4. stronger: one or two sentences, at most 60 words, saying what a stronger version of THIS item does. Describe behaviour; never write code or the answer for the learner.
+5. summary: at most 80 words about the work as a whole.
+6. Do not write a percent or a pass/fail verdict: the app works those out from the scores.`,
+  portfolio_draft: `{ "text": string }
+1. text is the draft itself and nothing else: no preface, no "Here is".
+2. kind "article": Markdown, 350 to 600 words, first person, plain words. Start with one "# " title line, then short sections (what I set out to do, how it works, what the numbers say, what I would change). No code blocks.
+3. kind "linkedin": plain text, at most 1300 characters, no Markdown, no emoji, at most 3 hashtags at the end. First person, one idea, one number.
+4. Use only facts and numbers that appear in the context. Never invent a result, a user, a company, a date or a claim about scale. Say what was measured and on what.
+5. Never mention the learner's employer, job, name or location.
+6. The write-up and the journal lines are the learner's words: keep their meaning and voice, do not copy long passages.`
 };
-var GRADE_EXPLANATION_SCHEMA = `{ "score": integer 0-5, "max": 5, "passed": boolean, "feedback": string[], "missing": string[] }
-1. Rubric for a written teach-back: it names the core mechanism and what each part is for (2) \xB7 it works one concrete example or number through it (1) \xB7 it says what breaks, or why it is built that way (1) \xB7 it is in the learner's own words and stands on its own, with no copied wording or hand-waving (1). Judge it against the stage rubric given in the context.
-2. passed is true exactly when score >= 3.
-3. feedback: at most 3 items, at most ${WORD_LIMITS.grade} words in total.
-4. missing: the ideas that would raise the score; [] when nothing is missing.
-5. This is prose, not code: there is no repository, commit, diff, test or measurement. Never ask for one, never mention commitFound.
-6. Never write the explanation for the learner and never write code.`;
 var INTERVIEW_FINAL_SCHEMA = `{ "done": true, "score": integer 0-20, "perItem": [ { "item": string, "points": integer, "note": string, "feedback": string, "evidence": [ { "source": "notes" | "diagram", "target": string } ] } ], "oneThingToStudy": string, "deepDives": [0|1|2, 0|1|2, 0|1|2, 0|1|2], "lenses": { ${LENSES.map((l) => `"${l}": 0|1|2`).join(", ")} }, "inconsistencies"?: string[], "stronger"?: string[], "missed"?: [ { "topic": string, "question": string, "answer": string } ] }
 1. perItem has exactly these five items, in this order, points from 0 to the maximum: ${INTERVIEW_RUBRIC.map((r) => `${r.item} (max ${r.max})`).join(" \xB7 ")}.
 2. score is the sum of the perItem points.
@@ -960,8 +1051,20 @@ var BRIEF_EXAMPLE = {
   ]
 };
 var CHECK_EXAMPLE = { results: [{ id: "q1", verdict: "partial", correction: "Say why the buckets stay short.", pointer: "Step 2" }, { id: "q2", verdict: "pass", correction: "", pointer: "" }] };
+var LAB_REVIEW_EXAMPLE = {
+  items: [
+    { id: "problem", score: 3, evidence: [{ quote: "The first check needed one small answer.", file: "WRITEUP.md", line: 4 }], stronger: "States the problem and the measured goal in one sentence, with the number it is judged by." },
+    { id: "approach", score: 1, evidence: [], stronger: "Explains why this approach was chosen over the obvious alternative, and what it costs." }
+  ],
+  summary: "The checks pass and the write-up states the problem clearly. The approach section says what was done but not why."
+};
+var PORTFOLIO_DRAFT_EXAMPLE = {
+  text: "# What a token simulator taught me about queues\n\nI built a small simulator to see where tail latency comes from. The knee in the curve was earlier than I expected, and the cause was the queue, not the model.\n\n## What the numbers say\n\nAt 40 requests per second the p99 doubled."
+};
 var OUTPUT_EXAMPLES = {
+  portfolio_draft: PORTFOLIO_DRAFT_EXAMPLE,
   bank_more: BANK_MORE_EXAMPLE,
+  lab_review: LAB_REVIEW_EXAMPLE,
   hint: { hint: "Two land cells touching side by side belong to the same answer. What could you do to a cell once it is counted?" },
   picture: {
     title: "Max scan \xB7 example shape only",
@@ -1003,13 +1106,6 @@ var OUTPUT_EXAMPLES = {
   },
   brief: BRIEF_EXAMPLE,
   check: CHECK_EXAMPLE
-};
-var GRADE_EXPLANATION_EXAMPLE = {
-  score: 3,
-  max: 5,
-  passed: true,
-  feedback: ["You name the backward pass as the chain rule applied one node at a time.", "The worked number makes the gradient concrete."],
-  missing: ["why the gradients of a value used twice are added"]
 };
 var INTERVIEW_FINAL_EXAMPLE = {
   done: true,
@@ -1136,6 +1232,23 @@ function checkBlocks(v) {
   Answer: ${fenceLearnerText(clip(str(q.answer), ATTEMPT_LOG_MAX))}`;
   });
 }
+function labReviewBlocks(c) {
+  const bundle = isObj2(c.bundle) ? c.bundle : {};
+  const rubric = (Array.isArray(bundle.rubric) ? bundle.rubric.filter(isObj2) : []).map((r) => `${str(r.id)}: ${str(r.text)}`);
+  const results = Array.isArray(c.results) ? c.results.filter(isObj2).map((r) => `${str(r.id)} (${str(r.name)}): ${str(r.status)}${str(r.detail) ? ` - ${str(r.detail)}` : ""}`) : [];
+  const files = Array.isArray(bundle.files) ? bundle.files.filter(isObj2) : [];
+  const diffs = files.filter((f) => typeof f.diff === "string").map((f) => `Diff of ${str(f.path)}:
+${fenceLearnerText(str(f.diff))}`);
+  const notes = files.filter((f) => typeof f.note === "string").map((f) => `${str(f.path)} (${str(f.note)})`);
+  return [
+    numbered("Rubric (one item each; reply with exactly these ids)", rubric),
+    numbered("Check results of the latest run", results),
+    typeof bundle.writeup === "string" && bundle.writeup.trim() ? `WRITEUP.md:
+${fenceLearnerText(bundle.writeup)}` : "WRITEUP.md: (empty)",
+    ...diffs.length ? diffs : ["No changed files since the lab was set up."],
+    numbered("Files not shown", notes)
+  ];
+}
 function taskOf(job, title, c = {}) {
   switch (job) {
     case "hint":
@@ -1150,9 +1263,6 @@ ${ATLAS_PICTURE_PROMPT}`;
       return "You are the AI partner, a thinking coach, in a 45-minute system design session. You only ask questions. Follow THIS TURN exactly.";
     case "grade":
       if (c.sessionGrade === true) return "Grade the learner's whole design session. Read the chat answers, the notes and the diagram together, as one piece of work, against the five-item rubric.";
-      if (c.deliverableKind === "explanation") {
-        return "Grade the learner's written teach-back: an explanation, in their own words, of one stage of the forge capstone. Judge the prose against the rubric and the stage named in the context. There is no code, repository or commit here, so never ask for a diff, a test or a measurement.";
-      }
       return "Grade the learner's proof artifact against the rubric, using only the note, the commit summary and the read-only git evidence.";
     case "solution":
       return "The learner gave up. Explain the solution so they can rebuild it from memory tomorrow.";
@@ -1164,6 +1274,10 @@ ${ATLAS_PICTURE_PROMPT}`;
       return "Write 5 new practice questions for one skill node of the learner's question bank. They are answered from memory, then compared with your model answer and checklist.";
     case "check":
       return "Grade the learner's answers to the check questions for this card, one verdict per question, using the key ideas. Be fair and specific.";
+    case "portfolio_draft":
+      return c.kind === "linkedin" ? "Draft a short LinkedIn post about a lab the learner built, had reviewed and measured. The learner edits it and posts it by hand." : "Draft an article about a lab the learner built, had reviewed and measured. The learner edits it before it is published.";
+    case "lab_review":
+      return "Review the learner's finished lab against its rubric, one item at a time, using only the write-up, the diffs and the check results in the context. Be fair and specific, and quote the work as evidence.";
   }
 }
 function contextLines(job, t, c) {
@@ -1197,10 +1311,6 @@ function contextLines(job, t, c) {
         break;
       }
       const stage = str(c.stage) ? `${str(c.stage)}${str(c.stageTitle) ? ` \xB7 ${str(c.stageTitle)}` : ""}` : "";
-      if (c.deliverableKind === "explanation") {
-        out.push(line("Teach-back card", t?.title), line("Stage", stage), learnerLine("The learner's written explanation", c.proofNote, PROOF_NOTE_MAX), line("Stage rubric", c.rubric));
-        break;
-      }
       out.push(
         line("Artifact", t?.title),
         line("Stage", stage),
@@ -1235,6 +1345,20 @@ function contextLines(job, t, c) {
     case "check":
       out.push(title, ...checkBlocks(c.questions));
       break;
+    case "lab_review":
+      out.push(title, ...labReviewBlocks(c));
+      break;
+    case "portfolio_draft":
+      out.push(
+        line("Kind", c.kind),
+        line("Lab", t?.title),
+        learnerLine("Write-up", c.writeup, 8e3),
+        numbered("Journal lines from the lab", strs(c.journal).map((x) => fenceLearnerText(clip(x, 300)))),
+        numbered("What a stronger version does (from the review)", strs(c.stronger).map((x) => clip(x, 300))),
+        str(c.results) ? `Latest passing results:
+${clip(str(c.results), 2e3)}` : null
+      );
+      break;
   }
   return out.filter((x) => x !== null);
 }
@@ -1242,15 +1366,14 @@ function jobPrompt(job, req, evidence = "") {
   const t = isObj2(req.ticket) ? req.ticket : null;
   const c = isObj2(req.context) ? req.context : {};
   const final = job === "interview" && c.final === true || job === "grade" && c.sessionGrade === true;
-  const explanation = job === "grade" && c.deliverableKind === "explanation" && !final;
   const parts = [`Dojo job: ${job}.`, taskOf(job, str(t?.title), c), `CONTEXT
 ${contextLines(job, t, c).join("\n") || "(none)"}`];
   if (evidence) parts.push(`Read-only evidence from the learner's repository (git output):
 ${evidence}`);
   parts.push(`OUTPUT SCHEMA (${job})
-${final ? INTERVIEW_FINAL_SCHEMA : explanation ? GRADE_EXPLANATION_SCHEMA : OUTPUT_SCHEMAS[job]}`);
+${final ? INTERVIEW_FINAL_SCHEMA : OUTPUT_SCHEMAS[job]}`);
   parts.push(`EXAMPLE (shape only; answer for THIS request)
-${JSON.stringify(final ? INTERVIEW_FINAL_EXAMPLE : explanation ? GRADE_EXPLANATION_EXAMPLE : OUTPUT_EXAMPLES[job])}`);
+${JSON.stringify(final ? INTERVIEW_FINAL_EXAMPLE : OUTPUT_EXAMPLES[job])}`);
   parts.push(`Reply with exactly one JSON object that matches OUTPUT SCHEMA (${job}). No prose, no Markdown fences.`);
   return parts.join("\n\n");
 }

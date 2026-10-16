@@ -19,6 +19,8 @@ const REQ: { [J in JobName]: JobRequest<J> } = {
   brief: { ticket: T, context: { kind: 'task', estMin: 50 } },
   check: { ticket: T, context: { questions: [{ id: 'q1', kind: 'open', q: 'x', answer: 'number of islands' }] } },
   bank_more: { ticket: null, context: { area: 'design', node: 'SD01', nodeTitle: 'Estimation', nodeAbout: 'Numbers.', avoid: [], count: 5 } },
+  lab_review: { ticket: { id: 'tlab.build.3', title: 'Tiny lab', track: 'ai' }, context: { bundle: { rubric: [{ id: 'r1', text: 'One.' }, { id: 'r2', text: 'Two.' }], writeup: '# Writeup\n\nThe work.\n', files: [] }, results: null } },
+  portfolio_draft: { ticket: { id: 'pf-a', title: 'Portfolio fixture lab A', track: 'ai' }, context: { kind: 'article', writeup: '## Problem\nP\n', journal: [], stronger: [], results: '' } },
 }
 
 describe('fake outputs (spec §4.6; contracts pin these strings)', () => {

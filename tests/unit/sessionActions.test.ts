@@ -3,7 +3,6 @@ import { closeSession, endStudySession, END_LOG_MAX, recordFocus, startDoing } f
 import { totalXp } from '../../src/rules/xp'
 import { patchSettings } from '../../src/data/db'
 import { runReconcile } from '../../src/data/seed'
-import { activityByDay } from '../../src/rules/calendar'
 import { failingDb, seededDb } from '../helpers/db'
 import { flatPlanV2 } from '../helpers/plan'
 
@@ -57,7 +56,6 @@ describe('closeSession', () => {
     await closeSession(d, 'p127', 'solved', { sessionStart: start, now: ist('2026-09-21T00:30:00'), sessionId: 's1' })
     const sessions = await d.sessions.toArray()
     expect(sessions[0].start).toBe(start)
-    expect(Object.fromEntries(activityByDay(await d.tickets.toArray(), sessions))).toEqual({ '2026-09-20': 1 })
   })
 
   it('reports a missing ticket without writing', async () => {

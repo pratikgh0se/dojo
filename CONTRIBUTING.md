@@ -33,7 +33,7 @@ Development never touches your real data: the dev scripts refuse `~/Dojo` and po
 | `npm test` | Unit and component tests (Vitest, jsdom), `tests/unit/` | Pins `TZ`; at most two workers. `npm run test:watch` for watch mode. |
 | `npm run typecheck` | TypeScript, no emit | |
 | `npm run e2e` | End-to-end (Playwright, Chromium), `tests/e2e/` | Three projects: `chromium` (Vite dev on Dexie alone), `storage` (builds the app once and runs its own `dojo-server` with a temp `DOJO_HOME` per test) and `real` (a subset with disk sync on). Starts `npm run dev` itself; one worker, no retries. |
-| `npm run e2e:desktop` | The packaged Mac app (Playwright's Electron driver), `tests/desktop/` | Builds `Dojo.app` once into a temp folder (a few minutes) and launches it with temp data folders and the fake AI. Never uses `~/Dojo` or `~/Applications`. |
+| `npm run e2e:desktop` | The packaged Mac app (Playwright's Electron driver), `tests/desktop/` | Builds `Dojo.app` once into a temp folder (a few minutes) and launches it with temp data folders and the fake AI. Never uses `~/Dojo` or `/Applications`. |
 | `npm run parity:today`, `parity:ai`, `parity:labs`, `parity:designs` | Screenshot parity against the maintainer's design prototypes, `tests/parity/` | Maintainer-only: the prototypes are not in the public repository, so these specs skip with a one-line reason there. `:update` variants rewrite the baselines. |
 | `npm run css:check` | Bare CSS class names defined in more than one file | |
 | `npm run bundle:check` | Entry-chunk size budget | Run after `npm run build`. |
@@ -64,7 +64,7 @@ writes the public tree without the private paths. A public clone has no
 | `npm run helper:gen` | Regenerates `server/gen/ai-shared.mjs` (the helper's copy of the prompts, validators and guardrails) from `src/ai/`. Run it after changing anything under `src/ai/`; a unit test fails when the two drift. |
 | `npm run engines` | Re-copies the vendored drawing engines into `public/engines/` from the maintainer's design prototypes. Without the prototypes it says so and changes nothing; the copies in `public/engines/` are the source of truth here. |
 | `npm run db:export-pg` | Dumps `DOJO_HOME/dojo.db` as Postgres SQL into `DOJO_HOME/export/`. |
-| `npm run install:app` / `npm run uninstall:app` | Builds and installs, or removes, `~/Applications/Dojo.app` (see the README). |
+| `npm run install:app` / `npm run uninstall:app` | Builds and installs, or removes, `/Applications/Dojo.app` (see the README). |
 
 Pyodide is copied from the pinned `pyodide` package into the build by a Vite plugin (`scripts/vendor-pyodide.mjs`),
 together with its licence.

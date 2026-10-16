@@ -288,13 +288,13 @@ npm ci
 ```
 
 Build the app and install it. The first run also downloads the Electron runtime (several hundred MB on disk; `npm ci`
-does not fetch it). To put it in `/Applications` (you need write access there, as an admin account has):
+does not fetch it). It installs to `/Applications` (you need write access there, as an admin account has):
 
 ```bash
-npm run install:app -- --dest /Applications
+npm run install:app
 ```
 
-Without `--dest` it installs to `~/Applications/Dojo.app` instead, which needs no special rights.
+To put it somewhere else, for example `~/Applications` (no special rights needed), pass `--dest ~/Applications`.
 
 Open it:
 
@@ -342,7 +342,7 @@ Pass options after `--`, for example `npm run install:app -- --dest ~/Desktop`.
 
 | Option | Default | What |
 |---|---|---|
-| `--dest <dir>` | `~/Applications` | Where to put `Dojo.app`. |
+| `--dest <dir>` | `/Applications` | Where to put `Dojo.app`. |
 | `--home <dir>` | `$DOJO_HOME` or `~/Dojo` | The data folder, baked into that copy of the app. |
 | `--no-icon` | | Skip building the Dock icon. |
 | `--no-build` | | Reuse an existing web build instead of building one. |

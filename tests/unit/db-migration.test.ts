@@ -2,7 +2,7 @@ import Dexie from 'dexie'
 import { describe, expect, it } from 'vitest'
 import { createDb, DB_VERSION, DEFAULT_SETTINGS, getSettings, SCHEMA_V1, SCHEMA_V2 } from '../../src/data/db'
 import type {
-  AiLogRow, Artifact, AtlasRun, BankItem, BlankTest, DesignSession, GradeRow, PictureRow, Redo, RungUse, Session, StageCell,
+  AiLogRow, AtlasRun, BankItem, DesignSession, GradeRow, PictureRow, Redo, RungUse, Session,
 } from '../../src/data/types'
 import { mkTicket } from '../helpers/tickets'
 
@@ -10,6 +10,7 @@ const NEW_TABLES = [
   'aiLog', 'artifacts', 'atlasRuns', 'bankItems', 'blankTests', 'designSessions',
   'grades', 'pictures', 'redos', 'rungUses', 'stageCells',
 ]
+const GONE_IN_V12 = ['artifacts', 'blankTests', 'stageCells'] // dropped by v12 after a backup (data/legacyDrop.ts)
 const dbName = () => `mig-${Math.random().toString(36).slice(2)}`
 
 async function seedV1(name: string) {
@@ -34,7 +35,7 @@ describe('schema v2 migration (Review Focus #1)', () => {
       events: '++seq, t, id, at',
       settings: 'id',
     })
-    expect(DB_VERSION).toBe(10) // v3 only adds the _outbox/_meta sync tables, v4 the checkAttempts and reviews tables, v5 the runner's code table, v6/v7 re-key it by (ticketId, lang) v8 adds pulses, v9 journal, v10 bankGrades and bankExtra; SCHEMA_V2 is unchanged)
+    expect(DB_VERSION).toBe(12) // v3 only adds the _outbox/_meta sync tables, v4 the checkAttempts and reviews tables, v5 the runner's code table, v6/v7 re-key it by (ticketId, lang) v8 adds pulses, v9 journal, v10 bankGrades and bankExtra, v11 the R2 tables, v12 drops artifacts, stageCells and blankTests; SCHEMA_V2 is unchanged)
     expect(SCHEMA_V2.tickets).toBe('id, sprint, status, track, kind, origin')
     expect(Object.keys(SCHEMA_V2).sort()).toEqual([...Object.keys(SCHEMA_V1), ...NEW_TABLES].sort())
   })
@@ -44,12 +45,13 @@ describe('schema v2 migration (Review Focus #1)', () => {
     const { ticket, session } = await seedV1(name)
     const d = createDb(name)
     await d.open()
-    expect(d.verno).toBe(10)
+    expect(d.verno).toBe(12)
     expect(await d.tickets.get('p127')).toEqual(ticket)
     expect(await d.sessions.get('s1')).toEqual(session)
     expect(await d.events.toArray()).toEqual([{ seq: 1, t: 'tick', id: 'p127', at: 5, xp: 10 }])
     expect(await getSettings(d)).toMatchObject({ startDate: '2026-10-05', theme: 'light' })
-    for (const t of [...NEW_TABLES, '_outbox', '_meta']) expect(await d.table(t).count(), t).toBe(0)
+    for (const t of [...NEW_TABLES.filter(x => !GONE_IN_V12.includes(x)), '_outbox', '_meta']) expect(await d.table(t).count(), t).toBe(0)
+    expect(d.tables.map(t => t.name)).not.toEqual(expect.arrayContaining(GONE_IN_V12))
     d.close()
   })
 
@@ -77,13 +79,6 @@ describe('schema v2 migration (Review Focus #1)', () => {
       deepDives: [{ q: 'a', answered: null }, { q: 'b', answered: null }, { q: 'c', answered: null }, { q: 'd', answered: null }],
       tradeoffs: [], rubric: null, lenses: {},
     }
-    const art: Artifact = {
-      id: 'art-stage-00', title: 'Setup', block: 1, stage: 0, status: 'measured', statusAt: { 'not started': 1, measured: 10 },
-      measures: [{ name: 'loss', value: 1.98, unit: '', at: 10, sprint: 1 }], grade: 4, gradedAt: 11,
-      gradeFeedback: ['ok'], gradeMissing: [], commitFound: true,
-    }
-    const cell: StageCell = { id: '0:build', stage: 0, cell: 'build', at: 12, evidence: 'c0ffee1', via: 'commit' }
-    const blank: BlankTest = { id: 'bt1', stage: 1, piece: 'backward pass', at: 13, minutes: 25, outcome: 'not_yet', redoId: 'rd2' }
     const grade: GradeRow = { id: 'g1', targetKind: 'artifact', targetId: 'art-stage-00', at: 14, score: 4, max: 5, passed: true, feedback: [], missing: [], commitFound: true, provider: 'fake' }
     const bank: BankItem = {
       id: 'mine:mine-abc', bank: 'mine', key: 'mine-abc', name: 'Circular Kadane', pattern: 'DP · TABULATION', difficulty: 'H',
@@ -96,9 +91,6 @@ describe('schema v2 migration (Review Focus #1)', () => {
     const runSeq = await d.atlasRuns.add(run)
     await d.sessions.put(solved)
     await d.designSessions.put(ds)
-    await d.artifacts.put(art)
-    await d.stageCells.put(cell)
-    await d.blankTests.put(blank)
     await d.grades.put(grade)
     await d.bankItems.put(bank)
     expect(await d.rungUses.get('r1')).toEqual(rung)
@@ -109,9 +101,6 @@ describe('schema v2 migration (Review Focus #1)', () => {
     expect(await d.atlasRuns.where('key').equals('bfs').count()).toBe(1)
     expect(await d.sessions.get('s2')).toEqual(solved)
     expect(await d.designSessions.where('designId').equals('d-ratelimit').first()).toEqual(ds)
-    expect(await d.artifacts.where('status').equals('measured').first()).toEqual(art)
-    expect(await d.stageCells.where('stage').equals(0).first()).toEqual(cell)
-    expect(await d.blankTests.get('bt1')).toEqual(blank)
     expect(await d.grades.where('targetId').equals('art-stage-00').first()).toEqual(grade)
     expect(await d.bankItems.where('bank').equals('mine').first()).toEqual(bank)
     d.close()

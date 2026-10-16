@@ -10,14 +10,14 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /** Contracts whose Required hooks tables are read. launch.md has no hook table today; it stays listed so one added later is checked. */
-const SCOPE2 = ['board.md', 'journal.md', 'nav-and-topics.md', 'trees-and-banks.md']
+const SCOPE2 = ['board.md', 'journal.md', 'nav-and-topics.md', 'trees-and-banks.md', 'labs.md', 'rituals.md', 'portfolio.md']
 export const CONTRACTS = [
   'today-and-shell.md', 'path.md', 'review.md', 'ticket-view.md', 'skills-slice.md',
-  'design-session-v2.md', 'migration.md', 'launch.md', 'board.md', 'journal.md', 'nav-and-topics.md', 'trees-and-banks.md',
+  'design-session-v2.md', 'migration.md', 'launch.md', 'board.md', 'journal.md', 'nav-and-topics.md', 'trees-and-banks.md', 'labs.md', 'rituals.md', 'portfolio.md',
 ]
 
-/** Reserved R2 hooks: the ticket-view table lists them as "must not exist in R1", so they are asserted ABSENT. */
-export const FORBIDDEN = ['ticket-check-results', 'ticket-reviewer']
+/** Reserved hooks asserted ABSENT. Empty since R2 W3: `ticket-check-results` and `ticket-reviewer` are live and required (labs.md). */
+export const FORBIDDEN = []
 
 /** data-* attribute hooks that must occur in the source even if a table row is edited; `min` is the least number of files. */
 export const ATTRIBUTES = [
@@ -33,7 +33,7 @@ const sectionLines = markdown => {
   for (const line of markdown.split('\n')) {
     if (/^##\s+Required hooks/i.test(line)) { inTable = true; continue }
     if (inTable && /^##\s/.test(line)) { inTable = false; continue }
-    if (inTable && line.startsWith('|')) out.push(line)
+    if (inTable && line.startsWith('|') && !/retired in R2/i.test(line)) out.push(line) // a retired family is asserted by the README Retired hooks, not required
   }
   return out
 }
@@ -226,7 +226,8 @@ export function retiredPatterns(readme) {
     if (/^###\s+Retired hooks/i.test(line)) { on = true; continue }
     if (on && /^#{1,3}\s/.test(line)) break
     if (!on || !line.startsWith('|')) continue
-    const cell = (line.split('|')[2] ?? '').replace(/\([^)]*\)/g, '')
+    // a sentence after the list ("`ticket-lab` is not retired") names hooks that stay live: only the first sentence retires
+    const cell = (line.split('|')[2] ?? '').replace(/\([^)]*\)/g, '').split(/`\.\s/)[0]
     // `path-<sprint>` (old Map) is skipped: a placeholder pattern would swallow every live `path-*` hook
     for (const m of cell.matchAll(/`([^`]+)`/g)) if (!/</.test(m[1])) out.push(m[1].trim())
   }
@@ -241,7 +242,8 @@ export function retiredPlaceholderPrefixes(readme) {
     if (/^###\s+Retired hooks/i.test(line)) { on = true; continue }
     if (on && /^#{1,3}\s/.test(line)) break
     if (!on || !line.startsWith('|')) continue
-    const cell = (line.split('|')[2] ?? '').replace(/\([^)]*\)/g, '')
+    // a sentence after the list ("`ticket-lab` is not retired") names hooks that stay live: only the first sentence retires
+    const cell = (line.split('|')[2] ?? '').replace(/\([^)]*\)/g, '').split(/`\.\s/)[0]
     for (const m of cell.matchAll(/`([^`<]+)<[^`]*`/g)) out.push(m[1])
   }
   return out
@@ -256,6 +258,13 @@ export const retiredRequired = (hooks, patterns) => hooks.filter(h => patterns.s
 export const INDIRECT = {
   'skills-area-meter-<areaId>': { file: 'screens/skills/Meter.tsx', anchor: 'data-testid={testId}' },
   'skills-node-meter-<nodeId>': { file: 'screens/skills/Meter.tsx', anchor: 'data-testid={testId}' },
+  // W5: the Review card and the Floor session share one CardView that writes both prefixes from a table
+  'review-card': { file: 'screens/Review.tsx', anchor: 'data-testid={T.cardTestId}' },
+  'review-reveal': { file: 'screens/Review.tsx', anchor: 'data-testid={T.revealTestId}' },
+  'review-redo': { file: 'screens/Review.tsx', anchor: 'data-testid={T.redoTestId}' },
+  'floor-card': { file: 'screens/Review.tsx', anchor: 'data-testid={T.cardTestId}' },
+  'floor-reveal': { file: 'screens/Review.tsx', anchor: 'data-testid={T.revealTestId}' },
+  'floor-redo': { file: 'screens/Review.tsx', anchor: 'data-testid={T.redoTestId}' },
 }
 export const ATTR_WINDOW = 300
 
@@ -307,7 +316,11 @@ export const unboundAttributes = (pairs, files) => {
 /** The explicit remaining list: foundation test ids that GLOBAL-10 lets go although the README Retired table has no entry for them.
  *  Empty since contracts ccbfe60: the README Retired table now lists every name that D2 and 2a dropped. Add a name here only with a ledger entry,
  *  and delete it once the README table covers it. */
-export const RETIRED_BY_D2 = []
+export const RETIRED_BY_D2 = [
+  // R2 W7 ledger: the brief editor, check dialog and deliverable dialog were deleted (R-8). The README Retired table does not name their hooks yet; delete these
+  // names once it does.
+  'brief-editor', 'check-correction', 'check-dialog', 'check-no-questions', 'check-verdict', 'deliverable-dialog', 'deliverable-error', 'deliverable-feedback',
+]
 export const DEFAULT_FOUNDATION = '92df701'
 
 /** Test ids written in the lines `git grep` returned: { ids: exact names, prefixes: names cut at a `${` } (a prefix stands for `name${...}`). */

@@ -56,6 +56,9 @@
   .qc-top .qc-day { order: 0; }
   .qc-top .qc-chip { order: 1; margin-left: auto; }
   .qc-top .qc-phase { order: 2; flex: 1 0 100%; }
+  /* RIT-73: with the focus line above the quest, START still fits above the tab bar at 375 x 667 (TODAY-29): the phase line is small text and the column gap is tighter */
+  .qc-phase { font-size: var(--type-small); line-height: 1.4; }
+  .qc-col { gap: 12px; }
   .qc-then { display: none; }
   /* the kind tile stays on a phone, small, beside the title; the chips run full width under both */
   .qc-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; align-items: start; }

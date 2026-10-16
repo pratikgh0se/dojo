@@ -55,6 +55,8 @@ test('Stats: minutes match the live plan, one row per lane, no sessions yet', as
   await onboard(page, '2026-10-05')
   await idbPatch(page, 'tickets', ['p200', 'p127'], { status: 'done', xp: 10, doneAt: IST('2026-10-06T21:30:00').getTime(), doneAtApprox: false })
   await page.reload()
+  // the last active day is long before the clock: a restart day (RIT-52), the usual mix is behind the Floor's toggle
+  await page.getByTestId('today-mix-toggle').click()
   await page.getByTestId('start-button').waitFor()
   await page.keyboard.press('5')
   await page.getByTestId('skills-tab-stats').click()

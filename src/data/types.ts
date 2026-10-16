@@ -237,6 +237,8 @@ export interface JournalRow {
   notes?: string
   obstacle?: JournalObstacle
   line?: string
+  /** R2 (floor session): the day's row was written by the 15-minute Floor session */
+  floor?: boolean
 }
 
 export interface EndLog { done: string; stuckOn: string; nextStep: string }
@@ -298,6 +300,8 @@ export interface Settings {
   laneBudgets?: number[]
   careerLane?: boolean
   sessionMinutes?: number
+  /** R2: where lab folders are created, as typed (`~/labs` when absent); the server judges it when a lab is set up */
+  labsRoot?: string
   navLabels?: 'intro' | 'always' | 'hover'
   /** The highest Pom form ever reached (0 to 8). Written only by an XP-granting action that lifts the computed form above it; the shown form never falls below it. */
   pomFormMax?: number
@@ -354,14 +358,14 @@ export interface RungUse {
   redoId?: string
 }
 
-export type RedoSource = 'gave_up' | 'solved_help' | 'design_rubric' | 'design_missed' | 'journal_hard' | 'blank_test' | 'stage_built' | 'check_failed' | 'bank_q'
+export type RedoSource = 'gave_up' | 'solved_help' | 'design_rubric' | 'design_missed' | 'journal_hard' | 'blank_test' | 'stage_built' | 'check_failed' | 'bank_q' | 'explain' | 'lab_review'
 /** R1 W2: what a `journal_hard` redo reviews, copied from its ticket's first explain question when the learner pressed Add to Review. */
 export interface JournalPiece { topic: string; question: string; answer: string }
 /** F3: what a `design_missed` redo reviews, copied from the AI grade's `missed` entry when the learner pressed Add. */
 export interface MissedPiece { topic: string; question: string; answer: string; sessionId: string }
 /** R1 W6: what a `bank_q` redo reviews (BANK-14): the node title, the question and its model answer, and the question id (also the redo's `ticketId`). */
 export interface BankPiece { topic: string; question: string; answer: string; qid: string }
-/** H (D, P enqueue): the spaced-redo queue (DATA "Redo schedule"; TRACKING §1–2; CAPSTONE "Proof model"). */
+/** H (D, P enqueue): the spaced-redo queue (DATA "Redo schedule"; TRACKING §1–2). */
 export interface Redo {
   id: string
   ticketId: string
@@ -375,7 +379,7 @@ export interface Redo {
   helpCost: number
   refunded: number
   closedAt?: number
-  /** blank tests / capstone pieces: what is being rebuilt (a string); a `design_missed` redo: the weak spot to review (MissedPiece); a `journal_hard` redo on a ticket with an explain question: JournalPiece; a `bank_q` redo: BankPiece */
+  /** a legacy blank-test or stage redo: what is being rebuilt (a string); a `design_missed` redo: the weak spot to review (MissedPiece); a `journal_hard` redo on a ticket with an explain question: JournalPiece; a `bank_q` redo: BankPiece */
   piece?: string | MissedPiece | JournalPiece | BankPiece
 }
 
@@ -463,44 +467,6 @@ export interface DesignSession {
 
 /** TRACKING §2, verbatim strings (spaces included). Board order in content/tracking.ts ARTIFACT_STATUSES. */
 export type ArtifactStatus = 'not started' | 'building' | 'runs' | 'measured' | 'written up'
-export interface Measure { name: string; value: number; unit: string; at: number; sprint: number }
-/** P: TRACKING §2 Artifact + projects contract §2.6 stored grade fields. */
-export interface Artifact {
-  id: string
-  title: string
-  block: number
-  /** capstone stage 0–11 */
-  stage?: number
-  repo?: string
-  commit?: string
-  note?: string
-  status: ArtifactStatus
-  /** first time each status was reached (artifact timeline burn-up) */
-  statusAt: Partial<Record<ArtifactStatus, number>>
-  measures: Measure[]
-  /** vault link */
-  writeup?: string
-  userAdded?: boolean
-  grade?: number
-  gradedAt?: number
-  gradeFeedback?: string[]
-  gradeMissing?: string[]
-  commitFound?: boolean
-}
-
-export type StageCellKind = 'learn' | 'build' | 'prove'
-/** P: learn → build → prove cube per capstone stage (TRACKING §2 cells re-keyed by stage, spec F3). id = `${stage}:${cell}`. */
-export interface StageCell {
-  id: string
-  stage: number
-  cell: StageCellKind
-  at: number
-  evidence: string
-  via: 'tick' | 'commit' | 'tests' | 'grade' | 'blank_test' | 'redo'
-}
-
-/** P: TRACKING §2 "The blank-editor test". */
-export interface BlankTest { id: string; stage: number; piece: string; at: number; minutes: number; outcome: 'solved' | 'not_yet'; redoId?: string }
 
 /** P (D): every grade result, history kept (AI.md "grade"). */
 export interface GradeRow {
@@ -540,4 +506,64 @@ export interface BankItem {
   source?: string
   classify?: ClassifyOutput
   classifiedAt?: number
+}
+
+// ---- R2: labs (table keys in src/data/db.ts SCHEMA_V11; shapes are spec 4.1, 4.2 and 4.5/4.6 and contracts/README.md "Data fields") ----
+
+/** A hint the learner opened: one entry per (ticket, rung) at most. */
+export interface LabHintUse { ticketId: string; rung: 1 | 2 | 3; at: number }
+/** `labs`, key `labId`: one row per set-up lab. `root` is the labs folder as Settings held it at set up (`~/labs`, unexpanded). */
+export interface LabRow {
+  labId: string
+  repo: string
+  /** the lab's folder inside the repo, e.g. `labs/t-lab` */
+  path: string
+  root: string
+  baseCommit: string
+  version: number
+  setupAt: number
+  hints: LabHintUse[]
+}
+export type LabCheckStatus = 'pass' | 'fail' | 'skip'
+export interface LabCheckResult { id: string; name: string; status: LabCheckStatus; detail: string; metrics?: Record<string, unknown> }
+export interface LabResults { checks: LabCheckResult[]; summary: { pass: number; fail: number; skip: number } }
+/** `labRuns`, key `id` (`run-<labId>-<ms>`): one row per Run checks that ran. */
+export interface LabRunRow {
+  id: string
+  labId: string
+  at: number
+  ms: number
+  /** make's exit status, null when it was killed */
+  exit: number | null
+  timedOut: boolean
+  results: LabResults | null
+  error?: 'no_results' | 'bad_results'
+  /** the last 4000 characters of the combined output */
+  tail: string
+}
+export interface LabEvidence { quote: string; file: string; line: number }
+export interface LabReviewItem { id: string; score: 0 | 1 | 2 | 3; evidence: LabEvidence[]; stronger: string }
+/** `labReviews`, key `id` (`rev-<labId>-<ms>`): one row per review that came back valid. The newest by `at` counts. */
+export interface LabReviewRow {
+  id: string
+  labId: string
+  at: number
+  items: LabReviewItem[]
+  /** computed by the app: floor(sum of scores * 100 / (3 * items)) */
+  percent: number
+  passed: boolean
+  summary: string
+}
+/** `weeklyReviews`, key `id` (`wr-<ISO week>`): the Sunday review (W5). */
+export interface WeeklyReviewRow { id: string; week: string; worked: string; change: string; focus: string; at: number }
+/** `portfolioItems`, key `id` (`<labId>:<kind>`): one output of a Proven lab (W6). */
+export interface PortfolioItem {
+  id: string
+  labId: string
+  kind: 'repo' | 'site' | 'article' | 'linkedin'
+  status: 'draft' | 'published'
+  draft: string
+  updatedAt: number
+  publishedAt?: number
+  url?: string
 }

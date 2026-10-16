@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Ticket } from '../../data/types'
 import { localDayKey } from '../../lib/dates'
-import { TRY_MODEL_ID } from '../../rules/ritual'
+import { DEDICATED_RITUALS } from '../../rules/ritualPeriod'
 import { readJson, writeJson } from '../../lib/storage'
 import { minutesLabel } from '../../rules/ticketMeta'
 import { Button } from '../../ui/primitives'
@@ -11,11 +11,11 @@ const KEY = 'dojo-ritual-skipped'
 interface Skipped { day: string; ids: string[] }
 const isSkipped = (v: unknown): v is Skipped => typeof v === 'object' && v !== null && typeof (v as Skipped).day === 'string' && Array.isArray((v as Skipped).ids)
 
-/** Open ritual tickets as cards, except the one that is already the quest and the weekly try-a-model ticket (its own card, RitualWeekly). A card can be skipped for the day; skipping is never counted or shown again. */
+/** Open ritual tickets as cards, except the one that is already the quest and the tickets of the rituals that have their own card (try a model, weekly review, swap drill). A card can be skipped for the day; skipping is never counted or shown again. */
 export function RitualSlots({ tickets, nowMs, questId }: { tickets: readonly Ticket[]; nowMs: number; questId?: string }) {
   const day = localDayKey(nowMs)
   const [skipped, setSkipped] = useState<string[]>(() => { const s = readJson(KEY, undefined, isSkipped); return s && s.day === day ? s.ids : [] })
-  const cards = tickets.filter(t => !t.archived && t.status === 'todo' && t.id !== questId && (t.lane === 'ritual' || t.kind === 'ritual') && !t.origin.startsWith(`ritual:${TRY_MODEL_ID}:`) && !skipped.includes(t.id))
+  const cards = tickets.filter(t => !t.archived && t.status === 'todo' && t.id !== questId && (t.lane === 'ritual' || t.kind === 'ritual') && !DEDICATED_RITUALS.some(id => t.origin.startsWith(`ritual:${id}:`)) && !skipped.includes(t.id))
   if (cards.length === 0) return null
   const skip = (id: string) => { const ids = [...skipped, id]; setSkipped(ids); writeJson(KEY, { day, ids }) }
   return (

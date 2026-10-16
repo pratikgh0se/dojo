@@ -36,6 +36,8 @@ describe('schemas', () => {
     brief: ['"goal"', '"steps"', '"deliverable"', '"questions"', '"dayType"'],
     check: ['"results"', '"verdict"', '"pointer"'],
     bank_more: ['"questions"', '"checklist"', 'Exactly 5'],
+    lab_review: ['"items"', '"evidence"', '"stronger"', 'every rubric id exactly once', 'copied exactly'],
+    portfolio_draft: ['"text"', '1300', 'Never invent a result'],
   }
   it('each schema names its keys and limits', () => {
     for (const job of JOB_NAMES) for (const k of keys[job]) expect(OUTPUT_SCHEMAS[job], `${job}: ${k}`).toContain(k)
@@ -192,25 +194,15 @@ describe('clipTranscript', () => {
   })
 })
 
-describe('UAT cu-5 P2-2: the grade prompt for a written teach-back', () => {
-  const tb = jobPrompt('grade', {
-    ticket: { id: 'tb', title: 'Stage 00 · teach-back', track: 'ai' },
-    context: { proofNote: 'The forward pass is a stack of matrix multiplies.', rubric: 'You can explain the forward pass.', deliverableKind: 'explanation', stage: 0, stageTitle: 'Setup + math by picture' },
-  })
-  it('grades prose against the stage rubric and never asks for a diff, a commit or a measurement', () => {
-    expect(tb).toContain("Grade the learner's written teach-back")
-    expect(tb).toContain("The learner's written explanation: <<<LEARNER_TEXT The forward pass is a stack of matrix multiplies. LEARNER_TEXT>>>")
-    expect(tb).toContain('Stage rubric: You can explain the forward pass.')
-    expect(tb).toContain('Stage: 0 · Setup + math by picture')
-    expect(tb).toContain('This is prose, not code')
-    expect(tb).toContain('score >= 3')
-    expect(tb).not.toContain('hand-written, not generated')
-    expect(tb).not.toContain('Commit summary')
-    expect(tb).not.toContain('commitFound?')
-  })
-  it('an artifact grade keeps its code rubric', () => {
-    const art = jobPrompt('grade', { ticket: { id: 'a', title: 'A', track: 'ai' }, context: { proofNote: 'done', rubric: 'r' } })
-    expect(art).toContain('hand-written, not generated')
-    expect(art).not.toContain('written teach-back')
+
+describe('R2 W7: the forge teach-back branch of the grade prompt is gone', () => {
+  it('a deliverableKind in the context is ignored and the artifact rubric stays', () => {
+    const p = jobPrompt('grade', {
+      ticket: { id: 'a', title: 'A', track: 'ai' },
+      context: { proofNote: 'done', rubric: 'r', deliverableKind: 'explanation' },
+    })
+    expect(p).toContain('hand-written, not generated')
+    expect(p).not.toContain('written teach-back')
+    expect(p).not.toContain('Teach-back card')
   })
 })

@@ -30,11 +30,11 @@ const loc = () => screen.getByTestId('location')
 afterEach(() => { vi.unstubAllGlobals(); window.location.hash = '' })
 
 describe('shell: destinations', () => {
-  it('has twelve items in order, no More menu, Today current', async () => {
+  it('has thirteen items in order, no More menu, Today current', async () => {
     await boot()
     const rail = await screen.findByTestId('shell-rail')
     const items = within(rail).getAllByTestId(/^shell-nav-/)
-    expect(items.map(i => i.getAttribute('data-testid'))).toEqual(['today', 'path', 'board', 'journal', 'skills', 'review', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'guide'].map(i => `shell-nav-${i}`))
+    expect(items.map(i => i.getAttribute('data-testid'))).toEqual(['today', 'path', 'board', 'journal', 'skills', 'review', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'portfolio', 'guide'].map(i => `shell-nav-${i}`))
     expect(screen.getByTestId('shell-nav-today')).toHaveAttribute('aria-current', 'page')
     expect(screen.queryByTestId('more-button')).toBeNull()
     expect(screen.queryByTestId('keys-legend')).toBeNull()
@@ -144,7 +144,7 @@ describe('shell: destinations', () => {
       await screen.findByTestId('shell-rail')
       expect(document.querySelectorAll('[aria-current="page"]'), route).toHaveLength(0)
     }
-    for (const [route, id] of [['/guide', 'guide'], ['/dsa', 'dsa'], ['/designs', 'designs'], ['/atlas', 'atlas'], ['/banks', 'banks']] as const) {
+    for (const [route, id] of [['/guide', 'guide'], ['/dsa', 'dsa'], ['/designs', 'designs'], ['/atlas', 'atlas'], ['/portfolio', 'portfolio'], ['/banks', 'banks']] as const) {
       cleanup()
       await boot({ route, v1: id === 'guide' ? undefined : flatPlanV2 })
       await screen.findByTestId('shell-rail')

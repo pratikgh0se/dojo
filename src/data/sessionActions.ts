@@ -2,7 +2,6 @@ import { moveTicket, type ActionResult } from './boardActions'
 import type { DojoDB } from './db'
 import type { EndLog, Outcome, Session } from './types'
 import { newId } from '../lib/id'
-import { needsCheck } from '../rules/brief'
 import { closeSessionResult } from '../rules/session'
 
 export async function startDoing(d: DojoDB, id: string, now: number): Promise<ActionResult> {
@@ -24,7 +23,6 @@ export async function closeSession(
     const t = await d.tickets.get(ticketId)
     if (!t) return { ok: false, reason: 'missing', message: 'Ticket not found' }
     if (t.archived) return { ok: false, reason: 'archived', message: 'Ticket is archived' }
-    if (outcome !== 'gave_up' && needsCheck(t)) return { ok: false, reason: 'check_required', message: 'Check your understanding first' }
     const r = closeSessionResult({
       ticket: t,
       outcome,

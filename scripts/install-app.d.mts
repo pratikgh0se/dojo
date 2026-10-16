@@ -11,6 +11,7 @@ export function buildDesktopApp(o?: { build?: boolean; dist?: string | null; ico
 export function swapApp(built: string, dest: string): string
 export function finishBundle(app: string, home: string | null): void
 export function installDesktopApp(o: { dest: string; home: string; build?: boolean; dist?: string | null; icon?: boolean; log?: (m: string) => void }): Promise<string>
+export const DEFAULT_DEST: string
 export function parseArgs(argv: string[], env?: Record<string, string | undefined>): { dest: string; home: string; build: boolean; dist: string | null; icon: boolean }
 export const FULL_SCREEN_DEFAULT_ARGS: string[]
 export function setFullScreenDefault(run?: (cmd: string, args: string[], o?: object) => unknown): boolean

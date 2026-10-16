@@ -154,9 +154,9 @@ describe('Skills area view', () => {
     await screen.findByTestId('skills-area-view')
     const want: Record<string, string> = { L1: 'done', L2: 'done', L3: 'next', L4: 'locked', R1: 'available' }
     expect(screen.getAllByTestId(/^skills-node-[A-Z]\d$/)).toHaveLength(5)
-    // SKILLS-09: every other skills-node-* hook is one of the contract's (glyph, meter, note, edge, panel, start); the legend is not one of them
+    // SKILLS-09: every other skills-node-* hook is one of the contract's (glyph, meter, note, edge, badge, panel, start); the legend is not one of them
     const hooks = [...document.querySelectorAll('[data-testid^="skills-node-"]')].map(e => e.getAttribute('data-testid')!)
-    const known = /^skills-node-(glyph|meter|note|edge)-|^skills-node-(panel|start)$|^skills-node-[A-Z]\d$/
+    const known = /^skills-node-(glyph|meter|note|edge|badge)-|^skills-node-(panel|start)$|^skills-node-[A-Z]\d$/
     expect(hooks.filter(h => !known.test(h))).toEqual([])
     for (const [id, st] of Object.entries(want)) expect(screen.getByTestId(`skills-node-${id}`)).toHaveAttribute('data-state', st)
     expect(screen.getByTestId('skills-node-L3')).toHaveAccessibleName('How an LLM is made, Next')
@@ -198,7 +198,7 @@ describe('Skills area view', () => {
     await d.tickets.update('ai.r1.build', { status: 'doing' })
     await waitFor(() => expect(screen.getByTestId('skills-node-R1')).toHaveAttribute('data-state', 'inprog'))
     expect(screen.getByTestId('skills-node-glyph-R1')).toHaveAttribute('data-glyph', 'progress')
-    expect(screen.getByTestId('skills-node-R1')).toHaveAccessibleName(/, In progress$/)
+    expect(screen.getByTestId('skills-node-R1')).toHaveAccessibleName(/, In progress(, Learning)?$/)
   })
 
   it('draws one arrow per prerequisite inside the area, prerequisite first', async () => {

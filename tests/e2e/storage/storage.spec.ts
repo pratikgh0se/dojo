@@ -54,7 +54,13 @@ async function startQuest(page: Page): Promise<string> {
   return decodeURIComponent(new URL(page.url()).pathname.split('/')[2])
 }
 async function finishStarted(page: Page, id: string): Promise<string> {
-  await page.getByTestId('ticket-done').click()
+  // R2: a build ticket of a lab the server knows gates Done on its checks; "Mark done without checks" finishes it without them (LAB-23)
+  const done = page.getByTestId('ticket-done')
+  const skip = page.getByTestId('ticket-lab-skip-checks')
+  await expect(done.or(skip).first()).toBeVisible()
+  await expect(async () => { expect((await done.isEnabled()) || (await skip.isVisible())).toBe(true) }).toPass()
+  if (await done.isEnabled()) await done.click()
+  else await skip.click()
   await expect(page.getByTestId('ticket-done-state')).toBeVisible()
   return id
 }

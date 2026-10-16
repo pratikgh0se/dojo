@@ -12,7 +12,7 @@ import { inPyPrefix } from './server/runner/pyframe.mjs'
 import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 
 const port = dojoPort(process.env)
-// Dev: the disk server (scripts/dev.mjs) owns /db, /ai/<job> and /tools (a bare /ai is an SPA route, SHELL-20). Without it (DOJO_DEV_DISK=off) there is no proxy.
+// Dev: the disk server (scripts/dev.mjs) owns /db, /ai/<job>, /tools, /labs and /portfolio/ (a bare /ai is an SPA route, SHELL-20). Without it (DOJO_DEV_DISK=off) there is no proxy.
 const serverPort = process.env.DOJO_SERVER_PORT || 8789
 if (String(serverPort) === String(REAL_APP_PORT)) {
   throw new Error(`DOJO_SERVER_PORT ${REAL_APP_PORT} is reserved for the real Dojo app (~/Dojo); dev uses 8789`)
@@ -21,12 +21,12 @@ const serverTarget = `http://127.0.0.1:${serverPort}`
 const proxy =
   process.env.DOJO_DEV_DISK === 'off'
     ? undefined
-    : { '/db': { target: serverTarget, changeOrigin: true }, '^/ai/': { target: serverTarget, changeOrigin: true }, '/tools': { target: serverTarget, changeOrigin: true } }
+    : { '/db': { target: serverTarget, changeOrigin: true }, '^/ai/': { target: serverTarget, changeOrigin: true }, '/tools': { target: serverTarget, changeOrigin: true }, '/labs': { target: serverTarget, changeOrigin: true }, '/portfolio/': { target: serverTarget, changeOrigin: true } }
 
 // I3: the dev server serves files from the app root, which holds the server's sources and the Go
 // packs' reference solutions (server/runner/packs/<id>/ref.go). Never serve the server dir, any
 // ref.go, git data, env files or keys (Vite's own defaults are repeated, since setting deny replaces them).
-export const FS_DENY = ['server/**', '**/ref.go', '**/.git/**', '.env', '.env.*', '**/.env', '**/.env.*', '*.{crt,pem,key}', '**/*.{crt,pem,key}', '**/id_rsa*', '**/*.token']
+export const FS_DENY = ['server/**', '**/ref.go', '**/data-private/labs/**', '**/.git/**', '.env', '.env.*', '**/.env', '**/.env.*', '*.{crt,pem,key}', '**/*.{crt,pem,key}', '**/id_rsa*', '**/*.token']
 
 const APP_ROOT = fileURLToPath(new URL('.', import.meta.url)).replace(/\/$/, '')
 
@@ -35,7 +35,8 @@ const normal = (p: string) => posix.normalize(decodeURIComponent(p)).toLowerCase
 /** Whether a (normalised, lower-case) path is in the server dir or is a ref.go. */
 function deniedPath(path: string): boolean {
   const root = APP_ROOT.toLowerCase()
-  return path === '/server' || path.startsWith('/server/') || path.startsWith(`/@fs${root}/server/`) || path.endsWith('/ref.go')
+  // R2: the lab definitions (reference solutions, hints) are the server's, never a static file
+  return path === '/server' || path.startsWith('/server/') || path.startsWith(`/@fs${root}/server/`) || path.endsWith('/ref.go') || path.includes('/data-private/labs')
 }
 
 /**

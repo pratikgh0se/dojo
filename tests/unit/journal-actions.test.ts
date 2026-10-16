@@ -107,3 +107,60 @@ describe('addHardToReview', () => {
     expect(by.r.prompt.length).toBeGreaterThan(0)
   })
 })
+
+import { saveFloorLine } from '../../src/data/journalActions'
+import { activeDaysOf } from '../../src/rules/restart'
+
+describe('saveFloorLine', () => {
+  it('writes today\'s studied row with the line and floor: true, with exactly these keys, and nothing else', async () => {
+    const d = freshDb()
+    const row = await saveFloorLine(d, '  Read about batching  ', NOW)
+    expect(row).toEqual({ id: 'journal-2026-11-04', day: '2026-11-04', at: NOW, mode: 'studied', items: [], line: 'Read about batching', floor: true })
+    expect(await d.journal.toArray()).toEqual([row])
+    for (const t of ['sessions', 'redos', 'pulses', 'events', 'tickets'] as const) expect(await d.table(t).count(), t).toBe(0)
+  })
+  it('keeps what a studied entry already holds and replaces the line on a second save (one row for the day)', async () => {
+    const d = freshDb()
+    await saveJournal(d, { ...emptyForm(), hardest: 'Little\'s law', next: 'Sweep' }, '2026-11-04', [], NOW)
+    await saveFloorLine(d, 'one', NOW + 1)
+    await saveFloorLine(d, 'two', NOW + 2)
+    const rows = await d.journal.toArray()
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ mode: 'studied', hardest: 'Little\'s law', next: 'Sweep', line: 'two', floor: true, at: NOW + 2 })
+  })
+  it('turns a no-study day into a studied floor day without the obstacle', async () => {
+    const d = freshDb()
+    await saveJournal(d, { ...emptyForm(), mode: 'none', obstacle: 'energy' }, '2026-11-04', [], NOW)
+    const row = await saveFloorLine(d, 'Short one', NOW + 1)
+    expect(row).toMatchObject({ mode: 'studied', items: [], line: 'Short one', floor: true })
+    expect(row).not.toHaveProperty('obstacle')
+    expect(await d.journal.count()).toBe(1)
+  })
+  it('caps the line at 200 and writes nothing for a blank line', async () => {
+    const d = freshDb()
+    expect(await saveFloorLine(d, '   ', NOW)).toBeNull()
+    expect(await d.journal.count()).toBe(0)
+    expect((await saveFloorLine(d, 'x'.repeat(250), NOW))!.line).toHaveLength(200)
+  })
+  it('a later normal Save of the same day keeps the floor flag and line; a no-study save drops them (JOURNAL-31)', async () => {
+    const d = freshDb()
+    await saveFloorLine(d, 'kept', NOW)
+    await saveJournal(d, { ...emptyForm(), notes: 'later note' }, '2026-11-04', [], NOW + 5)
+    expect((await d.journal.toArray())[0]).toMatchObject({ notes: 'later note', line: 'kept', floor: true, at: NOW + 5 })
+    await saveJournal(d, { ...emptyForm(), mode: 'none', obstacle: 'time', line: 'Out of time' }, '2026-11-04', [], NOW + 9)
+    const none = (await d.journal.toArray())[0]
+    expect(none).toMatchObject({ mode: 'none', obstacle: 'time', line: 'Out of time', items: [] })
+    expect(none).not.toHaveProperty('floor')
+  })
+  it('a studied entry on a day with no Floor session has no floor key and no line key (JOURNAL-05)', async () => {
+    const d = freshDb()
+    const row = await saveJournal(d, { ...emptyForm(), notes: 'n' }, '2026-11-04', [], NOW)
+    expect(row).not.toHaveProperty('floor')
+    expect(row).not.toHaveProperty('line')
+  })
+  it('a floor day counts as an active day', async () => {
+    const d = freshDb()
+    await saveFloorLine(d, 'x', NOW)
+    expect([...activeDaysOf({ tickets: [], sessions: [], journal: await d.journal.toArray() })]).toEqual(['2026-11-04'])
+  })
+})

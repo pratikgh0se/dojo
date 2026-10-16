@@ -4,7 +4,7 @@ import type { AtlasPattern } from '../content/patterns'
 import type { Difficulty, Kind, Link } from '../data/types'
 
 export const JOB_NAMES = [
-  'hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'classify', 'brief', 'check', 'bank_more',
+  'hint', 'picture', 'diagram', 'interview', 'grade', 'solution', 'classify', 'brief', 'check', 'bank_more', 'lab_review', 'portfolio_draft',
 ] as const
 export type JobName = (typeof JOB_NAMES)[number]
 export type ProviderName = 'fake' | 'helper'
@@ -112,8 +112,6 @@ export interface GradeContext {
   stage?: number
   stageTitle?: string
   rubric?: string
-  /** UAT cu-5 P2-2: 'explanation' grades written prose (a teach-back) against the rubric; there is no repo, commit or diff to look for */
-  deliverableKind?: DeliverableKind
   /** the design session's final grade: five rubric items out of 20, reading the chat, the notes and the diagram */
   sessionGrade?: boolean
   deepDives?: string[]
@@ -186,6 +184,31 @@ export interface BankMoreContext { area: 'design' | 'ai'; node: string; nodeTitl
 export interface BankMoreQuestion { type: BankMoreType; difficulty: number; question: string; answer: string; checklist: string[] }
 export interface BankMoreOutput { questions: BankMoreQuestion[] }
 
+// ---- lab_review (R2 W2): the AI grade of a finished lab against its rubric ----
+/** A file of the review bundle: its diff from the baseline, or a note when it was withheld or did not fit. */
+export type LabBundleFile = { path: string; diff: string } | { path: string; note: string }
+/** What `POST /labs/bundle` returns: the rubric, WRITEUP.md and the changed files (server/labs/bundle.mjs). */
+export interface LabReviewBundle { rubric: { id: string; text: string }[]; writeup: string; files: LabBundleFile[] }
+export interface LabReviewCheck { id: string; name: string; status: 'pass' | 'fail' | 'skip'; detail: string }
+/** `ticket` is the lab's closing ticket (title: the lab's title); `results` the latest run's checks, null when no run had results. */
+export interface LabReviewContext { bundle: LabReviewBundle; results: LabReviewCheck[] | null }
+export interface LabReviewEvidence { quote: string; file: string; line: number }
+/** The reply: one item per rubric item. The app, not the model, computes the percent and whether the lab passed (src/rules/labReview.ts). */
+export interface LabReviewOutput {
+  items: { id: string; score: number; evidence: LabReviewEvidence[]; stronger: string }[]
+  summary: string
+}
+
+// ---- portfolio_draft (R2 W6, portfolio.md): an article or a LinkedIn post drafted from a Proven lab ----
+export type PortfolioDraftKind = 'article' | 'linkedin'
+/**
+ * `writeup` is WRITEUP.md at the lab folder's HEAD, `journal` one line per journal row that lists a ticket of the lab (the day, then its
+ * note when there is one), `stronger` the non-blank "stronger" texts of the lab's latest review, `results` the latest passing run as a
+ * Markdown table ('' when none). The ticket is `{id: labId, title: lab title}`.
+ */
+export interface PortfolioDraftContext { kind: PortfolioDraftKind; writeup: string; journal: string[]; stronger: string[]; results: string }
+export interface PortfolioDraftOutput { text: string }
+
 export interface Jobs {
   hint: { context: HintContext; output: HintOutput }
   picture: { context: PictureContext; output: SrAlgoJson }
@@ -197,6 +220,8 @@ export interface Jobs {
   brief: { context: BriefContext; output: BriefOutput }
   check: { context: CheckContext; output: CheckOutput }
   bank_more: { context: BankMoreContext; output: BankMoreOutput }
+  lab_review: { context: LabReviewContext; output: LabReviewOutput }
+  portfolio_draft: { context: PortfolioDraftContext; output: PortfolioDraftOutput }
 }
 export type TicketOptionalJob = 'classify' | 'bank_more'
 export type JobContext<J extends JobName> = Jobs[J]['context']

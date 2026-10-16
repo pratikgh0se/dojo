@@ -6,7 +6,7 @@ import { useDesignSession } from '../../../data/designHooks'
 import { useTicket } from '../../../data/hooks'
 import type { PartnerScores } from '../../../data/types'
 import { now } from '../../../lib/clock'
-import { useSecondsNow } from '../../../lib/useNow'
+import { IDLE_TICK_MS, useSecondsNow } from '../../../lib/useNow'
 import { readDesignMode } from '../../../rules/designMode'
 import { designRefFromTicket, findDesign } from '../../../rules/designs'
 import { clockText, remainingMs } from '../../../rules/designSession'
@@ -19,7 +19,7 @@ export function PartnerWindow({ sessionId, readOnly = !!syncGate.readOnly }: { s
   const d = useDb()
   const plan = usePlan()
   const session = useDesignSession(sessionId)
-  const t = useSecondsNow(session ? session.at + (session.pausedMs ?? 0) : undefined)
+  const t = useSecondsNow(session ? session.at + (session.pausedMs ?? 0) : undefined, IDLE_TICK_MS)
   const ticket = useTicket(session?.designId ?? '__none__')
   const onSave = useCallback(async (patch: { name: string; scores: PartnerScores; notes?: string }) => {
     const ok = await savePartner(d, sessionId, patch, now())

@@ -168,8 +168,8 @@ export async function finishStudy(a: { d: DojoDB; log: Partial<EndLog>; nowMs: n
  * briefs Addendum 6: a passed learning check ends a study session running on that card exactly as
  * Solved does in Do (finish()): one `solved` session row carrying the plan line and the finished focus
  * minutes, then the timer, the session, the attempt cycle and the draft are cleared. Called from the
- * check's pass handler (CheckDialog), so it works wherever the check was opened (Do, Today, the Board,
- * CheckGate). Do exits focus mode when it sees the session gone. False when there was nothing to close.
+ * explain check's pass handler (useCompleteTicket) and by submitCheck callers, so it works wherever the check was run (Do, Today, the Board).
+ * Do exits focus mode when it sees the session gone. False when there was nothing to close.
  */
 export async function closeStudyOnCheckPass(a: { d: DojoDB; ticketId: string; nowMs: number; /** XP the pass earned (submitCheck's xpDelta) */ xpDelta?: number } & Fx): Promise<boolean> {
   const { d, ticketId, nowMs } = a

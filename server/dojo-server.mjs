@@ -20,6 +20,10 @@ import { createRunner, LIMITS as RUN_LIMITS, publicPack, sweepStaleRunDirs } fro
 import { buildOriginAllowList, createHelperHandler, HOST, hostOriginProblem, MAX_BODY_BYTES, readBody, readConfig, STATUS } from './helper.mjs'
 import { overlayPlan, readProfile, resolveProjectRepo } from './profile.mjs'
 import { PlanFileError, planFileSetting, readPlanFile } from './plan-file.mjs'
+import { defaultDefsRoot, loadLab } from './labs/defs.mjs'
+import { resolveLabsRoot } from './labs/root.mjs'
+import { createPortfolio, MAX_BODY_BYTES as MAX_PORTFOLIO_BODY_BYTES, PORTFOLIO_STATUS } from './portfolio/routes.mjs'
+import { createLabs, LAB_STATUS, LabError } from './labs/index.mjs'
 
 export const MAX_OPS_BODY_BYTES = 5 * 1024 * 1024
 const BIG_BODY_ROUTES = new Set(['/db/ops'])
@@ -39,10 +43,18 @@ const PACKS_PREFIX = '/tools/packs/'
 /** The run route's body cap: the code (64 KiB, checked after parsing) plus JSON escaping and the other fields. */
 export const MAX_RUN_BODY_BYTES = 512 * 1024
 const isRunRoute = path => path === RUN_PATH || path.startsWith(PACKS_PREFIX)
+// R2 W1: the lab engine (writer only): GET /labs/info, POST /labs/setup|run|hint|bundle. server/labs/index.mjs has the logic.
+const LABS_PREFIX = '/labs/'
+const LAB_POSTS = new Set(['setup', 'run', 'hint', 'bundle'])
+const isLabRoute = path => path.startsWith(LABS_PREFIX)
+// R2 W6: the Portfolio export and publish (writer only): POST /portfolio/export and /portfolio/publish. server/portfolio/ has the logic.
+const PORTFOLIO_PREFIX = '/portfolio/'
+const PORTFOLIO_POSTS = new Set(['export', 'publish'])
+const isPortfolioRoute = path => path.startsWith(PORTFOLIO_PREFIX)
 
 // Sub-paths that never fall back to the SPA page when nothing is there: the API prefixes and the build's asset folders.
 // The bare prefix (/ai, /db) is not listed: it may be a client route (SHELL-20 loads /ai and redirects to /).
-const NO_SPA_PREFIXES = ['/db', '/ai', '/tools', '/data', '/assets', '/engines', '/fonts', '/pyodide', '/pyrunner']
+const NO_SPA_PREFIXES = ['/db', '/ai', '/tools', '/labs', '/portfolio', '/data', '/assets', '/engines', '/fonts', '/pyodide', '/pyrunner']
 const ASSET_EXTS = new Set(Object.keys(MIME).filter(e => e !== '.html').concat(['.jpeg', '.gif', '.webp', '.avif', '.woff', '.ttf', '.otf', '.mp3', '.mp4', '.webm', '.pdf', '.xml']))
 export function isMissingAssetRequest(path, accept) {
   if (NO_SPA_PREFIXES.some(p => path.startsWith(p + '/'))) return true
@@ -130,6 +142,9 @@ export function readServerConfig(argv = process.argv.slice(2), env = process.env
     // /db answers only the server's own origin (added on listen) plus these, e.g. a dev proxy's origin.
     // The Go runner resolves DOJO_GO_BIN / go on PATH from this environment.
     runEnv: env,
+    // R2 W1: where the lab definitions are (DOJO_LABS_DEFS, else the installed app's labs-defs/, else public/data-private/labs).
+    // --real ignores the variable like it ignores DOJO_PLAN_FILE: a stale shell export must not swap the app's labs.
+    labsDefs: defaultDefsRoot(real ? {} : env),
     dbOrigins,
     // SEC-D-03: e2e runs only. Every CSP violation report is appended to this file (null: no report-uri at all).
     cspReportFile: cspReportFile(env),
@@ -192,6 +207,10 @@ export function createDojoServer(cfg, clock = () => new Date()) {
   const helper = createHelperHandler(cfg)
   const distRoot = cfg.dist ? realpathSync(cfg.dist) : null
   const runner = createRunner({ home: cfg.home, env: cfg.runEnv ?? process.env, log: msg => logger.log(msg), allowRawImports: !!cfg.runnerAllowRawImports })
+  const labs = createLabs({ env: cfg.runEnv ?? process.env, defsRoot: cfg.labsDefs, log: msg => logger.log(msg) })
+  // R2 W6: the same definitions folder as the labs (labs.defsRoot), and the same labs-root rule
+  const portfolioEnv = cfg.runEnv ?? process.env
+  const portfolio = createPortfolio({ loadLab: id => loadLab(labs.defsRoot, id), resolveRoot: raw => resolveLabsRoot(raw, portfolioEnv), env: portfolioEnv })
   // SEC-D-03: the app's documents get the full policy (frame-ancestors 'none' is part of it, G4 #7); the Python
   // runner's files keep frame-ancestors alone, and its frame page its own policy (pyframe.mjs).
   const CSP = appCsp({ report: !!cfg.cspReportFile })
@@ -437,6 +456,92 @@ export function createDojoServer(cfg, clock = () => new Date()) {
     }
   }
 
+  /**
+   * R2: the prelude of every writer-only JSON route (/labs/*, and /portfolio/* from W6), one copy. Checks in the /tools/run-go order:
+   * Origin, method, Content-Type, body size, writer token, then the body (Host was pinned before a route is reached). `method` is the
+   * only method the route takes ('GET' has no body), or null for a path that is no route. `maxBytes` is the body cap (64 KiB; /portfolio passes 512 KiB). Errors are `{ ok: false, error: { code, message } }`.
+   * Returns { input, send, fail } for the route to use, or null once it has answered.
+   */
+  async function writerRoute(req, res, path, method, statusOf = {}, maxBytes = MAX_BODY_BYTES) {
+    const origin = req.headers.origin
+    const cors = typeof origin === 'string' ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : { Vary: 'Origin' }
+    const send = (status, body) => {
+      if (res.headersSent) return
+      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors })
+      res.end(JSON.stringify(body))
+    }
+    const fail = (code, message, status) => send(status ?? statusOf[code] ?? STATUS[code] ?? 500, { ok: false, error: { code, message } })
+    if (typeof origin === 'string' && !cfg.dbOrigins.has(origin)) {
+      req.resume()
+      res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', Vary: 'Origin' })
+      res.end(JSON.stringify({ ok: false, error: { code: 'forbidden_origin', message: `origin ${origin} may not use ${path}` } }))
+      return null
+    }
+    if (req.method === 'OPTIONS') {
+      req.resume()
+      res.writeHead(204, { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Content-Type, X-Dojo-Writer', 'Access-Control-Max-Age': '600' })
+      res.end()
+      return null
+    }
+    if (method === null) {
+      req.resume()
+      fail('unknown_route', `no route ${path}`)
+      return null
+    }
+    if (req.method !== method) {
+      req.resume()
+      fail('method_not_allowed', `use ${method}`)
+      return null
+    }
+    let input
+    if (method === 'GET') {
+      req.resume()
+      if (!isWriter(req.headers['x-dojo-writer'])) { fail('not_writer', 'only the Dojo app may use this (X-Dojo-Writer)', 403); return null }
+      input = Object.fromEntries(new URL(req.url ?? '/', `http://${HOST}`).searchParams)
+    } else {
+      if (!/^application\/json(?:\s*;.*)?$/i.test(String(req.headers['content-type'] ?? '').trim())) {
+        req.resume()
+        fail('unsupported_media_type', 'Content-Type must be application/json')
+        return null
+      }
+      let raw
+      try { raw = await readBody(req, maxBytes) } catch { fail('too_large', `body is over ${maxBytes} bytes`); return null }
+      if (!isWriter(req.headers['x-dojo-writer'])) { fail('not_writer', 'only the Dojo app may use this (X-Dojo-Writer)', 403); return null }
+      try { input = JSON.parse(raw) } catch { fail('bad_request', 'body is not valid JSON'); return null }
+      if (input === null || typeof input !== 'object' || Array.isArray(input)) { fail('bad_request', 'body must be a JSON object'); return null }
+    }
+    return { input, send, fail }
+  }
+
+  /** R2 W1: GET /labs/info and POST /labs/setup|run|hint|bundle. The logic is server/labs/index.mjs; this maps its errors to replies. */
+  async function labsRoute(req, res, path) {
+    const name = path.slice(LABS_PREFIX.length)
+    const w = await writerRoute(req, res, path, name === 'info' ? 'GET' : LAB_POSTS.has(name) ? 'POST' : null, LAB_STATUS)
+    if (!w) return
+    try {
+      return w.send(200, { ok: true, ...(await labs.ops[name](w.input)) })
+    } catch (e) {
+      if (e instanceof LabError) {
+        if (e.detail) logger.log(`labs ${path}: ${e.code}: ${e.detail}`)
+        // R2 I-5: an unknown lab on GET /labs/info is HTTP 200 + { ok:false } (Chrome logs every 404 as a console error, GLOBAL-07).
+        if (name === 'info' && e.code === 'unknown_lab') return w.fail(e.code, e.message, 200)
+        return w.fail(e.code, e.message)
+      }
+      logger.log(`ERROR ${req.method} ${path}: ${e instanceof Error ? e.stack : e}`)
+      return w.fail('server_error', e instanceof Error ? e.message : String(e), 500)
+    }
+  }
+
+  /** R2 W6: POST /portfolio/export and /portfolio/publish (512 KiB bodies). The logic is server/portfolio/routes.mjs; it answers { status, body }. */
+  async function portfolioRoute(req, res, path) {
+    const name = path.slice(PORTFOLIO_PREFIX.length)
+    const w = await writerRoute(req, res, path, PORTFOLIO_POSTS.has(name) ? 'POST' : null, PORTFOLIO_STATUS, MAX_PORTFOLIO_BODY_BYTES)
+    if (!w) return
+    const out = await portfolio.handle(path, w.input)
+    if (out.unexpected) logger.log(`ERROR portfolio ${path}: ${describeError(out.unexpected)}`)
+    return w.send(out.status, out.body)
+  }
+
   /** SEC-D-03, e2e runs only (DOJO_CSP_REPORT_FILE): appends one violation report per line. */
   async function cspReport(req, res) {
     let body
@@ -468,11 +573,13 @@ export function createDojoServer(cfg, clock = () => new Date()) {
       res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...cors })
       return res.end(JSON.stringify({ ok: false, error: { code: 'not_writer', message: 'only the Dojo app may run AI jobs (X-Dojo-Writer)' } }))
     }
-    if (problem || (req.method === 'OPTIONS' && !path.startsWith('/db/') && path !== LINKCHECK_PATH && !isRunRoute(path)) || path === '/health' || path.startsWith('/ai/')) {
+    if (problem || (req.method === 'OPTIONS' && !path.startsWith('/db/') && path !== LINKCHECK_PATH && !isRunRoute(path) && !isLabRoute(path) && !isPortfolioRoute(path)) || path === '/health' || path.startsWith('/ai/')) {
       return helper(req, res) // helper repeats the Host/Origin checks and owns CORS + /ai + /health
     }
     if (path.startsWith('/db/') || path === LINKCHECK_PATH) return dbRoute(req, res, path)
     if (isRunRoute(path)) return runRoute(req, res, path)
+    if (isLabRoute(path)) return labsRoute(req, res, path)
+    if (isPortfolioRoute(path)) return portfolioRoute(req, res, path)
     if (cfg.cspReportFile && path === CSP_REPORT_PATH && req.method === 'POST') return cspReport(req, res)
     req.resume()
     return serveStatic(req, res, path)
@@ -482,6 +589,7 @@ export function createDojoServer(cfg, clock = () => new Date()) {
     server, logger,
     get dojo() { return dojo },
     runner,
+    labs,
     listen(port = cfg.dojoPort) {
       return new Promise((ok, err) => {
         server.once('error', err)
@@ -549,8 +657,9 @@ export async function gracefulStop(s, ms = 5000) {
   const limit = new Promise(r => { timer = setTimeout(r, ms) })
   try {
     s.runner.abort?.()
+    s.labs?.abort()
     await Promise.race([
-      Promise.all([s.close(), s.runner.settled()]).then(() => s.runner.sweep?.({ shutdown: true })),
+      Promise.all([s.close(), s.runner.settled(), s.labs?.settled()]).then(() => s.runner.sweep?.({ shutdown: true })),
       limit,
     ])
   } finally {

@@ -1,6 +1,6 @@
 {
   "planFormat": 2,
-  "planVersion": "ai-infra-v1-2026-10-16",
+  "planVersion": "ai-infra-v1-2026-10-31",
   "areas": [
     {
       "id": "llm",
@@ -2334,7 +2334,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Run a small model on your laptop",
-      "text": "Run one small model on your own laptop and measure it.\nBefore you start: open Activity Monitor and check free memory. A 3-billion-parameter model at 4-bit needs about 2 to 3 GB. If memory is tight, pick the 1-billion model, close heavy apps, and stop if the laptop slows down.\nDo: (1) install Ollama and run `ollama run llama3.2:3b --verbose`; (2) send a one-line prompt and write down the \"eval rate\" it prints, in tokens per second; (3) paste in a prompt of about 2,000 words and note the \"prompt eval rate\"; (4) watch memory while it answers.\nTake away: reading a prompt is much faster per token than writing the answer.\nDone when you can say both rates and what limited the slower one.",
+      "text": "Run one small model on your own laptop and measure it.\nBefore you start: open Activity Monitor and check free memory. A 3-billion-parameter model at 4-bit needs about 2 to 3 GB. If memory is tight, pick the 1-billion model, close heavy apps, and stop if the laptop slows down.\nDo: (1) install Ollama and run `ollama run llama3.2:3b --verbose`; (2) send a one-line prompt and write down the \"eval rate\" it prints, in tokens per second; (3) paste in a prompt of about 2,000 words and note the \"prompt eval rate\"; (4) watch memory while it answers.\nTake away: reading a prompt is much faster per token than writing the answer.\nDone when you can say both rates and what limited the slower one. Write both rates, the model name, the memory you saw and what limited the slower one in `results/local.json` (the README lists the keys); `make check` reads that file and never runs the model.",
       "links": [
         {
           "label": "Ollama download",
@@ -2380,7 +2380,7 @@
         "Why does a longer prompt cost more?"
       ],
       "explainAnswers": [
-        "It looks back at the earlier tokens in the prompt and scores how relevant each one is to the token being produced. The highest-scoring tokens contribute most to the next prediction. It never looks ahead, because those tokens do not exist yet.",
+        "In decoder-only LLMs, attention is causal: each position looks back at itself and the earlier tokens, scores how relevant each one is to the token being produced, and never looks ahead, because those tokens do not exist yet. The scores weight the value vectors, so the output is a weighted blend of what the earlier tokens carry, not a pick of the single top token. This runs in many heads at once and in every layer.",
         "Attention compares every token with every earlier token, so the work grows faster than the prompt length. The model also has to keep keys and values for every token in memory (the KV cache). More tokens means more compute to read the prompt and more memory held while answering."
       ],
       "asOf": "2026-10-11"
@@ -2394,7 +2394,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Set up vLLM on a free GPU",
-      "text": "Use a free Modal or Kaggle GPU. No card should be charged: if Modal asks for a card, use Kaggle instead.\nInstall vLLM, start its server with an instruct model of 1 to 3 billion parameters and send one request with curl. Stop the session when you are done so no quota is spent.\nCheck: a completion comes back and the server log shows the model loaded.\nDone when you can repeat the setup from your notes.",
+      "text": "Use a free Modal or Kaggle GPU. No card should be charged: if Modal asks for a card, use Kaggle instead.\nInstall vLLM, start its server with an instruct model of 1 to 3 billion parameters and send one request with curl. Stop the session when you are done so no quota is spent.\nCheck: a completion comes back and the server log shows the model loaded. Save the reply text and a few log lines in `results/setup.json` (the README lists the keys); commit it. `make check` only reads that file.\nDone when you can repeat the setup from your notes.",
       "links": [
         {
           "label": "Modal vLLM example",
@@ -2426,7 +2426,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Measure vLLM on the free GPU",
-      "text": "Start the server again and send 20 requests with a small script. Open the `/metrics` page and write down the KV-cache use and the tokens per second. `/metrics` holds cumulative counters, so your script must read it twice and divide the change in generated tokens by the seconds between the readings. Compare the result with your laptop numbers from the earlier ticket. Stop the session when you are done so no quota is spent.\nWith only 20 requests on a small model the KV cache will be barely used, so \"nothing limited it yet\" is an honest answer for the cache. Then say what the GPU did limit, for example the memory bandwidth needed to read the weights for each generated token.\nDone when you can say what limited throughput on the GPU.",
+      "text": "Start the server again and send 20 requests with a small script. Open the `/metrics` page and write down the KV-cache use and the tokens per second. `/metrics` holds cumulative counters, so your script must read it twice and divide the change in generated tokens by the seconds between the readings. Compare the result with your laptop numbers from the earlier ticket. Save both readings, the rate and your conclusion in `results/vllm.json` and commit it; `make check` reads the committed file and never touches the GPU. Stop the session when you are done so no quota is spent.\nWith only 20 requests on a small model the KV cache will be barely used, so \"nothing limited it yet\" is an honest answer for the cache. Then say what the GPU did limit, for example the memory bandwidth needed to read the weights for each generated token.\nDone when you can say what limited throughput on the GPU.",
       "links": [
         {
           "label": "vLLM, Production metrics",
@@ -2469,6 +2469,12 @@
       ],
       "estMin": 35,
       "order": 10,
+      "explain": [
+        "What is a token, and why does a model see tokens rather than characters?"
+      ],
+      "explainAnswers": [
+        "Text is cut into pieces from a fixed vocabulary, and each piece is a token. The model reads and writes those pieces, not single characters. Billing and the context limit are counted in tokens too."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2489,6 +2495,12 @@
       ],
       "estMin": 55,
       "order": 11,
+      "explain": [
+        "What is a base model, and why is it not an assistant yet?"
+      ],
+      "explainAnswers": [
+        "A base model is trained to continue internet text, so it behaves like an autocomplete. Post-training on conversation data is what teaches it to act as an assistant."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2513,6 +2525,12 @@
       ],
       "estMin": 30,
       "order": 14,
+      "explain": [
+        "Name two ways a model's JSON can be almost valid, and what your code does about each."
+      ],
+      "explainAnswers": [
+        "A reply can be wrapped in a code fence or extra text, or have a trailing comma, and code can repair formatting problems like that. A reply can also have a wrong type or an out-of-range value, which validation must reject so that the code retries with the error message."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2524,7 +2542,7 @@
       "area": "ai",
       "phase": 1,
       "title": "Write the schema and the validator for a structured-output client",
-      "text": "Build `llmjson.py`, the first half of a structured-output client. Use any hosted model API; the tests must not call it.\n1. Define a schema for a triage result: category (bug, question or feature), urgency from 1 to 5, a one-sentence summary.\n2. Write `validate(text)`: parse the JSON, check the keys, types and ranges, and return the object or raise `ValidationError` with a message that says what is wrong.\n3. Write `ask(prompt, call)`, where `call` returns the model's text: call once, validate, return the object.\n4. Test `validate` with five bad replies (not JSON, a missing key, a wrong type, urgency 9, text around the JSON) and one good one.\nDone when `python -m pytest` passes. The next ticket adds retries.",
+      "text": "Fill in `llmjson.py` (the template has the function signatures), the first half of a structured-output client. Use any hosted model API; the tests must not call it.\n1. Define a schema for a triage result: category (bug, question or feature), urgency from 1 to 5, a one-sentence summary.\n2. Write `validate(text)`: parse the JSON, check the keys, types and ranges, and return the object or raise `ValidationError` with a message that says what is wrong.\n3. Write `ask(prompt, call)`, where `call` returns the model's text: call once, validate, return the object.\n4. Write your own tests for `validate` in `tests/test_llmjson.py` with the standard `unittest` module (`make test` runs them): five bad replies (not JSON, a missing key, a wrong type, urgency 9, text around the JSON) and one good one. `make check` runs the lab's own version of these cases.\nDone when `make check` passes. The next ticket adds retries.",
       "links": [
         {
           "label": "Claude docs, Tool use overview",
@@ -2557,6 +2575,12 @@
       ],
       "estMin": 25,
       "order": 17,
+      "explain": [
+        "How does a tool call get from the model to your code?"
+      ],
+      "explainAnswers": [
+        "The model writes a tool call in its chat format, naming the tool and its arguments, and stops. The API returns a tool_use block with stop_reason tool_use. Your own code runs the tool and sends the result back as a tool_result for the model to continue."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2581,6 +2605,12 @@
       ],
       "estMin": 35,
       "order": 18,
+      "explain": [
+        "What do a higher temperature and a lower top-p each change about the next-token choice?"
+      ],
+      "explainAnswers": [
+        "A higher temperature flattens the probabilities, so less likely tokens are chosen more often. A lower top-p keeps only the smallest set of likeliest tokens whose probabilities add up to p, so fewer tokens can be chosen."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2592,7 +2622,7 @@
       "area": "ai",
       "phase": 1,
       "title": "Add retries with backoff and tests",
-      "text": "Change `ask` in `llmjson.py` to `ask(prompt, call, sleep=time.sleep)` and make it retry when `validate` raises `ValidationError`: up to 3 retries, so at most 4 calls in all. Nothing else is retried: an error raised by `call` itself (a network failure, say) goes straight up.\nEach retry sends the original prompt plus the error message (`str(error)`) of the reply that just failed; do not pile up older errors. Before each retry call `sleep(delay)`: 0.1 s the first time, 0.2 the second, 0.4 the third. There is no sleep after the last failure, and the 4th failed reply raises its `ValidationError` out of `ask`.\nTests (a fake `call` that records the prompts it gets, and a `sleep` that records instead of waiting):\n1. The fake returns `oops`, then `still not json`, then a good reply. Assert `ask` returns the good object, there were exactly 3 calls, the sleeps were [0.1, 0.2] (compare with `pytest.approx`), the first prompt is your original prompt, and the second prompt contains your original prompt and the message that `validate(\"oops\")` raises.\n2. The fake returns `oops` every time. Assert `ask` raises `ValidationError` after exactly 4 calls, with sleeps [0.1, 0.2, 0.4].\n3. The fake returns a good reply first. Assert 1 call and no sleeps.\nDone when `python -m pytest` passes.",
+      "text": "Change `ask` in `llmjson.py` to `ask(prompt, call, sleep=time.sleep)` and make it retry when `validate` raises `ValidationError`: up to 3 retries, so at most 4 calls in all. Nothing else is retried: an error raised by `call` itself (a network failure, say) goes straight up.\nEach retry sends the original prompt plus the error message (`str(error)`) of the reply that just failed; do not pile up older errors. Before each retry call `sleep(delay)`: 0.1 s the first time, 0.2 the second, 0.4 the third. There is no sleep after the last failure, and the 4th failed reply raises its `ValidationError` out of `ask`.\nTests (write these as `unittest` tests in `tests/test_llmjson.py`; use a fake `call` that records the prompts it gets, and a `sleep` that records instead of waiting):\n1. The fake returns `oops`, then `still not json`, then a good reply. Assert `ask` returns the good object, there were exactly 3 calls, the sleeps were [0.1, 0.2] (compare with `assertAlmostEqual`), the first prompt is your original prompt, and the second prompt contains your original prompt and the message that `validate(\"oops\")` raises.\n2. The fake returns `oops` every time. Assert `ask` raises `ValidationError` after exactly 4 calls, with sleeps [0.1, 0.2, 0.4].\n3. The fake returns a good reply first. Assert 1 call and no sleeps.\nDone when `make check` passes and your own tests pass under `make test`.",
       "links": [
         {
           "label": "Claude docs, Tool use overview",
@@ -2665,6 +2695,14 @@
       ],
       "estMin": 60,
       "order": 24,
+      "explain": [
+        "What is the tool-use loop, as four steps?",
+        "What separates RAG from an agent?"
+      ],
+      "explainAnswers": [
+        "Send the prompt and the tool list, the model asks for a tool, your code runs it, and the result goes back to the model. The loop repeats until the model answers without asking for a tool.",
+        "RAG pastes retrieved text into a prompt, usually once. An agent is a model in a loop that decides which tools to call and keeps going until the task is done."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2689,6 +2727,12 @@
       ],
       "estMin": 30,
       "order": 26,
+      "explain": [
+        "What belongs in a CLAUDE.md, and why?"
+      ],
+      "explainAnswers": [
+        "Write what the repo is, how to run its tests and what must not be touched. An agent does what its instructions say, so anything not written down is a guess."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2700,7 +2744,7 @@
       "area": "lead",
       "phase": 1,
       "title": "Set up a delegation log and hand three real tasks to an agent",
-      "text": "Pick a repo you work in. Add a short CLAUDE.md: what the repo is, how to run its tests, what the agent must not touch. Create `delegation-log.md` with the columns date, task, what I asked, what came back, what I redid and why.\nHand three real tasks to Claude Code this week and fill one row for each. Pick tasks you can check: a small refactor, a test you were putting off, an explanation of code you do not know. Do not paste anything you are not allowed to share.\nDone when the log has three rows and you can say which task you would not delegate again.",
+      "text": "Pick a repo you work in. Add a short CLAUDE.md: what the repo is, how to run its tests, what the agent must not touch. Keep a copy as `CLAUDE-example.md` in this folder (no secrets or private names). Fill in `delegation-log.md` in this lab folder (the template has the table with the columns date, task, what I asked, what came back, what I redid and why).\nHand three real tasks to Claude Code this week and fill one row for each. Pick tasks you can check: a small refactor, a test you were putting off, an explanation of code you do not know. Do not paste anything you are not allowed to share. This folder can be published, and committed text stays in git history, so be concrete about the task but generic about names: no company, client, colleague, host or repo names and no internal URLs or paths.\nDone when the log has three rows and a line starting `Would not delegate again:` names that task and says why.",
       "links": [
         {
           "label": "Claude Code documentation, overview",
@@ -2734,7 +2778,7 @@
       "area": "ai",
       "phase": 1,
       "title": "Add a repair path for almost-valid JSON",
-      "text": "In `llmjson.py` add `repair(text)` and use it in `ask` before spending a retry: when `validate` rejects a reply, run `validate(repair(reply))`; if that passes, return the object without another call and without a sleep. `validate` itself stays strict. `repair` does three things, in this order: (1) if the text starts with a code-fence line (three backticks, with or without a word such as json after them), drop that line and the closing fence line of three backticks; (2) keep only the text from the first `{` to the last `}` (leave it alone if there is no pair); (3) remove a comma that sits right before a `}` or `]`, with `re.sub(r\",\\s*([}\\]])\", r\"\\1\", text)`.\nAdd these five malformed replies to the tests, each wrapping or breaking this object: `{\"category\": \"bug\", \"urgency\": 3, \"summary\": \"Login fails.\"}`\n1. The object inside a code fence: a line of three backticks followed by json, the object, then a line of three backticks.\n2. The same fence with no json after the opening backticks.\n3. The object with a comma after the last value: `...\"Login fails.\",}`.\n4. The text `Here is the result: ` before the object.\n5. Fence, trailing comma and text around it, all at once: the line `Sure, here you go:`, then the fenced object from 1 with the trailing comma from 3, then the line `Let me know if you need more.`.\nCheck: for each of the five, `ask` returns the object after exactly 1 call and no sleep. Then add two more tests: a reply of `I cannot help with that.` followed by a good reply gives 2 calls and sleeps [0.1]; a fenced reply whose urgency is 9 followed by a good reply also gives 2 calls (repair cannot fix a bad value). The tests from the previous ticket must still pass.\nDone when `python -m pytest` passes.",
+      "text": "In `llmjson.py` add `repair(text)` and use it in `ask` before spending a retry: when `validate` rejects a reply, run `validate(repair(reply))`; if that passes, return the object without another call and without a sleep. `validate` itself stays strict. `repair` does three things, in this order: (1) if the text starts with a code-fence line (three backticks, with or without a word such as json after them), drop that line and the closing fence line of three backticks; (2) keep only the text from the first `{` to the last `}` (leave it alone if there is no pair); (3) remove a comma that sits right before a `}` or `]`, with `re.sub(r\",\\s*([}\\]])\", r\"\\1\", text)`.\nAdd these five malformed replies to the tests, each wrapping or breaking this object: `{\"category\": \"bug\", \"urgency\": 3, \"summary\": \"Login fails.\"}`\n1. The object inside a code fence: a line of three backticks followed by json, the object, then a line of three backticks.\n2. The same fence with no json after the opening backticks.\n3. The object with a comma after the last value: `...\"Login fails.\",}`.\n4. The text `Here is the result: ` before the object.\n5. Fence, trailing comma and text around it, all at once: the line `Sure, here you go:`, then the fenced object from 1 with the trailing comma from 3, then the line `Let me know if you need more.`.\nCheck: for each of the five, `ask` returns the object after exactly 1 call and no sleep. Then add two more tests: a reply of `I cannot help with that.` followed by a good reply gives 2 calls and sleeps [0.1]; a fenced reply whose urgency is 9 followed by a good reply also gives 2 calls (repair cannot fix a bad value). The tests from the previous ticket must still pass.\nDone when `make check` passes.",
       "links": [
         {
           "label": "Claude docs, Tool use overview",
@@ -2805,6 +2849,12 @@
       ],
       "estMin": 30,
       "order": 33,
+      "explain": [
+        "What is the event loop of a discrete-event simulation?"
+      ],
+      "explainAnswers": [
+        "It is a clock and a queue of timed events. Take the earliest event, move the clock to its time, handle it, and add any events it causes."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2816,7 +2866,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Lay out the tokensim lab: Makefile targets and a results file",
-      "text": "Create `labs/b1-tokensim` with a Makefile whose targets are `up`, `run`, `check` and `down` (the first and last may do nothing yet), and a tiny reporter that writes `results.json`: `{ \"checks\": [{ \"id\", \"name\", \"status\", \"detail\", \"metrics\" }], \"summary\": { \"pass\", \"fail\", \"skip\" } }`, where status is pass, fail or skip.\nCheck: `make check` writes a file with one passing check named `layout`.\nDone when it does.",
+      "text": "Press Set up lab. The template already has a `Makefile` with a `check` target and `checks/report.py`, a small reporter that runs every check and writes `.dojo/results.json`: `{ \"checks\": [{ \"id\", \"name\", \"status\", \"detail\", \"metrics\" }], \"summary\": { \"pass\", \"fail\", \"skip\" } }`, where status is pass, fail or skip. Read both, then add the targets `up`, `run` and `down` to the Makefile (`up` and `down` may only print a line for now; `run` will run the sweep later).\nCheck: `make check` reports the check `layout` as pass.\nDone when it does.",
       "links": [
         {
           "label": "SimPy documentation",
@@ -2826,7 +2876,7 @@
       "estMin": 45,
       "order": 36,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -2853,6 +2903,12 @@
       ],
       "estMin": 45,
       "order": 38,
+      "explain": [
+        "Why does paging the KV cache raise throughput?"
+      ],
+      "explainAnswers": [
+        "Naive allocation reserves one contiguous block per sequence, sized for the worst case, which wastes memory. Fixed-size blocks allocated on demand waste far less, so more sequences fit in memory and the batches can be larger."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2864,7 +2920,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Work the GPU memory sums as a small script",
-      "text": "Write memsum.py, a script that takes a model's config.json values and prints weight bytes and KV-cache bytes per token. Weights = parameters x bytes per parameter (bf16 2, fp8 1, int4 0.5). KV bytes per token = 2 x layers x kv_heads x head_dim x bytes per element. Use grouped-query attention's kv_heads, not the attention head count.\nCheck values: Llama 3.1 70B in bf16 is 327,680 bytes per token (80 layers, 8 KV heads, head dim 128); Llama 3.1 8B is 131,072.\nThen answer on paper: (1) how many 80 GB GPUs for 70B bf16 at 32k context and 16 users, (2) the same with fp8 and int4, (3) whether weights or KV hit first, (4) what 8 KV heads instead of 64 buys, (5) whether prefill of 8k tokens or decode of 500 tokens dominates the total response time, and which one sets time to first token.\nDone when memsum.py reproduces both check values and you can answer all five.",
+      "text": "Complete `memsum.py` (the template has the function names and two Llama 3.1 configs in `configs/`): given a config file and a parameter count it prints `weights_bytes=` and `kv_bytes_per_token=` lines (see the README for the options). Weights = parameters x bytes per parameter (bf16 2, fp8 1, int4 0.5). KV bytes per token = 2 x layers x kv_heads x head_dim x bytes per element. Use grouped-query attention's kv_heads, not the attention head count.\nCheck values: Llama 3.1 70B in bf16 is 327,680 bytes per token (80 layers, 8 KV heads, head dim 128); Llama 3.1 8B is 131,072.\nThen answer in `ANSWERS.md`, with your working: (1) how many 80 GB GPUs for 70B bf16 at 32k context and 16 users, (2) the same with fp8 and int4, (3) whether weights or KV hit first, (4) what 8 KV heads instead of 64 buys, (5) whether prefill of 8k tokens or decode of 500 tokens dominates the total response time, and which one sets time to first token.\nDone when memsum.py reproduces both check values and you can answer all five.",
       "links": [
         {
           "label": "Llama 3.1 70B config.json (mirror)",
@@ -2896,7 +2952,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Work the training compute sum",
-      "text": "Add train_compute.py beside memsum.py. Compute C = 6 x parameters x tokens for Llama 3.1 70B on about 15 trillion tokens (treat the token count as approximate), divide by an effective 4e14 FLOP/s per H100 (about 40% of the bf16 peak) and print GPU-hours.\nCheck value: about 6.3e24 FLOPs and about 4.4 million H100-hours.\nTake away: this is why pretraining is for a dozen organisations and why you will host and fine-tune, not pretrain.\nDone when the script prints both numbers and you can say what utilisation does to the answer.",
+      "text": "Complete `train_compute.py` beside `memsum.py` (`train_flops`, `gpu_hours`; running it prints `flops=` and `gpu_hours=`). Compute C = 6 x parameters x tokens for Llama 3.1 70B on about 15 trillion tokens (treat the token count as approximate), divide by an effective 4e14 FLOP/s per H100 (about 40% of the bf16 peak) and print GPU-hours.\nCheck value: about 6.3e24 FLOPs and about 4.4 million H100-hours.\nTake away: this is why pretraining is for a dozen organisations and why you will host and fine-tune, not pretrain.\nDone when the script prints both numbers and you can say what utilisation does to the answer.",
       "links": [
         {
           "label": "EleutherAI: Transformer Math 101",
@@ -2937,6 +2993,12 @@
       ],
       "estMin": 40,
       "order": 43,
+      "explain": [
+        "What does prefix caching save, and when does it not help?"
+      ],
+      "explainAnswers": [
+        "It reuses the already computed KV cache for a prompt prefix that requests share, so the prefill for that part is skipped. It does not help when requests share no prefix, or when the time goes into decode rather than prefill."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2961,6 +3023,12 @@
       ],
       "estMin": 45,
       "order": 44,
+      "explain": [
+        "How do you work out a GPU's ridge point, and what does it tell you about decode?"
+      ],
+      "explainAnswers": [
+        "Divide its peak operations per second by its memory bandwidth to get operations per byte. For an H100 SXM that is about 989 trillion dense 16-bit operations per second divided by 3.35 trillion bytes per second, roughly 295 operations per byte (NVIDIA's 1,979 figure assumes sparsity). Decode does about 2 operations for each 2-byte weight it reads, roughly 1 operation per byte, far below that ridge point, so it is memory-bound."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -2972,7 +3040,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Write the roofline function and test decode",
-      "text": "Write `roofline.py` with a function `step_time(flops, bytes_read, peak_flops, bandwidth)` that returns the larger of flops / peak_flops and bytes_read / bandwidth, and says which one limits. Use round numbers for one H100: 1e15 FLOP/s (bf16) and 3.35e12 bytes/s; check the datasheet before you quote them anywhere. Model decode: one token reads all the weights once and does 2 x parameters operations.\nCheck value: a 70B-parameter model in fp8 (70e9 bytes) decodes one token in about 20.9 ms (about 48 tokens a second) and is memory-bound. Test it within 2%.\nKeep the function importable: tokensim uses it in a later step. The next ticket adds prefill.\nDone when `python -m pytest` passes with that number.",
+      "text": "Open `roofline.py` (the template has the signatures) and write `step_time(flops, bytes_read, peak_flops, bandwidth)`, which returns `(seconds, limit)`: the larger of flops / peak_flops and bytes_read / bandwidth, and `\"compute\"` or `\"memory\"` for the one that limits. Also write `decode(n_params, bytes_per_param, peak_flops, bandwidth)`, which returns the same pair for one token. Use round numbers for one H100: 1e15 FLOP/s (bf16) and 3.35e12 bytes/s; check the datasheet before you quote them anywhere. Model decode: one token reads all the weights once and does 2 x parameters operations.\nCheck value: a 70B-parameter model in fp8 (70e9 bytes) decodes one token in about 20.9 ms (about 48 tokens a second) and is memory-bound. The check tests it within 2%.\nKeep the function importable: tokensim uses it in a later step. The next ticket adds prefill.\nDone when `make check` passes the two roofline checks.",
       "links": [
         {
           "label": "Modal GPU glossary",
@@ -2982,7 +3050,7 @@
       "estMin": 40,
       "order": 46,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -2996,7 +3064,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Add prefill and a ridge-point report",
-      "text": "In `roofline.py` add prefill: n prompt tokens do 2 x parameters x n operations on one read of the weights. Add `ridge_point(peak_flops, bandwidth)`, the operations per byte at which the two limits meet, and print it for the H100 numbers.\nCheck values: prefilling 8,000 tokens of the 70B fp8 model takes about 1.12 s (2 x 70e9 x 8,000 / 1e15) and is compute-bound; the ridge point is about 299 operations per byte (1e15 / 3.35e12). Test both within 2%.\nDone when `python -m pytest` passes.",
+      "text": "In `roofline.py` add prefill (`prefill(n_params, bytes_per_param, n_tokens, peak_flops, bandwidth)` returns `(seconds, limit)`; `ridge_point` returns operations per byte): n prompt tokens do 2 x parameters x n operations on one read of the weights. Add `ridge_point(peak_flops, bandwidth)`, the operations per byte at which the two limits meet, and print it for the H100 numbers.\nCheck values: prefilling 8,000 tokens of the 70B fp8 model takes about 1.12 s (2 x 70e9 x 8,000 / 1e15) and is compute-bound; the ridge point is about 299 operations per byte (1e15 / 3.35e12). The check tests both within 2%.\nDone when `make check` passes.",
       "links": [
         {
           "label": "Modal GPU glossary",
@@ -3014,7 +3082,7 @@
         "A roofline shows the best speed the hardware could reach for work of a given intensity, so you can see how close you are and which limit applies. A profiler shows where time went but not what the ceiling is. Together they tell you whether to optimise the code or accept the hardware limit."
       ],
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3041,6 +3109,12 @@
       ],
       "estMin": 40,
       "order": 50,
+      "explain": [
+        "What do you give up with 4-bit weights, and what do you still have to do?"
+      ],
+      "explainAnswers": [
+        "You give up some accuracy in return for fitting the model on fewer GPUs. You still have to re-evaluate the quantised model on your own task."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -3052,7 +3126,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Write the event loop and the request records",
-      "text": "In the tokensim lab, write `engine.py`: the event loop of a discrete-event simulator. A request has an arrival time, a prompt length and an output length. The engine has a clock and a priority queue of timed events; write it by hand or with SimPy. For now every step takes a fixed time you pass in (the roofline times come in the next ticket) and the engine serves one request at a time. Emit one record per request: arrival, time to first token, finish time, tokens.\nCheck (add to `make check`): with a prefill time of 1.0 s and 0.02 s per decode step, a request with 500 output tokens (the first comes from the prefill, then 499 decode steps) has time to first token 1.0 s and finish time 10.98 s.\nDone when `make check` passes.",
+      "text": "In the tokensim lab, complete `engine.py` (the template has `Request`, `Record` and the `simulate` signature): the event loop of a discrete-event simulator. A request has an arrival time, a prompt length and an output length. The engine has a clock and a priority queue of timed events; write it by hand or with SimPy. For now every step takes a fixed time you pass in (the roofline times come in the next ticket) and the engine serves one request at a time. Emit one record per request: arrival, time to first token, finish time, tokens. Pass the fixed times as `prefill_s` and `decode_s`; a `Record` has `arrival`, `admit`, `ttft` (seconds after arrival), `finish` (clock time) and `tokens`.\nCheck (already in `make check`): with a prefill time of 1.0 s and 0.02 s per decode step, a request with 500 output tokens (the first comes from the prefill, then 499 decode steps) has time to first token 1.0 s and finish time 10.98 s.\nDone when `make check` passes.",
       "links": [
         {
           "label": "SimPy documentation",
@@ -3062,7 +3136,7 @@
       "estMin": 45,
       "order": 51,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3076,7 +3150,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Use roofline step times and check one request",
-      "text": "Make the roofline times the default: a prefill step takes the roofline time for the prompt, and a decode step the roofline time to read the weights once (use the function from the T01 tickets; the KV reads come in the next ticket). Keep the fixed-time option, so the check from the previous ticket still passes.\nCheck (add to `make check`): for one request of 8,000 prompt tokens and 500 output tokens on the 70B fp8 example, time to first token is within 1% of the prefill time from your calculator (1.12 s), and total time is within 3% of prefill plus 499 decode steps of 20.9 ms (about 11.55 s). The 3% leaves room for the KV reads that the next tickets add, which cost about 2% on this request.\nDone when `make check` passes and prints the time to first token and the time per token.",
+      "text": "Make the roofline times the default: a prefill step takes the roofline time for the prompt, and a decode step the roofline time to read the weights once (use `roofline.prefill` and `roofline.decode` from the T01 tickets; the KV reads come in the next ticket). Keep the fixed-time option (when `prefill_s` and `decode_s` are passed they still win), so the check from the previous ticket still passes.\nCheck (already in `make check`): for one request of 8,000 prompt tokens and 500 output tokens on the 70B fp8 example, time to first token is within 1% of the prefill time from your calculator (1.12 s), and total time is within 3% of prefill plus 499 decode steps of 20.9 ms (about 11.55 s). The 3% leaves room for the KV reads that the next tickets add, which cost about 2% on this request.\nDone when `make check` passes and prints the time to first token and the time per token.",
       "links": [
         {
           "label": "Modal GPU glossary",
@@ -3086,7 +3160,7 @@
       "estMin": 45,
       "order": 53,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3113,6 +3187,12 @@
       ],
       "estMin": 35,
       "order": 54,
+      "explain": [
+        "If time to first token went up, what do you look at first?"
+      ],
+      "explainAnswers": [
+        "Look at queue wait and prefill load first: how many requests are waiting and how long their prompts are. Then look at KV-cache pressure, using vLLM's metrics: vllm:num_requests_waiting, vllm:kv_cache_usage_perc and vllm:time_to_first_token_seconds (older vLLM versions call the KV gauge vllm:gpu_cache_usage_perc)."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -3137,6 +3217,12 @@
       ],
       "estMin": 45,
       "order": 57,
+      "explain": [
+        "Why should a benchmark stream and report time to first token and inter-token latency separately?"
+      ],
+      "explainAnswers": [
+        "They measure different phases: time to first token reflects queueing and prefill, and inter-token latency reflects decode. An end-to-end average hides which one got worse."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -3148,7 +3234,7 @@
       "area": "measure",
       "phase": 1,
       "title": "Write a fake endpoint and a fixed-load client",
-      "text": "Write `fake_endpoint.py` (about 30 lines, standard library only). Use `ThreadingHTTPServer` so every request is served on its own thread: a single-threaded server would queue requests (each one holds it for about 210 ms against a 200 ms gap between requests) and the median would drift far above 110 ms. It streams a reply: the first token after 100 ms plus a random jitter drawn uniformly from 0 to 20 ms, then 10 more tokens 10 ms apart.\nWrite `bench.py`: send requests at a fixed 5 per second for 20 seconds and print each request's time to first token.\nCheck: the median is between 105 and 115 ms (100 ms plus jitter of 0 to 20 ms, which averages 10 ms, should put it near 110).\nDone when the check passes.",
+      "text": "Write `fake_endpoint.py` (about 30 lines, standard library only). The template has `fake_endpoint.py` (`start()` returns a stop function and the base URL) and `bench.py` (`run_bench(...)`); send one token per line and flush after each. Use `ThreadingHTTPServer` so every request is served on its own thread: a single-threaded server would queue requests (each one holds it for about 210 ms against a 200 ms gap between requests) and the median would drift far above 110 ms. It streams a reply: the first token after 100 ms plus a random jitter drawn uniformly from 0 to 20 ms, then 10 more tokens 10 ms apart.\nWrite `bench.py`: send requests at a fixed 5 per second for 20 seconds and print each request's time to first token.\nCheck: the median is between 105 and 115 ms (100 ms plus jitter of 0 to 20 ms, which averages 10 ms, should put it near 110). The check sends 20 requests a second for 3 seconds so it stays quick; your `bench.py` defaults stay 5 a second for 20 seconds.\nDone when the check passes.",
       "links": [
         {
           "label": "vLLM metrics design",
@@ -3158,7 +3244,7 @@
       "estMin": 40,
       "order": 59,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3172,7 +3258,7 @@
       "area": "measure",
       "phase": 1,
       "title": "Add warm-up, repeats and an error bar",
-      "text": "In `bench.py` drop the first 10 seconds of each run as warm-up, repeat the whole run 5 times (make the repeat count an option), and print the median time to first token of each repeat, the mean of those medians and a 95% t-interval on that mean (mean plus or minus t x s / sqrt(repeats), where s is the sample standard deviation of the medians, dividing by n-1, and t = 4.30 for 3 repeats, 2.78 for 5 and 2.262 for 10).\nCheck the interval code on known numbers: for the three values 1, 2, 3 the half-width is 2.48, and for the ten values 1 to 10 it is 2.17 (test both within 0.01). Do not compare two real runs for a narrower interval: with only 3 repeats the spread is itself so uncertain that a correct tool often shows no clear difference.\nDone when both known-number checks pass.",
+      "text": "In `bench.py` (write `ci95(values)` returning `(mean, half_width)` and `repeat_stats(runs, warmup_s=10.0)`) drop the first 10 seconds of each run as warm-up, repeat the whole run 5 times (make the repeat count an option), and print the median time to first token of each repeat, the mean of those medians and a 95% t-interval on that mean (mean plus or minus t x s / sqrt(repeats), where s is the sample standard deviation of the medians, dividing by n-1, and t = 4.30 for 3 repeats, 2.78 for 5 and 2.262 for 10).\nCheck the interval code on known numbers: for the three values 1, 2, 3 the half-width is 2.48, and for the ten values 1 to 10 it is 2.17 (test both within 0.01). Do not compare two real runs for a narrower interval: with only 3 repeats the spread is itself so uncertain that a correct tool often shows no clear difference.\nDone when both known-number checks pass.",
       "links": [
         {
           "label": "vLLM metrics design",
@@ -3186,11 +3272,11 @@
         "What is goodput and why does it beat throughput?"
       ],
       "explainAnswers": [
-        "Fix the load (arrival rate, prompt and output lengths), warm the system up and throw those results away, then repeat the run several times. Report a median with an error bar, not a single number, and record the model, version and hardware. Measure time to first token and inter-token latency separately.",
-        "Goodput counts only the requests that met their latency targets, while throughput counts everything served. A system can show high throughput while most users wait too long. Goodput measures what users actually find acceptable, so it is the number to optimise."
+        "Fix the load (arrival rate, prompt and output lengths), warm the system up and throw those results away, then repeat the run several times. Report percentiles (p50, p90 and p99) with the number of runs and a confidence interval, not a single number, because latency has a long tail. Record the model, version and hardware. Measure time to first token and inter-token latency separately.",
+        "Goodput is the highest request rate per GPU that still meets the service-level goal, for example at least 90% of requests within their time-to-first-token and per-token latency targets (DistServe, OSDI 2024). Throughput counts everything served, including requests that were too slow. A system can show high throughput while most users wait too long, so goodput under a stated latency goal is the fairer way to compare setups."
       ],
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3244,7 +3330,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Add continuous batching",
-      "text": "Let the engine run many requests at once: each step decodes one token for every running request, a waiting request is prefilled as soon as it arrives (the decode steps pause while it is), and a finished request leaves at once. Step time is the roofline time for reading the weights once plus the KV reads: the tokens held by the running requests x 163,840 bytes per token divided by the bandwidth. That number is the KV bytes per token of this model with 1-byte (fp8) elements: run your memsum script with 1 byte per KV element. Do not copy the 327,680 from the memory-sums ticket, which is the bf16 value; with it the totals in the roofline ticket and the batch sizes below would be wrong.\nCheck: send 16 identical requests, each 1,000 prompt tokens and 500 output tokens, all arriving at time 0. Throughput (16 x 500 output tokens divided by the time the last one finishes) is at least 8 times the throughput of one such request alone (about 47 tokens a second alone, so expect roughly 600 with batching), and never above 16 x 3.35e12 / 70e9 = 766 tokens a second, the most the memory could feed.\nDone when the check passes.",
+      "text": "Let the engine run many requests at once: each step decodes one token for every running request, a waiting request is prefilled as soon as it arrives (the decode steps pause while it is), and a finished request leaves at once. Step time is the roofline time for reading the weights once plus the KV reads: the tokens held by the running requests x 163,840 bytes per token divided by the bandwidth. That number is the KV bytes per token of this model with 1-byte (fp8) elements: run your memsum script with 1 byte per KV element. Set `KV_BYTES_PER_TOKEN` in `engine.py` to that value (163,840); a check reads it. Do not copy the 327,680 from the memory-sums ticket, which is the bf16 value; with it the totals in the roofline ticket and the batch sizes below would be wrong.\nCheck (already in `make check`): send 16 identical requests, each 1,000 prompt tokens and 500 output tokens, all arriving at time 0. Throughput (16 x 500 output tokens divided by the time the last one finishes) is at least 8 times the throughput of one such request alone (about 47 tokens a second alone, so expect roughly 600 with batching), and never above 16 x 3.35e12 / 70e9 = 766 tokens a second, the most the memory could feed.\nDone when the check passes.",
       "links": [
         {
           "label": "Inference Engineering, chapter 5",
@@ -3254,7 +3340,7 @@
       "estMin": 45,
       "order": 64,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3268,7 +3354,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Add the KV memory limit",
-      "text": "A request is held back when its KV cache would not fit. When a request starts, reserve KV space for the whole request (prompt plus output tokens x 163,840 bytes per token, the fp8 value from memsum with 1-byte KV elements, not the bf16 327,680) out of a budget in bytes that you pass in, and give the space back when it finishes. A budget smaller than one request can never finish it: refuse that budget with a clear error.\nCheck: with a budget that holds exactly 4 of the 1,000 + 500 token requests, never more than 4 run at once and all 16 still finish; with a budget of 100 GB the throughput is within 1% of the previous step's.\nDone when the check passes.",
+      "text": "A request is held back when its KV cache would not fit. When a request starts, reserve KV space for the whole request (prompt plus output tokens x 163,840 bytes per token, the fp8 value from memsum with 1-byte KV elements, not the bf16 327,680) out of a budget in bytes that you pass in to `simulate` as `kv_budget` (a `Record`'s `admit` is the time the request got its space), and give the space back when it finishes. A budget smaller than one request can never finish it: refuse that budget with a `ValueError`.\nCheck: with a budget that holds exactly 4 of the 1,000 + 500 token requests, never more than 4 run at once and all 16 still finish; with a budget of 100 GB the throughput is within 1% of the previous step's.\nDone when the check passes.",
       "links": [
         {
           "label": "Inference Engineering, chapter 2",
@@ -3278,7 +3364,7 @@
       "estMin": 45,
       "order": 66,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3305,6 +3391,12 @@
       ],
       "estMin": 45,
       "order": 68,
+      "explain": [
+        "Why does the slowest 1% dominate when a request fans out to many servers?"
+      ],
+      "explainAnswers": [
+        "The request is as slow as the slowest server it waits for. With 100 servers that are each slow 1% of the time, 1 - 0.99^100 = 63% of requests meet at least one slow server."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -3316,7 +3408,7 @@
       "area": "measure",
       "phase": 1,
       "title": "Simulate a single queue and compare p99 with the formula",
-      "text": "Write `queue_sim.py`: one server, random arrivals and service times (an M/M/1 queue), 200,000 jobs. Take service rate mu = 1 job per second, so arrival rate lambda = utilisation rho. For utilisation 0.5, 0.7, 0.85 and 0.95 print the mean wait in the queue and the p99 wait next to the formula mean wait = rho / (mu - lambda).\nCheck values: the formula gives 1.0, 2.33, 5.67 and 19.0 seconds. The simulated mean should be within 5% at 0.5, within 7% at 0.7, within 15% at 0.85 and within 40% at 0.95. The 0.95 value is noisy: the queue is long and slow to settle, so one run can be well off, and that noise is itself a sign of the knee (you may drop the first 10% of jobs as warm-up). Little's law, L = lambda x W with L the time-average number of jobs in the system and W the mean time in the system, should hold within 2% at every utilisation.\nSave the table: the write-up uses it.\nDone when the table prints and both checks pass.",
+      "text": "Complete `queue_sim.py`: `simulate(rho, n_jobs=200_000, seed=0)` returns a dict with `mean_wait`, `p99_wait`, `mean_sojourn` and `avg_in_system`. It simulates one server, random arrivals and service times (an M/M/1 queue), 200,000 jobs. Take service rate mu = 1 job per second, so arrival rate lambda = utilisation rho. For utilisation 0.5, 0.7, 0.85 and 0.95 print the mean wait in the queue and the p99 wait next to the formula mean wait = rho / (mu - lambda).\nCheck values: the formula gives 1.0, 2.33, 5.67 and 19.0 seconds. The simulated mean should be within 5% at 0.5, within 7% at 0.7, within 15% at 0.85 and within 40% at 0.95. The 0.95 value is noisy: the queue is long and slow to settle, so one run can be well off, and that noise is itself a sign of the knee (you may drop the first 10% of jobs as warm-up). Little's law, L = lambda x W with L the time-average number of jobs in the system and W the mean time in the system, should hold within 2% at every utilisation.\nSave the table: the write-up uses it.\nDone when the table prints and both checks pass.",
       "links": [
         {
           "label": "Little's law",
@@ -3326,7 +3418,7 @@
       "estMin": 60,
       "order": 71,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3340,7 +3432,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Write the open-loop and closed-loop load generators",
-      "text": "Open loop: requests arrive at a fixed average rate whatever the engine does (Poisson arrivals: the gaps are drawn from an exponential distribution with mean 1 / rate). Closed loop: a fixed number of users, each sends the next request when the last one finishes. Prompt and output lengths come from two distributions you choose (say so in the README); keep every length between a third and three times its median, so one huge request cannot swamp a run.\nCheck: for the open-loop generator at 50 requests a second over 200 simulated seconds (10,000 expected arrivals, no engine needed) the arrival count is within 5% of rate x time. That is five standard deviations of the count, so a correct generator passes every time (3% would fail now and then). With the engine attached, the closed-loop generator never has more than the user count in flight.\nDone when both checks pass.",
+      "text": "Open loop: requests arrive at a fixed average rate whatever the engine does (Poisson arrivals: the gaps are drawn from an exponential distribution with mean 1 / rate). Closed loop: a fixed number of users, each sends the next request when the last one finishes. Prompt and output lengths come from two distributions you choose (say so in the README); keep every length between a third and three times its median, so one huge request cannot swamp a run. The template has `loadgen.py` with `open_loop(rate, duration, seed, ...)` and `closed_loop(users, n_requests, seed, ...)`; the engine's `simulate` takes `on_finish(record, now)` which may return new requests.\nCheck: for the open-loop generator at 50 requests a second over 200 simulated seconds (10,000 expected arrivals, no engine needed) the arrival count is within 5% of rate x time. That is five standard deviations of the count, so a correct generator passes every time (3% would fail now and then). With the engine attached, the closed-loop generator never has more than the user count in flight.\nDone when both checks pass.",
       "links": [
         {
           "label": "The Tail at Scale",
@@ -3350,7 +3442,7 @@
       "estMin": 60,
       "order": 72,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3382,7 +3474,7 @@
         "What does Little's law say, in one sentence?"
       ],
       "explainAnswers": [
-        "As a server gets close to full, any burst of arrivals forms a queue that takes a long time to drain. Waiting time grows steeply (roughly as one divided by the capacity left over): at 85% utilisation the queueing wait is already about 5.7 times the service time (utilisation divided by one minus utilisation), and it grows steeply after that, so small increases in load cause big increases in delay. The slowest 1% of requests, which meet the longest queues, get far worse than the average.",
+        "As a server gets close to full, any burst of arrivals forms a queue that takes a long time to drain. Waiting time grows steeply (roughly as one divided by the capacity left over): at 85% utilisation the mean queueing wait is already about 5.7 times the service time (utilisation divided by one minus utilisation, for the simple M/M/1 queue with random arrivals and random service times), and it grows steeply after that, so small increases in load cause big increases in delay. The slowest 1% of requests, which meet the longest queues, get far worse than the average: in that same model the 99th-percentile time in the system at 85% is about 30 service times. Real systems differ, so treat the numbers as a guide.",
         "The average number of items in a system equals the arrival rate times the average time each item spends there. If requests arrive at 10 per second and each takes 2 seconds in the system, about 20 are in flight on average. It holds for any stable system, whatever the details."
       ],
       "asOf": "2026-10-11"
@@ -3409,6 +3501,12 @@
       ],
       "estMin": 35,
       "order": 75,
+      "explain": [
+        "What three questions does the USE method ask about each resource?"
+      ],
+      "explainAnswers": [
+        "It asks for utilisation, saturation and errors. Ask all three for each resource, such as CPU, memory and disk, before guessing at the cause."
+      ],
       "asOf": "2026-10-11"
     },
     {
@@ -3420,7 +3518,7 @@
       "area": "measure",
       "phase": 1,
       "title": "Profile a slow Python service and name the real bottleneck",
-      "text": "Write `slow_service.py` with two functions: one burns CPU in a loop, the other waits with `time.sleep` as if it were waiting on the network. Run it under py-spy and read the profile. Add py-spy's `--idle` option, otherwise the sleeping function is hidden because it is not running; with `--idle` it shows up as waiting. On macOS py-spy may need `sudo`; if that is a problem, cProfile is the fallback (it shows the sleep as time spent in `time.sleep`).\nCheck: the profile shows the CPU function as working and the other as waiting, and you can say which one more cores would speed up.\nDone when you can state that in one sentence.",
+      "text": "Write `slow_service.py` with two functions: one burns CPU in a loop, the other waits with `time.sleep` as if it were waiting on the network. Run it under py-spy and read the profile. Add py-spy's `--idle` option, otherwise the sleeping function is hidden because it is not running; with `--idle` it shows up as waiting. On macOS py-spy may need `sudo`; if that is a problem, cProfile is the fallback (it shows the sleep as time spent in `time.sleep`).\nCheck: the profile shows the CPU function as working and the other as waiting. The template has `slow_service.py` with `burn_cpu()`, `wait_for_io()` and `MORE_CORES_HELP`; set `MORE_CORES_HELP` to the name of the CPU-bound function, the kind that more cores can help by splitting it across parallel processes (a single Python thread cannot use a second core, and waiting gains nothing from cores). `make check` times both functions with the standard library, so it does not need py-spy.\nDone when `make check` passes and you can state it in one sentence.",
       "links": [
         {
           "label": "py-spy",
@@ -3433,10 +3531,10 @@
         "How do you tell whether a slow request is waiting or working?"
       ],
       "explainAnswers": [
-        "Look at what the request is doing in a profile or trace: time in CPU code is working, time blocked on a lock, disk, network or sleep is waiting. Compare CPU time with wall-clock time; if wall-clock is much larger, it is waiting. The fix differs: work needs faster code or more cores, waiting needs fewer or shorter waits."
+        "Look at what the request is doing in a profile or trace: time in CPU code is working, time blocked on a lock, disk, network or sleep is waiting. Compare CPU time with wall-clock time for the same thread; if wall-clock is much larger, the thread is waiting off the CPU (on a lock, I/O, a sleep or a queue for a free core). A process with many threads can use more CPU time than wall-clock time, so look at one thread at a time. The fix differs: work needs faster code or more cores, waiting needs fewer or shorter waits."
       ],
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3450,7 +3548,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Serve the simulator in front of a fake OpenAI-style endpoint",
-      "text": "Write a small HTTP server (standard library or a framework you know) with `POST /v1/chat/completions` that runs the request through the simulator and returns the completion after the simulated time (no streaming yet; the text can be filler words). Run the simulator in a background thread on a real-time clock (SimPy has a real-time environment, or sleep until each event) and let the handler wait for its request to finish. The prompt length is the word count of the message and the output length is `max_tokens`.\nCheck: a client that uses the standard OpenAI Python library, with its base URL pointed at your server, gets a completion for a request of 100 prompt words and 100 output tokens, and the response time is within 5% of the simulated finish time (about 2.1 s, so about 100 ms of room for the HTTP calls).\nDone when the check passes.",
+      "text": "Write a small HTTP server (standard library or a framework you know) with `POST /v1/chat/completions` that runs the request through the simulator and returns the completion after the simulated time (no streaming yet; the text can be filler words). The template's `server.py` has `start(port=0, ...)`, which returns a stop function and the base URL. Run the simulator in a background thread on a real-time clock (SimPy has a real-time environment, or sleep until each event) and let the handler wait for its request to finish. The prompt length is the word count of the message and the output length is `max_tokens`.\nCheck: a client that sends the OpenAI chat-completions request (the check uses plain `urllib`; the OpenAI Python library pointed at your base URL works too) gets a completion for a request of 100 prompt words and 100 output tokens, and the response time is within 5% of the simulated finish time (about 2.1 s, so about 100 ms of room for the HTTP calls).\nDone when the check passes.",
       "links": [
         {
           "label": "vLLM, OpenAI-compatible server",
@@ -3460,7 +3558,7 @@
       "estMin": 40,
       "order": 79,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3474,7 +3572,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Stream the tokens as server-sent events",
-      "text": "Make the endpoint stream when the request has `stream: true`: one server-sent-events chunk per simulated token, each sent at its simulated time, then a final `data: [DONE]` line.\nCheck: for a request of 8,000 prompt words and 20 output tokens, the time to the first chunk is within 5% of the simulated time to first token (1.12 s, so about 55 ms of room), and the number of chunks that carry a token equals the output length (the `[DONE]` line does not count).\nDone when the check passes.",
+      "text": "Make the endpoint stream when the request has `stream: true`: one server-sent-events chunk per simulated token, each sent at its simulated time, then a final `data: [DONE]` line. Use the same `start()`.\nCheck: for a request of 8,000 prompt words and 20 output tokens, the time to the first chunk is within 5% of the simulated time to first token (1.12 s, so about 55 ms of room), and the number of chunks that carry a token equals the output length (the `[DONE]` line does not count).\nDone when the check passes.",
       "links": [
         {
           "label": "vLLM metrics design",
@@ -3484,7 +3582,7 @@
       "estMin": 35,
       "order": 80,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3524,7 +3622,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Add fault switches: spikes, 5xx and slow streams",
-      "text": "Add three switches, as environment variables or query parameters: a latency spike (every Nth request is 10 times slower), random HTTP 500 errors at a set rate, and a slow stream (the delay between tokens is 5 times longer). Run your benchmark script from the T06 tickets against the server once with every switch off and once for each switch on, with short requests (20 prompt words, 20 output tokens) at 5 a second for 20 seconds. Add a p99 and a tokens-per-second line to `bench.py` if it lacks them.\nCheck: with a spike on every 10th request the p99 time to first token is higher than in the clean run; with errors at a rate of 20% the 100 requests include at least one HTTP 500 (the chance of none is about two in ten billion); with the slow stream the tokens per second are lower than in the clean run.\nDone when all three effects show up.",
+      "text": "Add three switches, as arguments of `server.start()` (the checks use these), and as environment variables for `python3 server.py`: a latency spike (every Nth request is 10 times slower), random HTTP 500 errors at a set rate, and a slow stream (the delay between tokens is 5 times longer). The checks run short benchmarks of the same kind as your script from the T06 tickets against the server, once with every switch off and once for each switch on, with short requests (20 prompt words, 20 output tokens). `bench.py` needs `summarize(results)` with `p99_ttft` and `tokens_per_s`.\nCheck: with a spike on every 10th request the p99 time to first token is higher than in the clean run; with errors at a rate of 20% the 100 requests include at least one HTTP 500 (the chance of none is about two in ten billion); with the slow stream the tokens per second are lower than in the clean run.\nDone when all three effects show up.",
       "links": [
         {
           "label": "vLLM metrics design",
@@ -3534,7 +3632,7 @@
       "estMin": 45,
       "order": 85,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3547,8 +3645,8 @@
       "node": "B1",
       "area": "llm",
       "phase": 1,
-      "title": "Sweep arrival rates and emit TTFT, ITL, throughput and goodput",
-      "text": "First estimate the capacity in requests a second from the roofline numbers. Use a KV budget of 10 GB and lengths with medians of 1,000 prompt and 300 output tokens, either fixed or spread with a lognormal sigma of at most 0.3. Requests running together = KV budget divided by ((mean prompt + mean output tokens) x 163,840 bytes per token), using the mean lengths your generator really produces. Step time = the decode step time with that many requests running, each holding its prompt plus half its output tokens in the KV cache. The time one request needs in the shared batch = its prefill time + output tokens x step time / requests running together. Capacity = 1 divided by the mean of that time over the requests (about 3.4 requests a second for fixed lengths).\n`make run` then sweeps the open-loop arrival rate from 10% to 120% of that estimate in 12 steps of 10%, sends 2,000 requests at each rate, lets every request finish, and writes a CSV: rate, p50 and p99 time to first token, p50 and p99 inter-token latency, throughput, goodput. A request's inter-token latency is its mean gap between tokens. Goodput counts requests that meet both targets (time to first token at most 500 ms and inter-token latency at most 50 ms; make the targets parameters).\nDone when the CSV shows latency bending upward as the rate nears capacity.",
+      "title": "Sweep arrival rates and emit TTFT, TPOT, throughput and goodput",
+      "text": "First estimate the capacity in requests a second from the roofline numbers. Use a KV budget of 10 GB and lengths with medians of 1,000 prompt and 300 output tokens, either fixed or spread with a lognormal sigma of at most 0.3. Requests running together = KV budget divided by ((mean prompt + mean output tokens) x 163,840 bytes per token), using the mean lengths your generator really produces. Step time = the decode step time with that many requests running, each holding its prompt plus half its output tokens in the KV cache. The time one request needs in the shared batch = its prefill time + output tokens x step time / requests running together. Capacity = 1 divided by the mean of that time over the requests (about 3.4 requests a second for fixed lengths).\n`sweep.py` has the function names the checks call (`estimate_capacity`, `run_rate`, `run_sweep`, `write_csv`); `make run` runs `python3 sweep.py` and writes `out/sweep.csv`. Throughput is output tokens a second; goodput is requests a second that meet both targets.\n`make run` then sweeps the open-loop arrival rate from 10% to 120% of that estimate in 12 steps of 10%, sends 2,000 requests at each rate, lets every request finish, and writes a CSV: rate, p50 and p99 time to first token, p50 and p99 time per output token (TPOT), throughput, goodput. A request's TPOT is its mean gap between tokens. Goodput counts requests that meet both targets (time to first token at most 500 ms and TPOT at most 50 ms; make the targets parameters).\nDone when the CSV shows latency bending upward as the rate nears capacity.",
       "links": [
         {
           "label": "NVIDIA, Benchmarking LLM inference at scale with AIPerf",
@@ -3558,7 +3656,7 @@
       "estMin": 60,
       "order": 86,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3571,8 +3669,8 @@
       "node": "B1",
       "area": "llm",
       "phase": 1,
-      "title": "Write the check: bound and Little's law",
-      "text": "`make check` asserts two things from the sweep, and records both in `results.json`. First, throughput never exceeds the memory-bandwidth bound: the largest batch your KV budget allows x 3.35e12 / 70e9 tokens a second. Second, Little's law holds within 5% at every rate: L, the time-average number of requests in the system, equals the arrival rate x W, the mean time in the system. Measure over the whole run, from time 0 until the last request finishes, and use the measured arrival rate (arrivals divided by the run length), not the nominal one; then the two sides agree to rounding, and the check catches bookkeeping mistakes such as a request counted in flight after it finished.\nDone when both pass.",
+      "title": "Pass the check: bound and Little's law",
+      "text": "The check is in the template (`checks/m17_bound_little.py`); read it, then make `sweep.run_rate` return what it needs: `L`, the time-average number of requests in the system (have the engine add up in-flight x elapsed time at every event and return it in the `stats` dict; a third check compares that total with the sum of every request's time in the system), `W`, `n_arrivals` and `run_length`. It asserts two things from the sweep and records both in `.dojo/results.json`. First, throughput never exceeds the memory-bandwidth bound: the largest batch your KV budget allows x 3.35e12 / 70e9 tokens a second. Second, Little's law holds within 5% at every rate: L, the time-average number of requests in the system, equals the arrival rate x W, the mean time in the system. Measure over the whole run, from time 0 until the last request finishes, and use the measured arrival rate (arrivals divided by the run length), not the nominal one; then the two sides agree to rounding, and the check catches bookkeeping mistakes such as a request counted in flight after it finished.\nDone when both pass.",
       "links": [
         {
           "label": "Little's law",
@@ -3582,7 +3680,7 @@
       "estMin": 40,
       "order": 88,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3595,8 +3693,8 @@
       "node": "B1",
       "area": "llm",
       "phase": 1,
-      "title": "Write the check: knee and variance",
-      "text": "Add two checks. First, the knee: the lowest swept rate at which the p99 time to first token is at least 3 times its value at the lowest rate. It must lie between 50% and 110% of the capacity your formula predicts. Treat the engine as one server whose service rate is your capacity estimate, as in the T07 queue: waiting grows without bound as arrivals approach that rate, and in practice starts a little earlier because requests vary in length. If the knee comes out below 50%, the capacity formula is missing something (the prefill is a likely suspect): fix the formula, not the threshold. Second, variance: rerun the 30% step with another seed and 2,000 requests, keeping the length spread from the previous ticket (fixed lengths, or lognormal sigma at most 0.3; a wider spread can make two correct runs differ by more than 10%); the median time to first token changes by less than 10%. Print both medians.\nDone when all checks pass and `results.json` records them.",
+      "title": "Pass the check: knee and variance",
+      "text": "The template has two checks (`checks/m18_knee_variance.py`) that need your capacity formula and seeds to be right. First, the knee: the lowest swept rate at which the p99 time to first token is at least 3 times its value at the lowest rate. It must lie between 50% and 110% of the capacity your formula predicts. Treat the engine as one server whose service rate is your capacity estimate, as in the T07 queue: waiting grows without bound as arrivals approach that rate, and in practice starts a little earlier because requests vary in length. If the knee comes out below 50%, the capacity formula is missing something (the prefill is a likely suspect): fix the formula, not the threshold. Second, variance: rerun the 30% step with another seed and 2,000 requests, keeping the length spread from the previous ticket (fixed lengths, or lognormal sigma at most 0.3; a wider spread can make two correct runs differ by more than 10%); the median time to first token changes by less than 10%. Print both medians.\nDone when all checks pass and `.dojo/results.json` records them.",
       "links": [
         {
           "label": "Little's law",
@@ -3606,7 +3704,7 @@
       "estMin": 35,
       "order": 90,
       "lab": {
-        "id": "b1",
+        "id": "b1-tokensim",
         "gpu": "none"
       },
       "asOf": "2026-10-11"
@@ -3620,7 +3718,7 @@
       "area": "llm",
       "phase": 1,
       "title": "Write one page on the tokensim design and what it taught you",
-      "text": "Write one page for a teammate who will extend it: what the simulator models and what it leaves out, the three numbers it reproduced from the maths, the surprise (where the sweep disagreed with your formula at first and why), and what you would build next.\nIt is graded against the design rubric: requirements and numbers, trade-offs, and what a stronger version would do.\nDone when the page is in the write-up box.",
+      "text": "Write one page for a teammate who will extend it: what the simulator models and what it leaves out, the three numbers it reproduced from the maths, the surprise (where the sweep disagreed with your formula at first and why), and what you would build next. Save the same text as `WRITEUP.md` in the lab folder and commit it; the review reads that file.\nIt is graded against the design rubric: requirements and numbers, trade-offs, and what a stronger version would do.\nDone when the page is in the write-up box.",
       "links": [
         {
           "label": "Inference Engineering, chapter 7",
@@ -16592,13 +16690,18 @@
       "id": "weekly-review",
       "title": "Weekly review",
       "cadence": "weekly",
-      "minutes": 60
+      "minutes": 60,
+      "dueWeekday": 0,
+      "dueHour": 12,
+      "body": "Look back at your week, then write three short lines: what worked, what to change, and a focus for next week."
     },
     {
       "id": "model-swap-drill",
       "title": "Model swap drill",
       "cadence": "monthly",
-      "minutes": 180
+      "minutes": 180,
+      "dueWeekday": 6,
+      "body": "Pick a lab you have done. Swap the model it uses, then measure again. Write the before and after numbers in a Pulse or Journal line."
     }
   ],
   "idMap": {}

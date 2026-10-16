@@ -68,7 +68,7 @@ describe('moving a card writes only that ticket (BOARD-32, the Transitions table
   })
   it('Done from a blocked ticket is a normal done: doneAt, xp, a tick event, no note', async () => {
     const d = await seed()
-    const r = await moveTicket(d, 'b', 'done', NOW, true)
+    const r = await moveTicket(d, 'b', 'done', NOW)
     expect(r).toMatchObject({ ok: true, xpDelta: 10 })
     const b = (await d.tickets.get('b'))!
     expect(b).toMatchObject({ status: 'done', doneAt: NOW, xp: 10 })

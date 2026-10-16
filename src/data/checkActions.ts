@@ -1,13 +1,12 @@
 import { buildJobRequest, type AiErrorCode, type BriefQuestion, type CheckResult } from '../ai/types'
 import { newId } from '../lib/id'
 import { checkInputs, checkRedoDue, explainQuestions, normalizeResults, passRule, unanswered, type CheckAnswer } from '../rules/check'
-import { CAPSTONE_STAGES } from '../content/capstoneStages'
-import { deliverableOf } from '../rules/brief'
 import { aiTicketOf } from '../rules/rungContent'
 import { callJob } from './aiActions'
 import { moveTicket } from './boardActions'
+import { createExplainRedos } from './explainActions'
 import type { DojoDB } from './db'
-import type { CheckAttemptRow, Deliverable, Redo, Ticket } from './types'
+import type { CheckAttemptRow, Redo, Ticket } from './types'
 
 export type CheckSubmit =
   | { ok: true; passed: boolean; results: CheckResult[]; attempt: CheckAttemptRow; xpDelta: number }
@@ -38,7 +37,8 @@ export async function submitCheck(
   await d.transaction('rw', [d.checkAttempts, d.redos, d.events, d.tickets, d.rungUses], async () => {
     await d.checkAttempts.add(attempt)
     await d.events.add({ t: 'check', id: ticketId, at, passed })
-    const live = (await d.redos.where('ticketId').equals(ticketId).toArray()).find(r => r.closedAt === undefined)
+    // an explain or lab-review card is never "the failed-check redo": a re-run check must not close or push it back
+    const live = (await d.redos.where('ticketId').equals(ticketId).toArray()).find(r => r.closedAt === undefined && r.source !== 'explain' && r.source !== 'lab_review')
     if (passed) {
       if (live) await d.redos.put({ ...live, passed: [...live.passed, true], closedAt: at })
     } else if (live) {
@@ -52,7 +52,7 @@ export async function submitCheck(
     }
     // the attempt, the redo and the finished card land together or not at all
     if (passed && finish && t.status !== 'done') {
-      const r = await moveTicket(d, ticketId, 'done', at, true)
+      const r = await moveTicket(d, ticketId, 'done', at)
       if (r.ok) xpDelta = r.xpDelta
     }
   })
@@ -63,66 +63,16 @@ export async function submitCheck(
  * A finished ticket's explain answers go to the same `check` job. Nothing is finished or reopened here: the attempt is
  * stored and a failure schedules the usual three-day redo. Skipped (no AI call) unless every explain question has an
  * answer and the ticket carries a reference answer for each question. Questions come from `explain` only, never a legacy
- * brief, because the learner's answers are indexed by `explain`.
+ * brief, because the learner's answers are indexed by `explain`. A pass also schedules the explain Review cards (W5, RIT-01); `topic` is the
+ * title of the ticket's plan node.
  */
-export async function submitExplainCheck(d: DojoDB, ticketId: string, texts: string[], at: number): Promise<CheckSubmit> {
+export async function submitExplainCheck(d: DojoDB, ticketId: string, texts: string[], at: number, topic?: string): Promise<CheckSubmit> {
   const t = await d.tickets.get(ticketId)
   const qs = t ? explainQuestions(t) : []
   // a reference answer for every question, or there is nothing to grade against
   if (!t || qs.length === 0 || (t.explainAnswers?.length ?? 0) < qs.length) return { ok: false, code: 'skipped', error: 'No reference answers to check against' }
   if (texts.length < qs.length || texts.slice(0, qs.length).some(x => !x.trim())) return { ok: false, code: 'skipped', error: 'Answer every question to have them checked' }
-  return submitCheck(d, ticketId, qs.map((q, i) => ({ id: q.id, answer: texts[i] })), at, { finish: false, questions: qs })
-}
-
-class Refused extends Error {}
-
-export type DeliverableSubmit = { ok: true; deliverable: Deliverable; xpDelta: number } | { ok: false; error: string }
-
-/** "Mark done" on a build card: keep what was handed in (text, code as text, a link or a path), then finish the card. */
-export async function submitDeliverable(d: DojoDB, ticketId: string, text: string, at: number, feedback?: string[]): Promise<DeliverableSubmit> {
-  const t = await d.tickets.get(ticketId)
-  if (!t?.brief) return { ok: false, error: 'This card has no brief yet' }
-  const body = text.trim()
-  if (!body) return { ok: false, error: 'Hand something in first' }
-  const deliverable: Deliverable = { kind: (deliverableOf(t) ?? t.brief.deliverable).kind, text: body, at, ...(feedback?.length ? { feedback } : {}) }
-  let xpDelta = 0
-  let refused: string | null = null
-  await d.transaction('rw', [d.tickets, d.events, d.rungUses], async () => {
-    const fresh = await d.tickets.get(ticketId)
-    if (!fresh) return
-    await d.tickets.put({ ...fresh, deliverable })
-    if (fresh.status !== 'done') {
-      const r = await moveTicket(d, ticketId, 'done', at)
-      if (r.ok) xpDelta = r.xpDelta
-      else { refused = r.message; throw new Refused() }
-    }
-  }).catch(e => { if (!(e instanceof Refused)) throw e })
-  if (refused) return { ok: false, error: refused }
-  return { ok: true, deliverable, xpDelta }
-}
-
-export type FeedbackResult = { ok: true; feedback: string[] } | { ok: false; code: AiErrorCode; error: string }
-
-/**
- * Optional "Get feedback": the grade job on the deliverable text. Feedback only: it never writes code and never finishes
- * the card. A teach-back (an explanation deliverable) is graded as prose against the stage rubric (UAT cu-5 P2-2), with
- * no repo, commit or diff to look for; anything else is graded as a piece of work.
- */
-export async function deliverableFeedback(d: DojoDB, ticketId: string, text: string, at: number): Promise<FeedbackResult> {
-  const t = await d.tickets.get(ticketId)
-  if (!t) return { ok: false, code: 'bad_request', error: 'Ticket not found' }
-  const explanation = deliverableOf(t)?.kind === 'explanation'
-  const res = await callJob(d, 'grade', buildJobRequest('grade', aiTicketOf(t), explanation
-    ? {
-      proofNote: text.trim(),
-      rubric: `${t.brief?.outcome ?? ''} Feedback only: never write the explanation or any code for the learner.`.trim(),
-      deliverableKind: 'explanation',
-      ...(t.stage !== undefined ? { stage: t.stage, stageTitle: CAPSTONE_STAGES[t.stage]?.title } : {}),
-    }
-    : {
-      proofNote: text.trim(),
-      rubric: `${t.brief?.outcome ?? ''} Feedback only: never write code for the learner.`.trim(),
-    }), at)
-  if (!res.ok) return { ok: false, code: res.code, error: res.error }
-  return { ok: true, feedback: [...res.output.feedback, ...res.output.missing.map(m => `Missing: ${m}`)] }
+  const r = await submitCheck(d, ticketId, qs.map((q, i) => ({ id: q.id, answer: texts[i] })), at, { finish: false, questions: qs })
+  if (r.ok && r.passed) await createExplainRedos(d, t, topic ?? t.title, at)
+  return r
 }

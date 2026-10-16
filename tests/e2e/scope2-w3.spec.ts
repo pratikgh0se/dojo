@@ -7,9 +7,9 @@ import { idbAll, IST, onboard } from './helpers'
 // keys and palette targets are asserted here, their navigation is not (the merger checks it).
 // pictures go to S2_W3_SHOTS_DIR (the visual-check folder); by default into test-results
 const SHOTS = process.env.S2_W3_SHOTS_DIR ?? 'test-results/scope2-w3-shots'
-const ORDER = ['today', 'path', 'board', 'journal', 'skills', 'review', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'guide']
-const LABEL: Record<string, string> = { today: 'Today', path: 'Path', board: 'Board', journal: 'Journal', skills: 'Skills', review: 'Review', ai: 'AI', dsa: 'DSA', designs: 'Designs', banks: 'Banks', atlas: 'Atlas', guide: 'Guide' }
-const ROUTE: Record<string, string> = { today: '/', path: '/path', board: '/board', journal: '/journal', skills: '/skills', review: '/review', ai: '/ai-topics', dsa: '/dsa', designs: '/designs', banks: '/banks', atlas: '/atlas', guide: '/guide' }
+const ORDER = ['today', 'path', 'board', 'journal', 'skills', 'review', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'portfolio', 'guide']
+const LABEL: Record<string, string> = { today: 'Today', path: 'Path', board: 'Board', journal: 'Journal', skills: 'Skills', review: 'Review', ai: 'AI', dsa: 'DSA', designs: 'Designs', banks: 'Banks', atlas: 'Atlas', portfolio: 'Portfolio', guide: 'Guide' }
+const ROUTE: Record<string, string> = { today: '/', path: '/path', board: '/board', journal: '/journal', skills: '/skills', review: '/review', ai: '/ai-topics', dsa: '/dsa', designs: '/designs', banks: '/banks', atlas: '/atlas', portfolio: '/portfolio', guide: '/guide' }
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const urlFor = (path: string) => (path === '/' ? /:\d+\/$/ : new RegExp(`${path.replace('/', '\\/')}$`))
 
@@ -31,11 +31,11 @@ async function width(page: Page, id = 'shell-rail') { return (await page.getByTe
 test.describe('desktop 1280 x 800', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 
-  test('NAV-01/02/03/07: twelve items in three groups, labels, links and headings', async ({ page }) => {
+  test('NAV-01/02/03/07: thirteen items in three groups, labels, links and headings', async ({ page }) => {
     await start(page)
     const rail = page.getByTestId('shell-rail')
     const items = rail.locator('[data-testid^="shell-nav-"]')
-    await expect(items).toHaveCount(12)
+    await expect(items).toHaveCount(13)
     expect(await items.evaluateAll(els => els.map(e => e.getAttribute('data-testid')))).toEqual(ORDER.map(i => `shell-nav-${i}`))
     for (const id of ORDER) {
       const a = page.getByTestId(`shell-nav-${id}`)
@@ -72,7 +72,7 @@ test.describe('desktop 1280 x 800', () => {
     const toggle = page.getByTestId('shell-rail-toggle')
     const fits = async () => {
       const boxes = await page.locator('[data-testid^="shell-nav-"], [data-testid="shell-rail-toggle"]').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return [r.top, r.bottom, r.left, r.right] }))
-      expect(boxes).toHaveLength(13)
+      expect(boxes).toHaveLength(14) // 13 destinations (Portfolio is the 13th) and the toggle
       for (const [t, b, l, r] of boxes) { expect(t).toBeGreaterThanOrEqual(0); expect(b).toBeLessThanOrEqual(800); expect(l).toBeGreaterThanOrEqual(0); expect(r).toBeLessThanOrEqual(1280) }
       const sorted = [...boxes].sort((a, b) => a[0] - b[0])
       for (let i = 1; i < sorted.length; i++) expect(sorted[i][0]).toBeGreaterThanOrEqual(sorted[i - 1][1] - 0.5)
@@ -209,7 +209,7 @@ test.describe('desktop 1280 x 800', () => {
     const sc = await text('shortcuts'); for (const k of '123456?') expect(sc).toContain(k)
     expect(await page.locator('main').innerText()).not.toMatch(/interview/i)
     const lines = page.getByTestId('guide-section-destinations').locator('[data-testid^="guide-dest-"]')
-    await expect(lines).toHaveCount(12)
+    await expect(lines).toHaveCount(13)
     for (const [i, id] of ORDER.entries()) {
       const li = lines.nth(i)
       await expect(li).toHaveAttribute('data-testid', `guide-dest-${id}`)
@@ -395,7 +395,7 @@ test.describe('phone 375 x 667', () => {
     await expect(sheet).toHaveAccessibleName(/\w/)
     await expect(more).toHaveAttribute('aria-expanded', 'true')
     const ids = await sheet.locator('[data-testid^="shell-nav-"]').evaluateAll(els => els.map(e => e.getAttribute('data-testid')))
-    expect(ids).toEqual(['journal', 'skills', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'guide'].map(i => `shell-nav-${i}`))
+    expect(ids).toEqual(['journal', 'skills', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'portfolio', 'guide'].map(i => `shell-nav-${i}`))
     await expect(page.getByTestId('shell-more-group-title-topics')).toHaveText('Topics')
     await expect(page.getByTestId('shell-more-group-title-practice')).toHaveText('Practice')
     const sb = (await sheet.boundingBox())!
@@ -444,6 +444,7 @@ test.describe('phone 375 x 667', () => {
     await expect(bar.locator('[aria-current="page"]')).toHaveCount(0)
     // a hardware keyboard: 5 goes to Skills and More is current
     await page.goto('/path')
+    await ready(page, 'path') // the lazy Path chunk has rendered, so the key handler is live
     await page.locator('body').click({ position: { x: 300, y: 300 } })
     await page.keyboard.press('5')
     await expect(page).toHaveURL(/\/skills$/)

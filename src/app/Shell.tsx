@@ -1,5 +1,5 @@
 import { titleExternalLinks } from '../lib/linkTitles'
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigationType } from 'react-router-dom'
 import { useSettings } from '../data/hooks'
 import { clearGaveUp, loadGaveUp } from '../lib/cycle'
@@ -25,7 +25,6 @@ import { useRailLabels } from './useRailLabels'
 import { RailStateContext, ShellActionsContext } from './shellActions'
 import './shell/shell.css'
 
-const CheckGate = lazy(() => import('../screens/brief/CheckGate').then(m => ({ default: m.CheckGate })))
 
 /** A ticket and a design session are worked in the shell too; they dock their own timer and draw their own heading. */
 const isWorkPath = (p: string) => p.startsWith('/do/') || p.startsWith('/designs/session/')
@@ -90,7 +89,6 @@ export function Shell() {
     <RailStateContext.Provider value={rail}>
     <ShellActionsContext.Provider value={actions}>
     <div className="sh-app" data-phone={phone ? 'true' : 'false'}>
-      <Suspense fallback={null}><CheckGate /></Suspense>
       {!phone && settingsKnown && <Rail expanded={rail.expanded} current={current} badge={badge} onToggle={rail.toggle} />}
       <div className="sh-col">
         <Header title={titleFor(loc.pathname)} own={work} phone={phone} onSearch={openPalette} onShortcuts={openShortcuts} />

@@ -30,21 +30,21 @@ async function boot(opts: { route?: string; settings?: Record<string, unknown>; 
   return { d, ...r }
 }
 
-const ORDER = ['today', 'path', 'board', 'journal', 'skills', 'review', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'guide']
+const ORDER = ['today', 'path', 'board', 'journal', 'skills', 'review', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'portfolio', 'guide']
 const ROUTE: Record<string, string> = {
   today: '/', path: '/path', board: '/board', journal: '/journal', skills: '/skills', review: '/review', ai: '/ai-topics', dsa: '/dsa',
-  designs: '/designs', banks: '/banks', atlas: '/atlas', guide: '/guide',
+  designs: '/designs', banks: '/banks', atlas: '/atlas', portfolio: '/portfolio', guide: '/guide',
 }
 
 describe('NAV-01/02: the rail', () => {
-  it('holds the twelve destinations in three groups, then Guide and the toggle as its last two controls', async () => {
+  it('holds the thirteen destinations in three groups, then Guide and the toggle as its last two controls', async () => {
     await boot()
     const rail = await screen.findByTestId('shell-rail')
     const items = within(rail).getAllByTestId(/^shell-nav-/)
     expect(items.map(i => i.getAttribute('data-testid'))).toEqual(ORDER.map(i => `shell-nav-${i}`))
     expect(within(screen.getByTestId('shell-rail-group-main')).getAllByTestId(/^shell-nav-/)).toHaveLength(6)
     expect(within(screen.getByTestId('shell-rail-group-topics')).getAllByTestId(/^shell-nav-/).map(i => i.getAttribute('data-testid'))).toEqual(['shell-nav-ai', 'shell-nav-dsa', 'shell-nav-designs'])
-    expect(within(screen.getByTestId('shell-rail-group-practice')).getAllByTestId(/^shell-nav-/).map(i => i.getAttribute('data-testid'))).toEqual(['shell-nav-banks', 'shell-nav-atlas'])
+    expect(within(screen.getByTestId('shell-rail-group-practice')).getAllByTestId(/^shell-nav-/).map(i => i.getAttribute('data-testid'))).toEqual(['shell-nav-banks', 'shell-nav-atlas', 'shell-nav-portfolio'])
     const focusable = Array.from(rail.querySelectorAll<HTMLElement>('a[href], button'))
     expect(focusable.slice(-2).map(f => f.getAttribute('data-testid'))).toEqual(['shell-nav-guide', 'shell-rail-toggle'])
     expect(screen.queryByTestId('more-button')).toBeNull()
@@ -171,7 +171,7 @@ describe('NAV-09 to NAV-14: the phone', () => {
     expect(kids).toEqual(['shell-nav-today', 'shell-nav-path', 'shell-nav-board', 'shell-nav-review', 'shell-tab-more'])
     for (const [id, name] of [['shell-nav-today', 'Today'], ['shell-nav-path', 'Path'], ['shell-nav-board', 'Board'], ['shell-nav-review', 'Review'], ['shell-tab-more', 'More']]) expect(within(bar).getByTestId(id)).toHaveTextContent(name)
   })
-  it('opens the sheet with the eight other destinations, headed Topics and Practice', async () => {
+  it('opens the sheet with the nine other destinations, headed Topics and Practice', async () => {
     phone()
     await boot()
     const more = await screen.findByTestId('shell-tab-more')
@@ -183,7 +183,7 @@ describe('NAV-09 to NAV-14: the phone', () => {
     expect(sheet).toHaveAccessibleName()
     expect(more).toHaveAttribute('aria-expanded', 'true')
     expect(within(sheet).getAllByTestId(/^shell-nav-/).map(i => i.getAttribute('data-testid'))).toEqual(
-      ['journal', 'skills', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'guide'].map(i => `shell-nav-${i}`))
+      ['journal', 'skills', 'ai', 'dsa', 'designs', 'banks', 'atlas', 'portfolio', 'guide'].map(i => `shell-nav-${i}`))
     expect(within(sheet).getByTestId('shell-more-group-title-topics')).toHaveTextContent('Topics')
     expect(within(sheet).getByTestId('shell-more-group-title-practice')).toHaveTextContent('Practice')
     const order = Array.from(sheet.querySelectorAll('[data-testid]')).map(e => e.getAttribute('data-testid'))
@@ -221,7 +221,7 @@ describe('NAV-09 to NAV-14: the phone', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false')
     expect(loc().textContent).toBe('/path')
   })
-  it('shows More as current for the eight sheet routes, and the tab for the four tab routes', async () => {
+  it('shows More as current for the nine sheet routes, and the tab for the four tab routes', async () => {
     phone()
     for (const route of ['/skills', '/dsa', '/designs', '/banks', '/atlas', '/guide']) {
       cleanup()
@@ -347,7 +347,7 @@ describe('NAV-37/38/39: the palette', () => {
     expect(items.slice(0, 6).map(i => i.getAttribute('data-target'))).toEqual(['/', '/path', '/board', '/journal', '/skills', '/review'])
     items.slice(0, 6).forEach((it, k) => expect(it).toHaveTextContent(String(k + 1)))
     const input = screen.getByTestId('shell-palette-input')
-    for (const [q, to] of [['board', '/board'], ['journal', '/journal'], ['ai topics', '/ai-topics'], ['guide', '/guide'], ['dsa', '/dsa'], ['designs', '/designs'], ['banks', '/banks'], ['atlas', '/atlas']] as const) {
+    for (const [q, to] of [['board', '/board'], ['journal', '/journal'], ['ai topics', '/ai-topics'], ['guide', '/guide'], ['dsa', '/dsa'], ['designs', '/designs'], ['banks', '/banks'], ['atlas', '/atlas'], ['portfolio', '/portfolio']] as const) {
       expect(targets(input, q), q).toContain(to)
     }
   })

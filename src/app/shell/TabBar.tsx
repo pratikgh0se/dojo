@@ -6,7 +6,7 @@ import { NavItem } from './Rail'
 
 /**
  * Under 768 px: a bottom bar of Today, Path, Board, Review and More, labels always shown (SHELL-12, NAV-09). More opens the
- * sheet of the other eight destinations directly above the bar (NAV-10 to NAV-14).
+ * sheet of the other nine destinations directly above the bar (NAV-10 to NAV-14).
  */
 export function TabBar({ current, badge }: { current: DestinationId | null; badge: number }) {
   const key = useLocation().key

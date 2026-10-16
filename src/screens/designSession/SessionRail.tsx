@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { DesignSession } from '../../data/types'
-import { useSecondsNow } from '../../lib/useNow'
+import { IDLE_TICK_MS, useSecondsNow } from '../../lib/useNow'
 import type { PlanDesignRef } from '../../rules/designs'
 import { clockText, remainingMs, SESSION_MS } from '../../rules/designSession'
 import { Button } from '../../ui/primitives'
@@ -12,7 +12,7 @@ export function SessionRail({
   item, session, onDiscard,
 }: { item: PlanDesignRef; session: DesignSession | null; onDiscard: () => void }) {
   // The countdown ticks on the second boundaries of the drawing clock: earlier pauses move the anchor
-  const t = useSecondsNow(session ? session.at + (session.pausedMs ?? 0) : undefined)
+  const t = useSecondsNow(session ? session.at + (session.pausedMs ?? 0) : undefined, IDLE_TICK_MS)
   const phase = session?.phase ?? 'setup'
   const paused = phase === 'drawing' && session?.pausedAt != null
   const live = phase === 'drawing' || phase === 'close' || phase === 'score'

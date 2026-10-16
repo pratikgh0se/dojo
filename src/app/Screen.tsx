@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 export type ScreenName =
-  | 'today' | 'path' | 'board' | 'journal' | 'skills' | 'review' | 'do' | 'dsa' | 'designs' | 'atlas' | 'banks' | 'settings' | 'guide' | 'design-session' | 'ai-topics'
+  | 'today' | 'path' | 'board' | 'journal' | 'skills' | 'review' | 'do' | 'dsa' | 'designs' | 'atlas' | 'portfolio' | 'banks' | 'settings' | 'guide' | 'design-session' | 'ai-topics'
 
 /**
  * Contract UX addendum 1, Q1: every routed screen's root carries `screen-<name>`, and `data-ready="true"`

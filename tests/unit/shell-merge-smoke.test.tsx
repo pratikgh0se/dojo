@@ -8,7 +8,6 @@ import { Shell } from '../../src/app/Shell'
 import { seedBrief } from '../helpers/briefs'
 import { patchSettings } from '../../src/data/db'
 import { resetNow, setNow } from '../../src/lib/clock'
-import { openCheck } from '../../src/lib/checkGate'
 import { loadStudy, saveStudy } from '../../src/lib/studyStore'
 import { startStudy } from '../../src/rules/studySession'
 import { Settings } from '../../src/screens/Settings'
@@ -26,8 +25,8 @@ afterEach(() => {
   resetNow()
 })
 
-describe('the merged Shell mounts StudyHost and CheckGate', () => {
-  it('advances a stored study session, leaves the sprint-1 card where it is, builds no auto review and opens the check', async () => {
+describe('the merged Shell mounts StudyHost', () => {
+  it('advances a stored study session, leaves the sprint-1 card where it is and builds no auto review', async () => {
     setNow(() => NOW)
     const d = await seededDb()
     await patchSettings(d, { trackedFrom: 1 })
@@ -53,8 +52,6 @@ describe('the merged Shell mounts StudyHost and CheckGate', () => {
     expect(shell).not.toMatch(/useAutoReview|useRollover/)
     expect(await d.reviews.toArray()).toEqual([])
     expect((await d.tickets.get('old'))!.sprint).toBe(1) // nothing is moved between sprints by the app
-    openCheck('w1')
-    expect(await screen.findByRole('dialog', { name: 'Check your understanding' })).toBeInTheDocument()
   })
 })
 

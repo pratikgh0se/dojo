@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// `npm run install:app` (C-DESKTOP): builds Dojo as a Mac app with Electron and installs it as ~/Applications/Dojo.app,
+// `npm run install:app` (C-DESKTOP): builds Dojo as a Mac app with Electron and installs it as /Applications/Dojo.app,
 // replacing the old bash + Chrome launcher bundle. The app runs the Dojo server inside itself on Electron's Node
 // (node:sqlite), on a free port, and opens its one window as the writer. Data stays in ~/Dojo/dojo.db, which install
-// never touches. Options: --dest <dir> (default ~/Applications), --home <dir> (default $DOJO_HOME or ~/Dojo: a
+// never touches. Options: --dest <dir> (default /Applications), --home <dir> (default $DOJO_HOME or ~/Dojo: a
 // non-default home is baked into the app), --no-build (reuse a prebuilt dist from --dist <dir>), --no-icon.
 import { execFileSync, spawnSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
@@ -129,7 +129,7 @@ export function desktopConfig({ out, icon = null }) {
     productName: 'Dojo',
     directories: { output: out },
     asar: false, // the server reads dist/ and the runner's packs from plain files and opens node:sqlite
-    files: ['package.json', 'electron/**', 'server/**', 'shared/**', 'dist/**'],
+    files: ['package.json', 'electron/**', 'server/**', 'shared/**', 'dist/**', 'labs-defs/**', 'scripts/leak-scan.mjs', 'scripts/plan/terms.mjs'],
     // L7: electron-builder drops Electron's LICENSE and LICENSES.chromium.html from a macOS app; they ship in
     // Dojo.app/Contents/Resources/ instead.
     extraResources: [
@@ -156,6 +156,17 @@ export function stageApp(stage, { build = true, dist = null, builder = viteBuild
   const pkg = JSON.parse(readFileSync(join(APP_ROOT, 'package.json'), 'utf8'))
   writeFileSync(join(stage, 'package.json'), JSON.stringify({ name: 'dojo', productName: 'Dojo', version: pkg.version, description: 'Dojo', author: 'Dojo contributors', type: 'module', main: 'electron/main.mjs' }, null, 2))
   for (const d of ['electron', 'server', 'shared']) cpSync(join(APP_ROOT, d), join(stage, d), { recursive: true })
+  // R2: the review bundle (server/labs/bundle.mjs) imports scripts/leak-scan.mjs at run time
+  mkdirSync(join(stage, 'scripts'), { recursive: true })
+  cpSync(join(APP_ROOT, 'scripts', 'leak-scan.mjs'), join(stage, 'scripts', 'leak-scan.mjs'))
+  // R2 W6: the Portfolio export's term rule reads the private term list when it exists (leak-scan.mjs imports it only if present)
+  if (existsSync(join(APP_ROOT, 'scripts', 'plan', 'terms.mjs'))) {
+    mkdirSync(join(stage, 'scripts', 'plan'), { recursive: true })
+    cpSync(join(APP_ROOT, 'scripts', 'plan', 'terms.mjs'), join(stage, 'scripts', 'plan', 'terms.mjs'))
+  }
+  // R2: the lab definitions (templates, reference solutions, hints) ride beside server/, never inside dist/ (which is served)
+  const labs = join(APP_ROOT, 'public', 'data-private', 'labs')
+  if (existsSync(labs)) cpSync(labs, join(stage, 'labs-defs'), { recursive: true })
   if (build) builder(join(stage, 'dist'))
   else cpSync(dist ?? join(APP_ROOT, 'dist'), join(stage, 'dist'), { recursive: true })
   return stage
@@ -217,10 +228,13 @@ export async function installDesktopApp({ dest, home, build = true, dist = null,
   } finally { rmSync(work, { recursive: true, force: true }) }
 }
 
+/** Where `npm run install:app` puts Dojo.app unless `--dest` says otherwise. */
+export const DEFAULT_DEST = '/Applications'
+
 export function parseArgs(argv, env = process.env) {
   const val = f => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : undefined }
   return {
-    dest: resolve(val('--dest') ?? join(homedir(), 'Applications')),
+    dest: resolve(val('--dest') ?? DEFAULT_DEST),
     home: resolve(val('--home') ?? env.DOJO_HOME ?? join(homedir(), 'Dojo')),
     build: !argv.includes('--no-build'),
     dist: val('--dist') ? resolve(val('--dist')) : null,
@@ -238,6 +252,6 @@ if (isMain(import.meta.url)) {
   const app = await installDesktopApp(o)
   console.log(`installed ${app} (Electron ${electronVersion()})`)
   console.log(`data stays in ${join(o.home, 'dojo.db')} (never touched by install); the app runs its own server on a free port (never 8787).`)
-  console.log('Open Dojo from ~/Applications (or drag it to the Dock). Quitting it (Cmd-Q) or closing its window stops the server.')
+  console.log('Open Dojo from /Applications (or drag it to the Dock). Quitting it (Cmd-Q) or closing its window stops the server.')
   if (!existsSync(join(o.home, 'dojo.db'))) console.log('(no dojo.db yet: it is created on first launch and starts fresh)')
 }

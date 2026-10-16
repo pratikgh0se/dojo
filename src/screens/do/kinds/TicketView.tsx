@@ -6,7 +6,7 @@ import { usePlanV2 } from '../../../app/providers'
 import { useCheckAttempts } from '../../../data/hooks'
 import type { Ticket } from '../../../data/types'
 import { isReadOnly } from '../../../data/writer'
-import { useSecondsNow } from '../../../lib/useNow'
+import { IDLE_TICK_MS, useSecondsNow } from '../../../lib/useNow'
 import { CHECK_REDO_DAYS } from '../../../rules/check'
 import { globalKeyBlocked } from '../../../rules/keyScope'
 import { unlocksOf } from '../../../rules/skillView'
@@ -25,6 +25,7 @@ import { BuildBody } from './BuildBody'
 import { ResourceBody } from './ResourceBody'
 import { TicketFacts } from './TicketFacts'
 import { TicketTimer } from './TicketTimer'
+import { useLabTicket } from './useLabTicket'
 import '../ticket.css'
 
 /** Every kind but a problem. One header, one timer, one accent button: Start, then Done. */
@@ -38,12 +39,13 @@ export function TicketView({ ticket }: { ticket: Ticket }) {
   const readOnly = isReadOnly()
   const work = useTicketWork(ticket)
   const attempts = useCheckAttempts(ticket.id)
+  const labTicket = useLabTicket(ticket)
   const [focus, setFocus] = useState(false)
   const finishing = useRef(false)
   useScreenKeys(['F focus mode'])
 
   const mine = study && study.ticketId === ticket.id ? study : null
-  const t = useSecondsNow(mine?.phaseStart)
+  const t = useSecondsNow(mine?.phaseStart, IDLE_TICK_MS)
   const design = ticket.kind === 'design' || ticket.kind === 'writeup'
   const ritual = ticket.kind === 'ritual'
   const done = ticket.status === 'done'
@@ -85,7 +87,14 @@ export function TicketView({ ticket }: { ticket: Ticket }) {
       ) : done ? (
         <span className="dk-done" data-testid="ticket-done-state"><Glyph name="check" size={3} /> Done.</span>
       ) : mine ? (
-        <Button variant="accent" data-accent="primary" data-testid="ticket-done" disabled={readOnly} onClick={finish}>{verbObject('DONE', ticket.kind)}</Button>
+        <>
+          {/* the escape comes BEFORE the accent: nothing focusable may follow the one accent in its group (GLOBAL-03). It never passes a milestone (LAB-23). */}
+          {labTicket?.gated && !labTicket.passed && <Button variant="quiet" data-testid="ticket-lab-skip-checks" disabled={readOnly} onClick={finish}>Mark done without checks</Button>}
+          <Button
+            variant="accent" data-accent="primary" data-testid="ticket-done" disabled={readOnly || (labTicket?.doneLocked ?? false)}
+            aria-describedby={labTicket?.milestone ? 'ticket-lab-milestone' : undefined} onClick={finish}
+          >{verbObject('DONE', ticket.kind)}</Button>
+        </>
       ) : (
         <>
           {/* R7: a ritual can be finished without a timer; Done is then the plain button and Start stays the accent, last */}
@@ -99,7 +108,7 @@ export function TicketView({ ticket }: { ticket: Ticket }) {
   // foot of the notes, below the fold at 1280 x 800). Once started, Done sits at the foot of the last card of the body.
   const beforeStart = !design && !done && !mine
   const body = ticket.kind === 'build'
-    ? <BuildBody ticket={ticket} work={work} readOnly={readOnly} actions={beforeStart ? undefined : actions} />
+    ? <BuildBody ticket={ticket} work={work} readOnly={readOnly} actions={beforeStart ? undefined : actions} lab={labTicket} />
     : ritual || design
       ? null
       : <ResourceBody ticket={ticket} work={work} readOnly={readOnly} actions={beforeStart ? undefined : actions} />

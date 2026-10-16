@@ -41,8 +41,8 @@ const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 
 async function runFake<J extends JobName>(job: J, req: JobRequest<J>, opts: RunOptions): Promise<JobOutput<J>> {
   const hooks = readFakeHooks(job, opts.storage, req.ticket?.id)
-  // README "Fake AI provider": the bank_more job takes at least 300 ms, so that "disabled while the job runs" can be observed
-  const delayMs = job === 'bank_more' ? Math.max(hooks.delayMs, FAKE_BANK_MORE_MIN_MS) : hooks.delayMs
+  // README "Fake AI provider": the bank_more and portfolio_draft jobs take at least 300 ms, so that "disabled while the job runs" can be observed
+  const delayMs = job === 'bank_more' || job === 'portfolio_draft' ? Math.max(hooks.delayMs, FAKE_BANK_MORE_MIN_MS) : hooks.delayMs
   if (delayMs > 0) await sleep(delayMs)
   if (hooks.fail) throw new AiJobError(hooks.fail, `fake ${job} unavailable`)
   return fakeOutput(job, req, hooks.variant)

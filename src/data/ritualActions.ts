@@ -1,5 +1,6 @@
 import { localDayKey } from '../lib/dates'
 import { checkPulseText, pulseId, weekTicket, weekTicketId } from '../rules/ritual'
+import { ritualOpen, ritualTicket, ritualTicketId, type RitualEntry } from '../rules/ritualPeriod'
 import type { DojoDB } from './db'
 import type { Pulse } from './types'
 
@@ -28,6 +29,20 @@ export async function openWeekTicket(d: DojoDB, nowMs: number, o: { minutes: num
   const id = weekTicketId(nowMs)
   await d.transaction('rw', d.tickets, async () => {
     if (!(await d.tickets.get(id))) await d.tickets.put(weekTicket(nowMs, o))
+  })
+  return id
+}
+
+/**
+ * W5: open any windowed ritual (weekly review, monthly swap drill): create the period's ticket if it has none, return its id.
+ * Idempotent like `openWeekTicket`; null when the entry's window is not open. Called only from an Open click, never on page load.
+ */
+export async function openRitualTicket(d: DojoDB, entry: RitualEntry, nowMs: number): Promise<string | null> {
+  const period = ritualOpen(entry, nowMs)
+  if (!period) return null
+  const id = ritualTicketId(entry.id, period.key)
+  await d.transaction('rw', d.tickets, async () => {
+    if (!(await d.tickets.get(id))) await d.tickets.put(ritualTicket(entry, period, nowMs))
   })
   return id
 }

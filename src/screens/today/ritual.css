@@ -39,3 +39,23 @@
 .jc-link:hover { color: var(--sr-label-accent); }
 .jc-card[data-state='saved'] .jc-link { color: var(--sr-label-ok); }
 @media (max-width: 767px) { .jc-link { min-height: var(--sr-size-hit-touch); } }
+
+/* W5: windowed ritual cards (weekly review, monthly swap drill) */
+.rd-card { align-content: start; }
+/* W5: the focus line is one quiet line above the quest; `order` keeps it first even when the Floor leads */
+.rt-focus { margin: 0; order: -4; font-size: var(--type-body); line-height: 1.4; color: var(--sr-text-secondary); overflow-wrap: anywhere; }
+
+/* W5: the Floor card leads (grid order) after a gap or on a short day; the welcome line and the toggle sit around it */
+.fl-card { display: grid; gap: 10px; justify-items: start; }
+.fl-welcome { margin: 0; order: -3; font-size: var(--type-body); font-weight: 700; line-height: 1.4; }
+.fl-card[data-lead] { order: -2; }
+.fl-toggle { order: -1; justify-self: start; }
+/* RIT-54: with a started ticket on a restart day its quest sits directly below the Floor card; the toggle follows the quest */
+.fl-toggle.fl-after { order: 1; }
+@media (max-width: 767px) {
+  .fl-card[data-lead] .sr-btn { width: 100%; min-height: var(--sr-size-hit-touch); justify-content: center; box-sizing: border-box; }
+  /* RIT-64: as the quest card does (quest.css), the leading Floor card gives up its side borders and padding so START is as wide as
+     the card (over 90 percent of the viewport); its text keeps the 16 px inset */
+  .fl-card[data-lead] { padding-inline: 0; border-inline-width: 0; justify-items: stretch; box-shadow: inset 0 3px 0 var(--sr-edge-light-panel), inset 0 -3px 0 var(--sr-edge-shade-panel), 0 8px 0 var(--sr-edge-dark); }
+  .fl-card[data-lead] > :not(.sr-btn) { margin-inline: 16px; }
+}

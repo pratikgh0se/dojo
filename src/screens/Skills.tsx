@@ -11,6 +11,7 @@ import { nodeStates, questTicketId } from '../rules/skillView'
 import { Loading } from '../ui/Loading'
 import { AreaMap } from './skills/AreaMap'
 import { AreaView } from './skills/AreaView'
+import { useTopicViews } from './skills/useTopicViews'
 import { Stats } from './skills/Stats'
 import './skills.css'
 
@@ -42,7 +43,8 @@ function SkillsBody({ plan, tickets, sessions, questId, coreMinutes }: {
     { id: 'ai', label: 'AI', to: '/skills' }, { id: 'dsa', label: 'DSA', to: '/skills/dsa' },
     { id: 'design', label: 'Design', to: '/skills/design' }, { id: 'stats', label: 'Stats', to: '/skills/stats' },
   ]
-  const view = { plan, tickets, states, phone, nextTicket: quest }
+  const topics = useTopicViews(plan, tickets)
+  const view = { plan, tickets, states, phone, nextTicket: quest, topics }
   return (
     <div className="sk">
       <div className="sk-tabs" role="tablist" data-testid="skills-tabs" aria-label="Skills">

@@ -22,9 +22,13 @@ export function useGlobalKeys(a: { overlayOpen: boolean; onPalette: () => void; 
       }
       if (overlayOpen || globalKeyBlocked(e) || modalOpen()) return
       if (e.key === '?') { e.preventDefault(); onShortcuts(); return }
-      // PATH-10: Path's own "/" handler is not mounted yet while its chunk loads; keep the press for it
-      if (e.key === '/' && window.location.pathname === '/path' && !document.querySelector('[data-testid="path-search"]')) {
-        e.preventDefault(); askPathSearch(); return
+      // PATH-10: Path's own "/" handler is registered after its first paint, and the box can be drawn before that, so the shell
+      // focuses a drawn box itself; while the box is not drawn yet it keeps the press for Path
+      if (e.key === '/' && window.location.pathname === '/path') {
+        e.preventDefault()
+        const box = document.querySelector<HTMLInputElement>('[data-testid="path-search"]')
+        if (box) box.focus(); else askPathSearch()
+        return
       }
       const dest = DESTINATIONS.find(x => x.key === e.key)
       if (dest) { e.preventDefault(); navigate(dest.to) }
