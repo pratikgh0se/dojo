@@ -292,11 +292,11 @@ describe('Portfolio screen: the confirm screen (PORT-20 to PORT-23, PORT-49)', (
     await waitFor(() => expect(tid('portfolio-confirm-dirty').textContent).toBe('Uncommitted changes in the lab folder are not included.'))
   })
 
-  it('the first site publish shows the Pages note (exact text); with a site or article already published it does not', async () => {
+  it('the first site publish shows the Pages note (exact text, PORT-58); with a site or article already published it does not', async () => {
     const d = await withDraft('site')
     click('portfolio-publish-pf-a-site')
     await waitFor(() => expect(has('portfolio-confirm-pages-note')).toBe(true))
-    expect(tid('portfolio-confirm-pages-note').textContent).toBe('First time: turn on GitHub Pages once. In the repository Settings, open Pages and choose branch main and the root folder. Dojo does not change repository settings.')
+    expect(tid('portfolio-confirm-pages-note').textContent).toBe('Publishing also turns on GitHub Pages for this repository if it is off.')
     expect(tid('portfolio-confirm-repo').textContent).toBe('fixture-user/ai-infra-portfolio')
     expect(tid('portfolio-confirm-submit')).toHaveTextContent('PUBLISH · SITE')
     expect(tid('portfolio-confirm-url').textContent).toBe('https://fixture-user.github.io/ai-infra-portfolio/labs/pf-a')
@@ -427,5 +427,64 @@ describe('Portfolio screen: read-only browser (PORT-47)', () => {
     for (const k of ['site', 'article']) expect(tid(`portfolio-create-pf-a-${k}`)).toBeDisabled()
     click('portfolio-copy-pf-a-linkedin')
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('Saved post.'))
+  })
+})
+
+describe('Portfolio screen: the Pages result after a publish (PORT-54 to PORT-61)', () => {
+  const SITE = 'https://fixture-user.github.io/ai-infra-portfolio/'
+  const publishSite = async (pages: Record<string, unknown> | undefined, kind: 'site' | 'article' | 'repo' = 'site') => {
+    stub({ pub: b => json({ ok: true, url: `${SITE}${kind === 'site' ? 'labs' : 'writing'}/${b.labId}`, ...(pages ? { pages } : {}) }) })
+    const d = await withDraft(kind)
+    click(`portfolio-publish-pf-a-${kind}`)
+    await waitFor(() => expect(tid('portfolio-confirm-submit')).toBeEnabled())
+    click('portfolio-confirm-submit')
+    await waitFor(() => expect(has('portfolio-confirm')).toBe(false))
+    return d
+  }
+  const key = 'pf-a-site'
+
+  it('enabled: the plain line and the site address as a link; no error', async () => {
+    await publishSite({ state: 'enabled', siteUrl: SITE })
+    const block = await screen.findByTestId(`portfolio-pages-${key}`)
+    expect(block).toHaveAttribute('data-pages', 'enabled')
+    expect(tid('portfolio-out-pf-a-site').contains(block)).toBe(true)
+    expect(tid(`portfolio-pages-text-${key}`).textContent).toBe('GitHub Pages is now on for this repository. GitHub takes about a minute to show a new page.')
+    const link = tid(`portfolio-site-url-${key}`)
+    expect(link.textContent).toBe(SITE)
+    expect(link.getAttribute('href')).toBe(SITE)
+    expect(has(`portfolio-pages-error-${key}`)).toBe(false)
+    expect(has('portfolio-confirm-error')).toBe(false)
+    expect(tid(`portfolio-url-${key}`).textContent).toBe(`${SITE}labs/pf-a`)
+    expect(block.querySelector('[data-accent]')).toBeNull()
+  })
+
+  it('on: the already-on line with the same link', async () => {
+    await publishSite({ state: 'on', siteUrl: SITE })
+    expect(tid(`portfolio-pages-${key}`)).toHaveAttribute('data-pages', 'on')
+    expect(tid(`portfolio-pages-text-${key}`).textContent).toBe('GitHub Pages is already on for this repository.')
+    expect(tid(`portfolio-site-url-${key}`).textContent).toBe(SITE)
+  })
+
+  it('failed: the publish stands (row published, toast), the by-hand line, GitHub\'s words as learner text, no link', async () => {
+    const d = await publishSite({ state: 'failed', detail: 'Resource not accessible by personal access token (HTTP 403)' })
+    expect(tid(`portfolio-pages-${key}`)).toHaveAttribute('data-pages', 'failed')
+    expect(tid(`portfolio-pages-error-${key}`).textContent).toBe('Your page is published, but GitHub Pages could not be turned on. To turn it on by hand, open the repository Settings, choose Pages, pick branch main and the root folder, and save. Then open the page.')
+    expect(tid(`portfolio-pages-detail-${key}`)).toHaveAttribute('data-content', 'learner')
+    expect(tid(`portfolio-pages-detail-${key}`).textContent).toContain('(HTTP 403)')
+    expect(tid(`portfolio-pages-error-${key}`).textContent).not.toMatch(/HTTP|\d{3}|\{/)
+    expect(has(`portfolio-site-url-${key}`)).toBe(false)
+    expect(has(`portfolio-pages-text-${key}`)).toBe(false)
+    expect((await row(d, 'pf-a:site'))).toMatchObject({ status: 'published', url: `${SITE}labs/pf-a` })
+    expect(await screen.findByTestId('toast')).toHaveTextContent('Published')
+  })
+
+  it('a repo publish shows no Pages block', async () => {
+    await publishSite(undefined, 'repo')
+    expect(document.querySelector('[data-testid^="portfolio-pages-"]')).toBeNull()
+  })
+
+  it('the result is not stored: it is not in the row, and a fresh render of the screen shows none', async () => {
+    const d = await publishSite({ state: 'enabled', siteUrl: SITE })
+    expect(JSON.stringify(await row(d, 'pf-a:site'))).not.toMatch(/pages|enabled/i)
   })
 })

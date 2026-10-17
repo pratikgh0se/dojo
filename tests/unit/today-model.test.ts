@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { dailyMix, nextAction } from '../../src/rules/dayMix'
 import type { DayMix } from '../../src/rules/dayMix'
-import { questView, thenLine, todayHeading } from '../../src/rules/todayModel'
+import { currentPathPhase, questView, thenLine, todayHeading } from '../../src/rules/todayModel'
 import { mkTicket, PHASES } from '../helpers/planV2'
 
 const mix = (over: Partial<DayMix> = {}): DayMix => ({ budget: 60, items: [], floor: false, waitsForLongerDay: [], lanesDone: [], ...over })
@@ -81,4 +81,13 @@ describe('questView with the real dailyMix and nextAction (TODAY-14, TODAY-15)',
       expect(v.waits.map(w => w.id)).toContain('dsa90')
     })
   }
+  // TODAY-57: the phase line is the learner's path phase, whatever lane the quest is in
+  it('takes the phase of the first open path ticket, not of the quest', () => {
+    const dsa = mkTicket({ id: 'm1w1i1', lane: 'dsa', track: 'interview', order: 1 })
+    const path = [mkTicket({ id: 'a', phase: 1, order: 5, status: 'done' }), mkTicket({ id: 'b', phase: 2, order: 6 }), mkTicket({ id: 'c', phase: 3, order: 7 })]
+    expect(currentPathPhase([dsa, ...path])).toBe(2)
+    expect(currentPathPhase([dsa, ...path.map(t => ({ ...t, orderOverride: t.id === 'c' ? 0 : undefined }))])).toBe(3)
+    expect(currentPathPhase([dsa, mkTicket({ id: 'd', phase: 4, order: 8, archived: true })])).toBeUndefined()
+    expect(currentPathPhase([dsa])).toBeUndefined()
+  })
 })

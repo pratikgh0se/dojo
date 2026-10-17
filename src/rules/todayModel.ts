@@ -1,7 +1,8 @@
 import type { PlanPhase } from '../data/planV2'
 import type { Ticket } from '../data/types'
 import { localDaysBetween, parseLocalDate } from '../lib/dates'
-import type { DayMix, NextAction } from './dayMix'
+import { byOrder, isOpen, type DayMix, type NextAction } from './dayMix'
+import { laneOf } from './lanes'
 import { verbObject } from './ticketMeta'
 
 export interface QuestView {
@@ -57,4 +58,9 @@ export function todayHeading(a: { nowMs: number; startDate: string; phase: numbe
   const days = started ? localDaysBetween(parseLocalDate(a.startDate), a.nowMs) : -1
   const p = a.phase === undefined ? undefined : a.phases.find(x => x.p === a.phase)
   return { day: started && days >= 0 ? days + 1 : null, phaseLine: p ? `Phase ${p.p} of ${a.phases.length} · ${p.name}` : '' }
+}
+
+/** TODAY-57: the phase of the learner's first open path-lane ticket by effective order, whatever lane the quest is in; undefined when no path ticket is open. */
+export function currentPathPhase(tickets: readonly Ticket[]): number | undefined {
+  return tickets.filter(t => isOpen(t) && laneOf(t) === 'path').sort(byOrder)[0]?.phase
 }

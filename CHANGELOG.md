@@ -3,6 +3,33 @@
 All notable changes to Dojo. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 2.2.0 - 2026-10-17
+
+Release 3: the Skills node panel gets its ticket list, a portfolio publish turns GitHub Pages on, the Today header names your
+path phase, and Phase 2 of the AI-infra path is written. A minor version: no data migration and no Dexie change.
+
+### Added
+
+- **Skills node panel:** an AI node lists its tickets, read-only, with a status mark on each row; a row opens its ticket and the Start button stays the one action. An AI or Design node with bank questions shows a plain "Questions (N)" link to its questions in Banks. The phone shows both in the expanded row.
+- **GitHub Pages after publish (R3):** a successful site or article publish reads Pages for `ai-infra-portfolio` and turns it on
+  (branch `main`, folder `/`) when it is off, then shows the site address. A Pages failure never undoes the push; the output shows
+  a plain by-hand line and GitHub's own message. The result is shown, not stored. The stub `gh` answers the two Pages calls
+  (`pages.log`, `pages-fail`), and `prepare.mjs` gains `--pages-on` and `--pages-fail`.
+- **Phase 2 content:** 49 new path tickets for Phase 2 of the AI-infra plan, with question-bank entries and four new labs
+  (`b2-kvlab`, `r2-vllm`, `u2-rag`, `g2-spec`) with templates, references and checks.
+
+### Changed
+
+- **DSA and Design lanes:** 37 DSA and Design task rewrites in plainer words, one sitting each, with the AI-scale design tickets
+  placed at the end of the Design lane.
+- **Today header:** the "Phase N of M" line shows the phase of your first open path ticket, also when today's quest is a DSA or
+  Design ticket (it was blank for those).
+
+### Fixed
+
+- "Questions (N)" in the Skills node panel appears together with its panel and with its final count, instead of showing a number
+  that then changed once AI-made questions were read.
+
 ## 2.1.0 - 2026-10-16
 
 Release 2: labs you can run, check and have reviewed, the Proven state, rituals, and the Portfolio. A minor version: Dexie moves

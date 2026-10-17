@@ -55,7 +55,10 @@ test('UAT B J5.4: a stored review with long code and text wraps inside the ticke
   expect(col.block).toBeLessThanOrEqual(col.main + 1)
 })
 
-test('UAT B J6.6: on a phone, opening a node row near the bottom keeps its panel above the fixed next-ticket panel', async ({ page }) => {
+test('UAT B J6.6: on a phone, nothing in an opened node row ends up under the fixed next-ticket panel', async ({ page }) => {
+  // SKILLS-37: the row now holds the whole read-only ticket list, so it is taller than the viewport by design (no cap, no inner scroll).
+  // The guard is that nothing important hides under the fixed panel: (a) the row header and Start clear it once the row opens,
+  // (b) scrolled to the end of the page, the last ticket row of the node clears it.
   await page.setViewportSize({ width: 375, height: 667 })
   await page.clock.setFixedTime(IST('2026-11-04T10:00:00'))
   await onboard(page, '2026-11-02')
@@ -65,13 +68,24 @@ test('UAT B J6.6: on a phone, opening a node row near the bottom keeps its panel
   await page.evaluate(() => { const t = document.querySelector('[data-testid="skills-row-B1"] .sk-line')!.getBoundingClientRect().top; window.scrollBy(0, t - 380) })
   await row.locator('.sk-line').click()
   await expect(row.locator('.sk-more')).toBeVisible()
-  const g = await page.evaluate(() => ({
-    panelTop: document.querySelector('[data-testid="skills-next-panel"]')!.getBoundingClientRect().top,
-    rowBottom: document.querySelector('[data-testid="skills-row-B1"]')!.getBoundingClientRect().bottom,
-    rowTop: document.querySelector('[data-testid="skills-row-B1"]')!.getBoundingClientRect().top,
-  }))
-  expect(g.rowBottom).toBeLessThanOrEqual(g.panelTop)
-  expect(g.rowTop).toBeGreaterThanOrEqual(0)
+  const geo = () => page.evaluate(() => {
+    const top = (sel: string) => document.querySelector(sel)!.getBoundingClientRect()
+    const last = [...document.querySelectorAll('[data-testid="skills-row-B1"] [data-testid^="skills-node-ticket-"][data-status]')].pop()!
+    return {
+      panelTop: top('[data-testid="skills-next-panel"]').top,
+      headBottom: top('[data-testid="skills-row-B1"] .sk-line').bottom,
+      headTop: top('[data-testid="skills-row-B1"] .sk-line').top,
+      startBottom: top('[data-testid="skills-row-B1"] [data-testid="skills-node-start"]').bottom,
+      lastBottom: last.getBoundingClientRect().bottom,
+    }
+  })
+  const a = await geo()
+  expect(a.headTop).toBeGreaterThanOrEqual(0)
+  expect(a.headBottom).toBeLessThanOrEqual(a.panelTop)
+  expect(a.startBottom).toBeLessThanOrEqual(a.panelTop)
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  const b = await geo()
+  expect(b.lastBottom).toBeLessThanOrEqual(b.panelTop)
 })
 
 test('UAT A J10.4: the Journal week heading never breaks inside a date on a phone', async ({ page }) => {

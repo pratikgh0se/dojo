@@ -35,6 +35,14 @@ export function questionsOf(area: BankArea, qbank: readonly PlanQuestion[] | und
     .sort((a, b) => rank.get(a.node)! - rank.get(b.node)! || a.difficulty - b.difficulty || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 }
 
+/** TREE-22, TREE-23, TREE-25: how many questions a node has (shipped plus AI-made). A DSA node has none (TREE-24); a node's bank is Design for a Design node, AI for any other. */
+export function nodeQuestionCount(node: { id: string; area: string }, qbank: readonly PlanQuestion[] | undefined, extra: readonly BankExtraRow[] | undefined): { area: BankArea; count: number } | null {
+  if (node.area === 'dsa') return null
+  const area: BankArea = node.area === 'design' ? 'design' : 'ai'
+  const mine = (q: { node: string; area: string }): boolean => q.node === node.id && q.area === area
+  return { area, count: (qbank ?? []).filter(mine).length + (extra ?? []).filter(mine).length }
+}
+
 /** The nodes of the area that have at least one question, in plan order (the options of `banks-q-filter-node`). */
 export function nodesWithQuestions(qs: readonly Question[], nodes: readonly NodeRef[]): NodeRef[] {
   const has = new Set(qs.map(q => q.node))

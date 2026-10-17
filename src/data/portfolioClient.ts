@@ -24,7 +24,9 @@ export interface ExportInfo {
   repoUrl: string | null
   gh: GhStatus
 }
-export interface PublishInfo { url: string }
+/** What GitHub Pages came to after a site or article publish (R3): already on, turned on now, or refused (`detail` is GitHub's own words). Never stored. */
+export type PagesInfo = { state: 'on' | 'enabled'; siteUrl: string } | { state: 'failed'; detail: string }
+export interface PublishInfo { url: string; pages?: PagesInfo }
 export type Outcome<T> = { ok: true; value: T } | { ok: false; code: string; message: string; hits?: LeakHit[] }
 
 export const NO_SERVER_MESSAGE = 'Publishing needs the Dojo server. Open Dojo from the Dojo app.'

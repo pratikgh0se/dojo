@@ -2,7 +2,7 @@
 // writerRoute in dojo-server.mjs; this module takes the parsed JSON body and answers { status, body }.
 //   export   { labId, labsRoot, kind? = 'repo', text? }
 //            -> { ok, title, repo, tickets, files: [{path, bytes}], publishFiles: [path], writeup, uncommitted, hits, urls, repoUrl, gh }
-//   publish  { labId, labsRoot, kind, text?, files: [path] } -> { ok, url, committed }
+//   publish  { labId, labsRoot, kind, text?, files: [path] } -> { ok, url, committed, pages? } (pages: site and article only, see pages.mjs)
 // Errors are { ok: false, error: { code, message, hits? } }. Every path is derived from the lab definition and the resolved labs root.
 import { buildExport, targetRepoName, targetUrls } from './export.mjs'
 import { ghLogin } from './gh.mjs'

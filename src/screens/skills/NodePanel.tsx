@@ -7,6 +7,7 @@ import { KIND_LABEL, minutesLabel } from '../../rules/ticketMeta'
 import { Glyph } from '../../ui/Glyph'
 import { SkMeter } from './Meter'
 import { NodeItems, NodeStart } from './NodeItems'
+import { NodeQuestions, NodeTickets } from './NodeTickets'
 import type { TopicView } from './useTopicViews'
 
 /** The selected topic: what it is, what it needs and unlocks, ticket progress and the one way to start its next ticket. */
@@ -71,6 +72,9 @@ export function NodePanel({ node, plan, tickets, states, topic }: { node: PlanNo
         <span className="sk-cap">Tickets {done} of {mine.length}</span>
         <SkMeter done={done} total={mine.length} label="Tickets done" testId={`skills-panel-meter-${node.id}`} segments={Math.min(8, Math.max(1, mine.length))} />
       </div>
+      {/* R3: an AI node lists its tickets, read-only (SKILLS-32); an AI or Design node with bank questions links to them (TREE-22) */}
+      {!tree && <NodeTickets items={mine} />}
+      <NodeQuestions node={node} plan={plan} />
       </div>
       {next ? (
         <div className="sk-pfoot">

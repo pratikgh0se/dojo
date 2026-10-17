@@ -63,7 +63,8 @@ def static(lab, through):
     if not through and j["closingTicket"] != j["tickets"][-1]:
         fail(lab, "closingTicket", "must be the last entry of tickets")
     # 2. tickets match the plan and the sequence
-    seq = json.loads(read(os.path.join(ROOT, "plan-src", "sequence.json")))["1"]
+    sequence = json.loads(read(os.path.join(ROOT, "plan-src", "sequence.json")))
+    seq = [t for phase in sorted(sequence) for t in sequence[phase]]  # a lab's tickets may sit in any phase
     want = sorted(ticket_ids(lab), key=seq.index)
     got = [m["ticket"] for m in j["milestones"]]
     if not through and (got != want or j["tickets"] != want):

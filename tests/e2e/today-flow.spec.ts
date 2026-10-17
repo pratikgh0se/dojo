@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures'
-import { IST, idbAll, onboard } from './helpers'
+import { IST, idbAll, idbPatch, onboard } from './helpers'
 
 type Row = { id: string; status: string; xp?: number; doneAt?: string }
 
@@ -29,4 +29,15 @@ test('R1 Today: Start opens the quest ticket, Done finishes it, and the ticket, 
   await expect(page.getByTestId('ticket-done-state')).toBeVisible()
   await page.getByTestId('do-back').click()
   await expect(page.getByTestId('screen-today')).toBeVisible()
+})
+
+// R3 TODAY-57: a DSA quest still shows the learner's path phase in the header (it used to be blank).
+test('R3 Today: with a DSA ticket first, the header still names the path phase (TODAY-57)', async ({ page }) => {
+  await page.clock.setFixedTime(IST('2026-11-04T10:00:00'))
+  await onboard(page, '2026-11-02')
+  await idbPatch(page, 'tickets', ['m1w1i1'], { orderOverride: 0 })
+  await page.reload()
+  await page.locator('[data-testid="screen-today"][data-ready="true"]').waitFor()
+  await expect(page.getByTestId('today-quest')).toHaveAttribute('data-ticket-id', 'm1w1i1')
+  await expect(page.getByTestId('today-phase-line')).toHaveText(/^Phase 1 of 6 · \S/)
 })

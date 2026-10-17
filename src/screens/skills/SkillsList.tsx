@@ -11,6 +11,7 @@ import { Glyph } from '../../ui/Glyph'
 import { Button } from '../../ui/primitives'
 import { SkMeter, StateGlyph } from './Meter'
 import { NodeItems, NodeStart } from './NodeItems'
+import { NodeQuestions, NodeTickets } from './NodeTickets'
 import { TopicBadge } from './TopicBadge'
 import { withTopicWord, type TopicView } from './useTopicViews'
 
@@ -95,8 +96,11 @@ export function SkillsList({ plan, tickets, states, nodes, initialOpen = null, t
                 <span className="sk-more">
                   <span className="sk-meta" data-content="plan">{n.oneLiner}</span>
                   {topic?.line && <span className="sk-meta sk-nextline" data-testid="skills-node-nextline" data-topic-state={topic.state ?? 'none'} data-content="plan">{topic.line}</span>}
-                  {tree && <NodeItems items={mine} />}
-                  {next && <NodeStart next={next} tree={tree} accent={tree && !treeHasNext} />}
+                  {/* SKILLS-37: an AI node's ticket list can run longer than the phone screen, so its Start comes first and never ends up under the fixed panel */}
+                  {!tree && next && <NodeStart next={next} tree={tree} accent={false} />}
+                  {tree ? <NodeItems items={mine} /> : <NodeTickets items={mine} />}
+                  <NodeQuestions node={n} plan={plan} />
+                  {tree && next && <NodeStart next={next} tree={tree} accent={!treeHasNext} />}
                 </span>
               )}
             </li>

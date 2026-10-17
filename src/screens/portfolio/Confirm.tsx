@@ -15,7 +15,7 @@ export interface ConfirmState {
   busy: boolean
 }
 
-export const PAGES_NOTE = 'First time: turn on GitHub Pages once. In the repository Settings, open Pages and choose branch main and the root folder. Dojo does not change repository settings.'
+export const PAGES_NOTE = 'Publishing also turns on GitHub Pages for this repository if it is off.'
 export const DIRTY_NOTE = 'Uncommitted changes in the lab folder are not included.'
 const LEAK_REPO = 'Something in these files should not go public. Fix it in the lab folder, commit it, and publish again.'
 const LEAK_PAGE = 'Something in this text should not go public. Fix the text, then publish again.'

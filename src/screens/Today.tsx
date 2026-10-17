@@ -15,7 +15,7 @@ import { globalKeyBlocked } from '../rules/keyScope'
 import { LANE_LABEL, minutesLabel, tagLane } from '../rules/ticketMeta'
 import { nodeTickets } from '../rules/skillTree'
 import { DEFAULT_DUE_WEEKDAY, DEFAULT_TRY_MINUTES, TRY_MODEL_ID } from '../rules/ritual'
-import { questView, todayHeading } from '../rules/todayModel'
+import { currentPathPhase, questView, todayHeading } from '../rules/todayModel'
 import { headerXp, levelOf } from '../rules/xp'
 import { useStartTicket } from '../study/useStartTicket'
 import { useStudy } from '../study/useStudy'
@@ -72,7 +72,7 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
     action: model.next, mix: model.mix, pathNote: model.pathNote,
     studyLeft: live ? sessionLabel(live, t) : null, studyTicketId: live?.ticketId ?? null,
   })
-  const head = todayHeading({ nowMs: t, startDate: settings.startDate, phase: view.ticket?.phase, phases })
+  const head = todayHeading({ nowMs: t, startDate: settings.startDate, phase: currentPathPhase(tickets), phases })
   // the quest's skill topic and the learner's place in it (done tickets lit, the quest's own pip outlined)
   const questNode = view.ticket?.node ? plan?.nodes.find(n => n.id === view.ticket?.node) : undefined
   const topic = (() => {
@@ -120,7 +120,7 @@ function TodayBody({ model, paceLine, tickets, settings, events }: {
     <div className="qc-page">
       <div className="qc-top">
         {head.day !== null && <span className="qc-day">Day {head.day}</span>}
-        {head.phaseLine && <span className="qc-phase" data-content="plan">{head.phaseLine}</span>}
+        {head.phaseLine && <span className="qc-phase" data-testid="today-phase-line" data-content="plan">{head.phaseLine}</span>}
         {model.dueReviews > 0 && !dayZero && (
           <Link className="sr-btn sr-btn-quiet qc-chip" data-testid="today-review-chip" data-count={model.dueReviews} to="/review">Review: {model.dueReviews} due</Link>
         )}

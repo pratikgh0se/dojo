@@ -6,6 +6,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } fr
 import { dirname, join } from 'node:path'
 import { addIndexLine, buildExport, clonePath, pagePath, targetRepoName, targetUrls } from './export.mjs'
 import { gh, ghLogin } from './gh.mjs'
+import { ensurePages } from './pages.mjs'
 import { PortfolioError, git, tail } from './util.mjs'
 
 let inFlight = false
@@ -54,7 +55,7 @@ function place({ clone, kind, lab, stage }) {
 /**
  * deps = { env, ghBin, extraTerms }. `files` is the list of repo-relative paths the confirm screen showed; the export is rebuilt here
  * and must equal it. Throws PortfolioError: gh_missing, gh_not_logged_in, gh_failed, not_set_up, bad_request, leak_found (with .hits),
- * files_mismatch, push_failed, busy. Resolves { url, committed }.
+ * files_mismatch, push_failed, busy. Resolves { url, committed, pages? }; pages (site, article only) is ensurePages' result.
  */
 export async function publish(deps, { lab, kind, labsRoot, text, files }) {
   if (inFlight) throw new PortfolioError('busy', 'A publish is already running. Wait for it to finish.')
@@ -90,7 +91,9 @@ export async function publish(deps, { lab, kind, labsRoot, text, files }) {
     if (push.status !== 0) {
       throw new PortfolioError('push_failed', `GitHub did not accept the push: ${tail(push.stderr || push.stdout, 1200)}\nDojo never pulls, merges or forces. Fix it in ${dir}, or delete that folder and publish again.`)
     }
-    return { url: targetUrls({ kind, lab, user }).urls[0], committed }
+    // Pages comes after the push and only for a site or article; its failure is a result, never an error: the push stays (PORT-56, PORT-57)
+    const pages = kind === 'repo' ? undefined : await ensurePages(deps, { user, repo: targetRepoName(kind, lab) })
+    return { url: targetUrls({ kind, lab, user }).urls[0], committed, ...(pages ? { pages } : {}) }
   } finally {
     built?.dispose()
     inFlight = false

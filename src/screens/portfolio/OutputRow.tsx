@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
+import type { PagesInfo } from '../../data/portfolioClient'
 import type { PortfolioItem } from '../../data/types'
 import type { OutputKind } from '../../rules/portfolioDrafts'
 import { Button } from '../../ui/primitives'
+
+export const PAGES_TEXT = {
+  enabled: 'GitHub Pages is now on for this repository. GitHub takes about a minute to show a new page.',
+  on: 'GitHub Pages is already on for this repository.',
+  failed: 'Your page is published, but GitHub Pages could not be turned on. To turn it on by hand, open the repository Settings, choose Pages, pick branch main and the root folder, and save. Then open the page.',
+}
 
 export const OUTPUTS: { kind: OutputKind; label: string }[] = [
   { kind: 'repo', label: 'Public lab repo' },
@@ -19,6 +26,8 @@ export interface OutputRowProps {
   readOnly: boolean
   creating: boolean
   error: { code: string; message: string } | null
+  /** the Pages result of the publish just made (site, article); not stored */
+  pages?: PagesInfo
   onCreate: () => void
   onType: (text: string) => void
   onPublish: () => void
@@ -47,6 +56,21 @@ export function OutputRow(p: OutputRowProps) {
         <span className="pf-chip" data-testid={`portfolio-status-${key}`}>{statusWord(p.kind, status)}</span>
       </div>
       {published && p.item?.url && <a className="pf-link" data-testid={`portfolio-url-${key}`} href={p.item.url} target="_blank" rel="noreferrer">{p.item.url}</a>}
+      {published && p.pages && (
+        <div className="pf-pages" data-testid={`portfolio-pages-${key}`} data-pages={p.pages.state}>
+          {p.pages.state === 'failed' ? (
+            <>
+              <p className="pf-warn" role="alert" data-testid={`portfolio-pages-error-${key}`}>{PAGES_TEXT.failed}</p>
+              <p className="pf-mono" data-testid={`portfolio-pages-detail-${key}`} data-content="learner">{p.pages.detail}</p>
+            </>
+          ) : (
+            <>
+              <p className="pf-line" data-testid={`portfolio-pages-text-${key}`}>{PAGES_TEXT[p.pages.state]}</p>
+              <a className="pf-link pf-site-url" data-testid={`portfolio-site-url-${key}`} href={p.pages.siteUrl} target="_blank" rel="noreferrer">{p.pages.siteUrl}</a>
+            </>
+          )}
+        </div>
+      )}
       {showBox && (
         <textarea
           ref={box} className="pf-text" data-testid={`portfolio-text-${key}`} data-content="learner" rows={p.kind === 'linkedin' ? 8 : 12}

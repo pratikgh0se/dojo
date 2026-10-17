@@ -22,10 +22,10 @@ describe.each(plans)('pace projection on the shipped plan: %s (%s)', (file) => {
     expect(['February 2028', 'March 2028']).toContain(projection.label)
     expect(paceLine(projection)).toMatch(/^at this pace the plan ends about (February|March) 2028$/)
   })
-  it('counts the planning hours of every node in phases 2 to 6', () => {
+  it('counts the planning hours of every node in phases 3 to 6', () => {
     const open = plan.phases.filter(p => !p.authored).map(p => p.p)
-    expect(open).toEqual([2, 3, 4, 5, 6])
+    expect(open).toEqual([3, 4, 5, 6])
     for (const n of plan.nodes.filter(n => open.includes(n.phase) && n.kind !== 'band')) expect(n.hours, `node ${n.id}`).toBeGreaterThan(0)
-    expect(projection.unwrittenMin).toBe(280 * 60)
+    expect(projection.unwrittenMin).toBe(230 * 60)
   })
 })

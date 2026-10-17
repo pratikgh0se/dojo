@@ -2,13 +2,14 @@ import { useMemo } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useRequiredPlanV2 } from '../app/providers'
 import { useTodayModel } from '../data/flatHooks'
-import { useSessions, useSettings, useTickets } from '../data/hooks'
+import { useBankExtra, useSessions, useSettings, useTickets } from '../data/hooks'
 import type { PlanV2 } from '../data/planV2'
 import type { Session, Ticket } from '../data/types'
 import { NARROW_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { coreMinutesOf } from '../rules/prefs'
 import { nodeStates, questTicketId } from '../rules/skillView'
 import { Loading } from '../ui/Loading'
+import { BankExtraContext } from './skills/NodeTickets'
 import { AreaMap } from './skills/AreaMap'
 import { AreaView } from './skills/AreaView'
 import { useTopicViews } from './skills/useTopicViews'
@@ -22,10 +23,16 @@ export function Skills() {
   const sessions = useSessions()
   const settings = useSettings()
   const model = useTodayModel()
-  if (!tickets || !sessions || !settings || !model) return <Loading />
+  // the AI-made question rows count in a node's "Questions (N)" (TREE-25): the screen waits for them so the link is drawn once, with its final count (TREE-26)
+  const bankExtra = useBankExtra()
+  if (!tickets || !sessions || !settings || !model || !bankExtra) return <Loading />
   // The quest is Today's own pick (never recomputed here), so the `next` node and Today's start button agree.
   const questId = questTicketId(model.next)
-  return <SkillsBody tickets={tickets} sessions={sessions} plan={plan} questId={questId} coreMinutes={coreMinutesOf(settings, plan.mix)} />
+  return (
+    <BankExtraContext.Provider value={bankExtra}>
+      <SkillsBody tickets={tickets} sessions={sessions} plan={plan} questId={questId} coreMinutes={coreMinutesOf(settings, plan.mix)} />
+    </BankExtraContext.Provider>
+  )
 }
 
 function SkillsBody({ plan, tickets, sessions, questId, coreMinutes }: {

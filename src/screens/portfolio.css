@@ -10,6 +10,9 @@
 .pf-out-title { margin: 0; font-size: var(--type-small); font-weight: 700; }
 .pf-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); border-radius:0; font-size: var(--type-meta); font-weight: 700; white-space: nowrap; }
 .pf-link { font-size: var(--type-small); overflow-wrap: anywhere; color: var(--sr-link); }
+.pf-pages { display: grid; gap: 4px; min-width: 0; }
+.pf-pages .pf-line { margin: 0; font-size: var(--type-small); overflow-wrap: anywhere; }
+.pf-site-url { display: inline-flex; align-items: center; min-height: var(--sr-size-hit-touch); }
 .pf-text { width: 100%; min-height: 160px; box-sizing: border-box; padding: 8px; background: var(--sr-surface-panel); border: 2px solid var(--sr-edge-mid); border-radius:0; color: var(--sr-text-primary); font-family: var(--sr-font-mono); font-size: var(--type-meta); line-height: 1.5; resize: vertical; }
 .pf-text[readonly] { color: var(--sr-text-secondary); }
 .pf-warn { margin: 0; padding: 8px; border: 2px solid var(--sr-label-warn); border-radius:0; font-size: var(--type-small); overflow-wrap: anywhere; }

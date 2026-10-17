@@ -194,6 +194,10 @@
 @media (max-width: 767px) {
   .sk-more .sk-items { width: 100%; }
 }
+/* R3: "Questions (N)" is a plain text link to Banks, never an accent (TREE-26) */
+.sk-qlink { display: inline-flex; align-items: center; min-height: 44px; color: var(--sr-text-primary); font-size: var(--type-small); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.sk-qlink:hover { text-decoration-thickness: 2px; }
+.sk-qlink:focus-visible { outline: 3px solid var(--sr-text-primary); outline-offset: 2px; }
 /* a tree header holds two figures ("topics" and "problems" or "designs"): they wrap instead of widening a 375 px page */
 .sk-vmeter-wrap { flex-wrap: wrap; gap: 2px 12px; }
 @media (max-width: 767px) { .sk-phone .sk-vmeter.sk-vmeter-wrap { white-space: normal; } }
