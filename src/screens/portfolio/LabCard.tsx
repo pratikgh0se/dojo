@@ -7,19 +7,21 @@ import { safeWrite } from '../../data/safeWrite'
 import type { LabRow, PortfolioItem } from '../../data/types'
 import { now } from '../../lib/clock'
 import type { OutputKind } from '../../rules/portfolioDrafts'
+import { Loading } from '../../ui/Loading'
 import { useToast } from '../../ui/primitives'
 import { Confirm, type ConfirmState } from './Confirm'
 import { OUTPUTS, OutputRow } from './OutputRow'
 
-/** The lab's title from the server's definition (GET /labs/info); the lab id until it answers (or when it cannot, read-only). */
-function useLabTitle(labId: string): string {
-  const [title, setTitle] = useState('')
+/** The lab's title from the server's definition (GET /labs/info): null until it has answered, then the title, or the id when it cannot be read (read-only). The card is not drawn before that. */
+function useLabTitle(labId: string): string | null {
+  const [title, setTitle] = useState<string | null>(null)
   useEffect(() => {
     let live = true
-    void fetchLabInfo(labId).then(i => { if (live && i) setTitle(i.title) })
+    setTitle(null)
+    void fetchLabInfo(labId).then(i => { if (live) setTitle(i?.title || labId) })
     return () => { live = false }
   }, [labId])
-  return title || labId
+  return title
 }
 
 export interface LabCardProps { lab: LabRow; items: PortfolioItem[]; pagesPublished: boolean; readOnly: boolean }
@@ -76,6 +78,7 @@ export function LabCard({ lab, items, pagesPublished, readOnly }: LabCardProps) 
     try { await navigator.clipboard.writeText(text); toast('Copied.') } catch { toast('Copy failed. Select the text and copy it by hand.', 'warn') }
   }
 
+  if (title === null) return <Loading /> // a hooked element appears with its final content: no card, and no empty title, before the lab's definition has answered
   return (
     <section className="sr-panel pf-card" data-testid={`portfolio-card-${lab.labId}`} data-lab-id={lab.labId} aria-labelledby={`pf-h-${lab.labId}`}>
       <h2 className="pf-card-title" id={`pf-h-${lab.labId}`} data-testid={`portfolio-card-title-${lab.labId}`} data-content="plan">{title}</h2>

@@ -48,6 +48,27 @@ const row = async (d: DojoDB, id: string) => d.portfolioItems.get(id)
 const textOf = (id: string) => (tid(id) as HTMLTextAreaElement).value
 
 describe('Portfolio screen: cards (PORT-02 to PORT-05)', () => {
+  it('draws no title (not the lab id) until the lab definitions have loaded (PORT-03 under load)', async () => {
+    let release!: () => void
+    let asked = false
+    const gate = new Promise<void>(r => { release = r })
+    const inner = fetch as unknown as (u: string, i?: RequestInit) => Promise<Response>
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.startsWith('/labs/info')) { asked = true; await gate }
+      return inner(url, init)
+    }))
+    const d = freshDb()
+    await seedPort(d)
+    renderWithApp(<Portfolio />, { db: d, ...appPlans({}), route: '/portfolio' })
+    await waitFor(() => expect(asked).toBe(true))
+    expect(has('portfolio-card-title-pf-a')).toBe(false)
+    expect(has('portfolio-card-pf-a')).toBe(false)
+    expect(document.body.textContent).not.toContain('pf-a')
+    release()
+    await waitFor(() => expect(tid('portfolio-card-title-pf-a')).toHaveTextContent('Portfolio fixture lab A'))
+    expect(tid('portfolio-card-title-pf-a').textContent).toBe('Portfolio fixture lab A')
+  })
+
   it('with no proven lab: the exact empty line, no button or link, no card', async () => {
     const d = freshDb()
     renderWithApp(<Portfolio />, { db: d, ...appPlans({}), route: '/portfolio' })

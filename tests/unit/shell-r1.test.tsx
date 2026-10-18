@@ -80,6 +80,14 @@ describe('shell: destinations', () => {
     expect(screen.queryByTestId('shell-review-badge')).toBeNull()
   })
 
+  it('shows the same due count on every route, a design session and a ticket included (R3.1 UAT: one source)', async () => {
+    for (const route of ['/', '/review', '/designs/session/d1', '/do/open1', '/settings']) {
+      cleanup()
+      await boot({ due: 6, route })
+      expect((await screen.findByTestId('shell-review-badge')).getAttribute('data-count'), route).toBe('6')
+    }
+  })
+
   it('draws the header with the gear, the search, level and XP and nothing else', async () => {
     await boot({ due: 3, extra: [mkTicket({ id: 'folded', xp: 50, mergedInto: 'open1' })] })
     const h = await screen.findByTestId('shell-header')

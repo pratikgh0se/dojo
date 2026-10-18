@@ -3,6 +3,20 @@
 All notable changes to Dojo. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project uses [Semantic Versioning](https://semver.org/).
 
+## 2.2.1 - 2026-10-17
+
+Small fixes found while testing 2.2.0. A patch version: no data migration and no Dexie change.
+
+### Fixed
+
+- **Lab checks:** when your Makefile has no `up`, `run` or `down` target yet, the first check says "The Makefile has no `run` target yet. Add one." instead of showing make's own error text. A real make failure still shows make's message.
+- **Portfolio:** a lab card no longer shows the lab id (for example "pf-a") for a moment before its title appears. The title is drawn once the lab is loaded.
+
+### Checked, no change
+
+- **Review count:** the Review count in the side bar comes from one place and reads the same on every screen, the design session included.
+- **First paint:** Board, Today and the ticket screen open in well under a second on a copy of real data.
+
 ## 2.2.0 - 2026-10-17
 
 Release 3: the Skills node panel gets its ticket list, a portfolio publish turns GitHub Pages on, the Today header names your
